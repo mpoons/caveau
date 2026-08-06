@@ -1,0 +1,1449 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caveau — wijnkelder</title>
+<meta name="theme-color" content="#FAF6EF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Caveau">
+<script>addEventListener('load',function(){ if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(function(){}) } })</script>
+</head>
+<body>
+<title>Caveau — wijnkelder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FAF6EF">
+<style>
+/* ============ Caveau — crème & bordeaux ============ */
+:root{
+  --bg:#FAF6EF; --card:#FFFFFF; --card2:#F4EDE0; --sheet:#FFFDF8;
+  --ink:#2B2126; --ink2:#6E5F66; --ink3:#9A8A91;
+  --line:#E8DECD; --line2:#F0E9DA;
+  --acc:#7D2A3C; --acc-deep:#5E1F2E; --acc-soft:#F3E3E6; --acc-ink:#7D2A3C;
+  --gold:#B08A47; --gold-ink:#8A6930;
+  --btn-bg:#7D2A3C; --btn-ink:#FFF7F2; --fab1:#7D2A3C; --fab2:#5E1F2E;
+  --ok:#3E7C4F; --ok-bg:#E6EFE4; --warn:#A26E10; --warn-bg:#F6EBD2;
+  --bad:#A63D2F; --bad-bg:#F6E2DD; --info:#56718C; --info-bg:#E6EBF1;
+  --neut:#8A7E71; --neut-bg:#EEE8DB;
+  --t-rood:#8E3347; --t-wit:#A5851B; --t-rose:#C96A7C;
+  --t-mous:#2E7B40; --t-zoet:#CE8330; --t-vers:#83420F;
+  --bar:#8E3347; --bar-track:#F1E9DA;
+  --shadow:0 1px 2px rgba(43,33,38,.05),0 6px 24px rgba(43,33,38,.06);
+  --shadow-lg:0 -8px 40px rgba(43,33,38,.18);
+  --serif:'Iowan Old Style','Palatino Nova',Palatino,'Book Antiqua',Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1F1216; --card:#2A1A20; --card2:#342128; --sheet:#2E1C23;
+    --ink:#F1E7E0; --ink2:#C7B3BA; --ink3:#937F87;
+    --line:#3E2A33; --line2:#35232C;
+    --acc:#D98E9C; --acc-deep:#E8AEB8; --acc-soft:#43262E; --acc-ink:#DE97A4;
+    --gold:#C9A468; --gold-ink:#CBA96E;
+    --btn-bg:#97374C; --btn-ink:#FFEFF1; --fab1:#A84158; --fab2:#7A2B3C;
+    --ok:#7FB98B; --ok-bg:#243627; --warn:#D9A84E; --warn-bg:#3D3123;
+    --bad:#D98874; --bad-bg:#42261F; --info:#93AECB; --info-bg:#25303C;
+    --neut:#A79A8C; --neut-bg:#342A2E;
+    --t-rood:#C87083; --t-wit:#A98A24; --t-rose:#D06880;
+    --t-mous:#27803C; --t-zoet:#C97C1E; --t-vers:#9C4A3C;
+    --bar:#C87083; --bar-track:#3A262E;
+    --shadow:0 1px 2px rgba(0,0,0,.25),0 6px 24px rgba(0,0,0,.25);
+    --shadow-lg:0 -8px 40px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#FAF6EF; --card:#FFFFFF; --card2:#F4EDE0; --sheet:#FFFDF8;
+  --ink:#2B2126; --ink2:#6E5F66; --ink3:#9A8A91;
+  --line:#E8DECD; --line2:#F0E9DA;
+  --acc:#7D2A3C; --acc-deep:#5E1F2E; --acc-soft:#F3E3E6; --acc-ink:#7D2A3C;
+  --gold:#B08A47; --gold-ink:#8A6930;
+  --btn-bg:#7D2A3C; --btn-ink:#FFF7F2; --fab1:#7D2A3C; --fab2:#5E1F2E;
+  --ok:#3E7C4F; --ok-bg:#E6EFE4; --warn:#A26E10; --warn-bg:#F6EBD2;
+  --bad:#A63D2F; --bad-bg:#F6E2DD; --info:#56718C; --info-bg:#E6EBF1;
+  --neut:#8A7E71; --neut-bg:#EEE8DB;
+  --t-rood:#8E3347; --t-wit:#A5851B; --t-rose:#C96A7C;
+  --t-mous:#2E7B40; --t-zoet:#CE8330; --t-vers:#83420F;
+  --bar:#8E3347; --bar-track:#F1E9DA;
+  --shadow:0 1px 2px rgba(43,33,38,.05),0 6px 24px rgba(43,33,38,.06);
+  --shadow-lg:0 -8px 40px rgba(43,33,38,.18);
+}
+:root[data-theme="dark"]{
+  --bg:#1F1216; --card:#2A1A20; --card2:#342128; --sheet:#2E1C23;
+  --ink:#F1E7E0; --ink2:#C7B3BA; --ink3:#937F87;
+  --line:#3E2A33; --line2:#35232C;
+  --acc:#D98E9C; --acc-deep:#E8AEB8; --acc-soft:#43262E; --acc-ink:#DE97A4;
+  --gold:#C9A468; --gold-ink:#CBA96E;
+  --btn-bg:#97374C; --btn-ink:#FFEFF1; --fab1:#A84158; --fab2:#7A2B3C;
+  --ok:#7FB98B; --ok-bg:#243627; --warn:#D9A84E; --warn-bg:#3D3123;
+  --bad:#D98874; --bad-bg:#42261F; --info:#93AECB; --info-bg:#25303C;
+  --neut:#A79A8C; --neut-bg:#342A2E;
+  --t-rood:#C87083; --t-wit:#A98A24; --t-rose:#D06880;
+  --t-mous:#27803C; --t-zoet:#C97C1E; --t-vers:#9C4A3C;
+  --bar:#C87083; --bar-track:#3A262E;
+  --shadow:0 1px 2px rgba(0,0,0,.25),0 6px 24px rgba(0,0,0,.25);
+  --shadow-lg:0 -8px 40px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{
+  font-family:var(--sans); color:var(--ink); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+h1,h2,h3{text-wrap:balance}
+.tnum{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+#app{max-width:640px;margin:0 auto;padding:14px 16px calc(96px + env(safe-area-inset-bottom,0px))}
+/* ---------- header ---------- */
+.hdr{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:6px 0 14px}
+.brand{font-family:var(--serif);font-size:30px;letter-spacing:.01em;color:var(--ink)}
+.brand .dot{color:var(--acc)}
+.hdr-sub{font-size:12.5px;color:var(--ink2)}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-ink);font-weight:600}
+.h2{font-family:var(--serif);font-size:21px;margin:4px 0 10px}
+.sect{margin-top:22px}
+/* ---------- search & chips ---------- */
+.search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px;box-shadow:var(--shadow)}
+.search input{flex:1;border:0;background:none;outline:none;font-size:15px}
+.search input::placeholder{color:var(--ink3)}
+.search svg{flex:none;color:var(--ink3)}
+.chiprow{display:flex;gap:7px;overflow-x:auto;padding:10px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink2);white-space:nowrap}
+.chip.on{background:var(--btn-bg);border-color:var(--btn-bg);color:var(--btn-ink)}
+.chip .tdot{width:8px;height:8px}
+.chip.on .tdot{outline:1.5px solid rgba(255,247,242,.85);outline-offset:1px}
+/* ---------- wijnkaart ---------- */
+.wlist{display:flex;flex-direction:column;gap:10px}
+.wcard{display:flex;gap:12px;align-items:stretch;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow);text-align:left;width:100%}
+.wthumb{flex:none;width:52px;border-radius:9px;overflow:hidden;background:var(--card2);display:flex;align-items:center;justify-content:center;min-height:68px;position:relative}
+.wthumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.wthumb svg{color:var(--ink3);opacity:.8}
+.wmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;justify-content:center}
+.wname{font-family:var(--serif);font-size:16.5px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.wsub{font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.wside{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px;padding:2px 0}
+.qty{font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--ink);background:var(--card2);border-radius:8px;padding:3px 8px}
+.wloc{font-size:11px;color:var(--ink3);max-width:90px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tdot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.tlabel{font-size:12px;color:var(--ink2)}
+.t-rood{background:var(--t-rood)} .t-wit{background:var(--t-wit)} .t-rose{background:var(--t-rose)}
+.t-mousserend{background:var(--t-mous)} .t-zoet{background:var(--t-zoet)} .t-versterkt{background:var(--t-vers)}
+/* ---------- badges ---------- */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.b-op{background:var(--ok-bg);color:var(--ok)}
+.b-nu{background:var(--warn-bg);color:var(--warn)}
+.b-jong{background:var(--info-bg);color:var(--info)}
+.b-over{background:var(--bad-bg);color:var(--bad)}
+.b-onb{background:var(--neut-bg);color:var(--neut)}
+/* ---------- knoppen ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:600;background:var(--btn-bg);color:var(--btn-ink);width:100%;transition:transform .06s ease,opacity .15s}
+.btn:active{transform:scale(.985)}
+.btn.ghost{background:var(--card);color:var(--acc-ink);border:1.5px solid var(--acc);box-shadow:none}
+:root[data-theme="dark"] .btn.ghost{border-color:var(--acc)}
+.btn.soft{background:var(--acc-soft);color:var(--acc-ink)}
+.btn.plain{background:var(--card2);color:var(--ink)}
+.btn.danger{background:none;color:var(--bad);border:1.5px solid var(--bad-bg)}
+.btn.sm{padding:8px 13px;font-size:13.5px;width:auto;border-radius:10px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btnrow{display:flex;gap:9px}
+.btnrow .btn{flex:1}
+.linkbtn{color:var(--acc-ink);font-weight:600;font-size:14px}
+/* ---------- lege staat / banners ---------- */
+.empty{text-align:center;padding:44px 22px;color:var(--ink2)}
+.empty .big{font-family:var(--serif);font-size:21px;color:var(--ink);margin-bottom:6px}
+.empty p{font-size:13.5px;margin-bottom:18px}
+.banner{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:13px;color:var(--ink2);margin:10px 0}
+.banner b{color:var(--ink)}
+.srcchip{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--gold-ink);border:1px solid var(--line);border-radius:999px;padding:2px 9px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+/* ---------- sheet ---------- */
+.overlay{position:fixed;inset:0;background:rgba(31,18,22,.45);backdrop-filter:blur(2px);z-index:40;opacity:0;transition:opacity .2s}
+.overlay.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--sheet);border-radius:22px 22px 0 0;box-shadow:var(--shadow-lg);max-height:90dvh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,.33,1)}
+.sheet.show{transform:translateY(0)}
+.sheet-in{overflow-y:auto;padding:8px 18px calc(24px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
+.sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 2px;flex:none}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0 10px}
+.sheet-title{font-family:var(--serif);font-size:20px}
+.xbtn{width:32px;height:32px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--ink2);flex:none}
+@media (min-width:560px){.sheet{max-width:560px;left:50%;transform:translate(-50%,100%);}.sheet.show{transform:translate(-50%,0)}}
+/* ---------- detail ---------- */
+.dphoto{border-radius:14px;overflow:hidden;background:var(--card2);max-height:230px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.dphoto img{object-fit:contain;max-height:230px;width:auto;margin:0 auto}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}
+.dcell{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.dcell .k{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.dcell .v{font-size:14.5px;margin-top:2px}
+.grapes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.grape{font-size:12px;background:var(--card2);border-radius:999px;padding:3px 10px;color:var(--ink2)}
+/* stepper */
+.stepper{display:flex;align-items:center;gap:14px;justify-content:center}
+.stepbtn{width:44px;height:44px;border-radius:50%;background:var(--card2);font-size:22px;font-weight:600;color:var(--acc-ink);display:flex;align-items:center;justify-content:center}
+.stepval{font-family:var(--serif);font-size:30px;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+/* tijdlijn */
+.tl{margin:8px 0 4px}
+.tl-track{position:relative;height:10px;border-radius:5px;background:var(--bar-track);overflow:visible}
+.tl-fill{position:absolute;top:0;bottom:0;border-radius:5px;background:linear-gradient(90deg,var(--t-mous),var(--ok) 30%,var(--warn) 78%,var(--bad))}
+.tl-now{position:absolute;top:-4px;width:2.5px;height:18px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 3px var(--sheet)}
+.tl-lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink3);margin-top:7px;font-variant-numeric:tabular-nums}
+/* ---------- formulieren ---------- */
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+.inp{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:15px;outline:none}
+.inp:focus{border-color:var(--acc)}
+textarea.inp{resize:vertical;min-height:64px}
+.frow{display:flex;gap:9px}
+.frow>.field{flex:1;min-width:0}
+.seg{display:flex;background:var(--card2);border-radius:11px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{flex:1;min-width:31%;padding:8px 4px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.qquick{display:flex;gap:7px;margin-top:8px;justify-content:center}
+.qquick button{font-size:12.5px;font-weight:600;color:var(--acc-ink);background:var(--acc-soft);border-radius:999px;padding:5px 13px}
+/* sterren */
+.stars{display:flex;gap:6px;justify-content:center;margin:6px 0}
+.stars button{font-size:30px;line-height:1;color:var(--line);transition:transform .08s}
+.stars button.on{color:var(--gold)}
+.stars button:active{transform:scale(1.2)}
+.starmini{color:var(--gold);font-size:12.5px;letter-spacing:1px}
+/* ---------- pairing ---------- */
+.pairtoggle{display:flex;background:var(--card2);border-radius:12px;padding:3px;margin-bottom:14px}
+.pairtoggle button{flex:1;padding:9px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--ink2)}
+.pairtoggle button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.match{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);margin-bottom:10px}
+.match-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mscore{flex:none;font-family:var(--serif);font-size:19px;color:var(--acc-ink);font-variant-numeric:tabular-nums}
+.mscore small{font-size:11px;color:var(--ink3);font-family:var(--sans)}
+.mreason{font-size:13.5px;color:var(--ink2);margin-top:6px}
+.dishcard{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 14px;margin-bottom:9px;box-shadow:var(--shadow)}
+.dishcard .d{font-weight:600;font-size:14.5px}
+.dishcard .r{font-size:13px;color:var(--ink2);margin-top:3px}
+/* ---------- overzicht ---------- */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow);text-align:left}
+.tile .n{font-family:var(--serif);font-size:27px;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .k{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.tile .s{font-size:11.5px;color:var(--ink2);margin-top:2px}
+.brow{display:grid;grid-template-columns:minmax(86px,30%) 1fr auto;align-items:center;gap:10px;padding:5px 0}
+.brow .l{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.brow .track{display:block;height:9px;border-radius:5px;background:var(--bar-track);overflow:hidden}
+.brow .fill{display:block;height:100%;border-radius:5px 4px 4px 5px;background:var(--bar);min-width:3px}
+.brow .v{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow)}
+.panel+.panel{margin-top:12px}
+.rowline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)}
+.rowline:last-child{border-bottom:0}
+.rowline .a{min-width:0}
+.rowline .t{font-size:14px;font-weight:600;font-family:var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowline .u{font-size:12px;color:var(--ink2)}
+.rowline .z{flex:none;text-align:right}
+/* ---------- meer ---------- */
+.menu{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.mitem{display:flex;align-items:center;gap:12px;width:100%;padding:14px 15px;border-bottom:1px solid var(--line2);text-align:left;font-size:15px}
+.mitem:last-child{border-bottom:0}
+.mitem svg{color:var(--acc-ink);flex:none}
+.mitem .grow{flex:1}
+.mitem .cnt{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.mitem .chev{color:var(--ink3)}
+.backrow{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--acc-ink);font-weight:600;font-size:14px}
+/* ---------- navigatie ---------- */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.nav-in{max-width:640px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-around;padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+.nbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;color:var(--ink3);font-size:10.5px;font-weight:600;letter-spacing:.02em}
+.nbtn.on{color:var(--acc-ink)}
+.nbtn svg{width:23px;height:23px}
+.nfab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ink3);margin-top:-24px}
+.nfab .fab{width:56px;height:56px;border-radius:50%;background:var(--fab1);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(125,42,60,.38);border:3px solid var(--bg)}
+.nfab.on .fab{background:var(--fab2)}
+:root[data-theme="dark"] .nfab .fab{box-shadow:0 6px 18px rgba(0,0,0,.45)}
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 16px;font-size:13.5px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 40px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast button{color:var(--gold);font-weight:700;font-size:13.5px;flex:none}
+/* ---------- scan ---------- */
+.scanhero{text-align:center;padding:26px 18px 10px}
+.scanbig{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--fab1) 0%,var(--fab2) 90%);color:#FFF7F2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin:18px auto;box-shadow:0 14px 40px rgba(125,42,60,.35);font-weight:600;font-size:14px}
+:root[data-theme="dark"] .scanbig{box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.scanbig:active{transform:scale(.97)}
+.scanprev{border-radius:16px;overflow:hidden;max-height:300px;display:flex;align-items:center;justify-content:center;background:var(--card2);margin-bottom:14px}
+.scanprev img{object-fit:contain;max-height:300px}
+.spin{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--acc-soft);border-top-color:var(--acc);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.matchbanner{background:var(--acc-soft);border:1px solid var(--acc);border-radius:12px;padding:11px 13px;font-size:13.5px;margin-bottom:12px;color:var(--ink)}
+hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
+.small{font-size:12.5px;color:var(--ink3)}
+.center{text-align:center}
+.mt8{margin-top:8px}.mt14{margin-top:14px}.mb8{margin-bottom:8px}
+</style>
+<div id="app">
+  <main id="view" aria-live="polite"></main>
+</div>
+
+<nav class="nav" aria-label="Hoofdnavigatie">
+  <div class="nav-in">
+    <button class="nbtn" data-act="tab" data-tab="kelder" aria-label="Kelder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-.6 6.2a4.4 4.4 0 0 1-8.8 0L7 3Z"/><path d="M12 13.5V20"/><path d="M8.5 21h7"/></svg>
+      <span>Kelder</span>
+    </button>
+    <button class="nbtn" data-act="tab" data-tab="pairing" aria-label="Pairing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v7"/><path d="M4.5 3v4.2a2.5 2.5 0 0 0 5 0V3"/><path d="M7 13v8"/><path d="M16.5 3c-1.7 1-2.5 3-2.5 5.5 0 2 .8 3 2.5 3.5V21"/><path d="M16.5 3v9"/></svg>
+      <span>Pairing</span>
+    </button>
+    <button class="nfab" data-act="tab" data-tab="scan" aria-label="Scan een etiket">
+      <span class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1l1.4-2h6.2L16.5 6h1A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-7Z"/><circle cx="12" cy="12" r="3.4"/></svg></span>
+      <span>Scan</span>
+    </button>
+    <button class="nbtn" data-act="tab" data-tab="overzicht" aria-label="Overzicht">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V13"/><path d="M12 20V6"/><path d="M19 20v-9"/></svg>
+      <span>Overzicht</span>
+    </button>
+    <button class="nbtn" data-act="tab" data-tab="meer" aria-label="Meer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>
+      <span>Meer</span>
+    </button>
+  </div>
+</nav>
+
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+<input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="fLib" accept="image/*" hidden>
+<input type="file" id="fImport" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+/* ================= basis ================= */
+const YR = () => new Date().getFullYear();
+const IN_SANDBOX = /claudeusercontent\.com$/i.test(location.hostname) || !!window.claude;
+const DB_KEY = 'caveau_v1';
+
+const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[],
+  settings:{ cellarName:'Mijn kelder', apiKey:'', model:'claude-sonnet-5' } });
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw) return DEFAULTS();
+    const d = JSON.parse(raw);
+    const base = DEFAULTS();
+    return { ...base, ...d, settings:{ ...base.settings, ...(d.settings||{}) },
+      wines:d.wines||[], history:d.history||[], wishlist:d.wishlist||[] };
+  }catch(e){ return DEFAULTS(); }
+}
+let S = loadState();
+function save(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt — opslag vol?'); } }
+
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const money = n => (n==null||n===''||isNaN(n)) ? '—' : '€ '+Number(n).toLocaleString('nl-NL',{maximumFractionDigits:0});
+const plur = (n,e,m) => n===1?e:m;
+
+/* wijntypes */
+const TYPES = {
+  rood:{l:'Rood',c:'t-rood'}, wit:{l:'Wit',c:'t-wit'}, rose:{l:'Rosé',c:'t-rose'},
+  mousserend:{l:'Mousserend',c:'t-mousserend'}, zoet:{l:'Zoet',c:'t-zoet'}, versterkt:{l:'Versterkt',c:'t-versterkt'}
+};
+function mapType(s){
+  const t = norm(s);
+  if(/rose|rosado|rosato/.test(t)) return 'rose';
+  if(/mousser|champag|cremant|cava|prosecco|sekt|sparkl|bubbel|petnat|pet nat/.test(t)) return 'mousserend';
+  if(/versterkt|port|sherry|madeira|banyuls|maury|fortified|vermout/.test(t)) return 'versterkt';
+  if(/zoet|sweet|dessert|sauternes|auslese|ijswijn|icewine|tokaji|moelleux/.test(t)) return 'zoet';
+  if(/wit|white|blanc|bianco|weiss|oranje|orange|amber/.test(t)) return 'wit';
+  if(/rood|red|rouge|rosso|tinto/.test(t)) return 'rood';
+  return TYPES[t] ? t : 'rood';
+}
+const dotHtml = t => `<span class="tdot ${TYPES[t]?TYPES[t].c:'t-rood'}" aria-hidden="true"></span>`;
+const typeHtml = t => `${dotHtml(t)}<span class="tlabel">${esc(TYPES[t]?TYPES[t].l:t)}</span>`;
+
+/* drinkvenster-status */
+function windowStatus(w){
+  const y = YR(), f = w.drinkFrom||null, t = w.drinkTo||null;
+  if(!f && !t) return {k:'onb',cls:'b-onb',label:'Venster onbekend',sub:''};
+  if(f && y < f) return {k:'jong',cls:'b-jong',label:'Nog te jong',sub:'vanaf '+f};
+  if(t && y > t) return {k:'over',cls:'b-over',label:'Over de piek?',sub:'was op dronk t/m '+t};
+  if(t){
+    const span = Math.max(1, t-(f||t)), rem = t-y;
+    if(rem <= Math.max(1, Math.round(span*0.18)))
+      return {k:'nu',cls:'b-nu',label:'Drink binnenkort',sub:'nog t/m '+t};
+  }
+  return {k:'op',cls:'b-op',label:'Op dronk',sub:t?'tot '+t:''};
+}
+const badgeHtml = w => { const st = windowStatus(w); return `<span class="badge ${st.cls}">${st.label}</span>`; };
+const URG = {over:0, nu:1, op:2, jong:3, onb:4};
+
+/* ================= foto-opslag (IndexedDB) ================= */
+let _db = null;
+function idb(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res)=>{
+    try{
+      const rq = indexedDB.open('caveau_photos', 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore('p');
+      rq.onsuccess = () => { _db = rq.result; res(_db); };
+      rq.onerror = () => res(null);
+    }catch(e){ res(null); }
+  });
+}
+const photoCache = new Map();
+async function pSet(id, data){ photoCache.set(id, data); const d = await idb(); if(!d) return;
+  await new Promise(r=>{ const tx=d.transaction('p','readwrite'); tx.objectStore('p').put(data,id); tx.oncomplete=r; tx.onerror=r; }); }
+async function pGet(id){ if(photoCache.has(id)) return photoCache.get(id); const d = await idb(); if(!d) return null;
+  return new Promise(r=>{ const rq=d.transaction('p').objectStore('p').get(id); rq.onsuccess=()=>{ if(rq.result) photoCache.set(id,rq.result); r(rq.result||null); }; rq.onerror=()=>r(null); }); }
+async function pDel(id){ photoCache.delete(id); const d = await idb(); if(!d) return;
+  await new Promise(r=>{ const tx=d.transaction('p','readwrite'); tx.objectStore('p').delete(id); tx.oncomplete=r; tx.onerror=r; }); }
+async function pKeys(){ const d = await idb(); if(!d) return [];
+  return new Promise(r=>{ const rq=d.transaction('p').objectStore('p').getAllKeys(); rq.onsuccess=()=>r(rq.result||[]); rq.onerror=()=>r([]); }); }
+async function fillPhotos(root){
+  const imgs = (root||document).querySelectorAll('img[data-photo]');
+  for(const img of imgs){ const src = await pGet(img.dataset.photo); if(src){ img.src = src; img.closest('.wthumb,.dphoto,.scanprev')?.querySelector('svg')?.remove(); } }
+}
+const bottleSvg = `<svg width="22" height="34" viewBox="0 0 22 34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 2h4v6.5c2.2 1.2 3.5 3 3.5 5.8V29a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3V14.3c0-2.8 1.3-4.6 3.5-5.8V2Z"/></svg>`;
+
+/* ================= sheets & toast ================= */
+const sheets = [];
+function openSheet(html, opts={}){
+  const host = document.getElementById('sheetHost');
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true');
+  sh.innerHTML = `<div class="sheet-grip"></div><div class="sheet-in">${html}</div>`;
+  host.appendChild(ov); host.appendChild(sh);
+  requestAnimationFrame(()=>{ ov.classList.add('show'); sh.classList.add('show'); });
+  ov.addEventListener('click', ()=>closeSheet());
+  sheets.push({ov, sh, onClose:opts.onClose});
+  document.body.style.overflow = 'hidden';
+  return sh;
+}
+function closeSheet(all){
+  const doOne = () => {
+    const s = sheets.pop(); if(!s) return;
+    s.ov.classList.remove('show'); s.sh.classList.remove('show');
+    setTimeout(()=>{ s.ov.remove(); s.sh.remove(); }, 300);
+    if(s.onClose) try{ s.onClose(); }catch(e){}
+  };
+  if(all){ while(sheets.length) doOne(); } else doOne();
+  if(!sheets.length) document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape' && sheets.length) closeSheet(); });
+const sheetHead = (title) => `<div class="sheet-head"><div class="sheet-title">${title}</div><button class="xbtn" data-act="closeSheet" aria-label="Sluiten"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>`;
+
+function confirmSheet(title, msg, okLabel, fn, danger){
+  openSheet(`${sheetHead(esc(title))}<p style="color:var(--ink2);font-size:14px;margin-bottom:18px">${msg}</p>
+    <div class="btnrow"><button class="btn plain" data-act="closeSheet">Annuleer</button>
+    <button class="btn ${danger?'danger':''}" id="cfOk">${esc(okLabel)}</button></div>`);
+  document.getElementById('cfOk').onclick = () => { closeSheet(); fn(); };
+}
+
+let toastTimer = null;
+function toast(msg, actionLabel, actionFn, ms=4200){
+  const host = document.getElementById('toastHost');
+  host.innerHTML = `<div class="toast" role="status">${esc(msg)}${actionLabel?`<button id="toastAct">${esc(actionLabel)}</button>`:''}</div>`;
+  const el = host.firstChild;
+  if(actionLabel) el.querySelector('#toastAct').onclick = () => { host.innerHTML=''; actionFn && actionFn(); };
+  requestAnimationFrame(()=>el.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ if(host.firstChild===el) host.innerHTML=''; },250); }, ms);
+}
+
+/* ================= actie-registry (event-delegatie) ================= */
+const ACT = { closeSheet: () => closeSheet() };
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if(!el) return;
+  const fn = ACT[el.dataset.act];
+  if(fn){ e.preventDefault(); fn(el, e); }
+});
+
+/* fuzzy match voor scan-herkenning */
+function matchWine(x){
+  const xn = norm((x.name||'')+' '+(x.producer||''));
+  if(!xn) return null;
+  const xw = new Set(xn.split(' ').filter(w=>w.length>2));
+  let best = null, bestScore = 0;
+  for(const w of S.wines){
+    const wn = norm((w.name||'')+' '+(w.producer||''));
+    const ww = wn.split(' ').filter(t=>t.length>2);
+    if(!ww.length) continue;
+    let hit = 0; for(const t of ww) if(xw.has(t)) hit++;
+    let score = hit / Math.max(3, Math.max(xw.size, ww.length));
+    if(x.vintage && w.vintage){ score += (String(x.vintage)===String(w.vintage)) ? 0.25 : -0.2; }
+    if(score > bestScore){ bestScore = score; best = w; }
+  }
+  return bestScore >= 0.5 ? best : null;
+}
+</script>
+<script>
+'use strict';
+/* ================= drinkvenster-schatting ================= */
+const G_LONG_WHITE = ['riesling','chardonnay','chenin','semillon','savagnin','assyrtiko','gruner','furmint'];
+const G_LIGHT_RED  = ['gamay','pinot','frappato','zweigelt','schiava','cinsault','trousseau','poulsard'];
+const G_BIG_RED    = ['cabernet','syrah','shiraz','nebbiolo','sangiovese','tempranillo','mourvedre','monastrell','tannat','malbec','aglianico','touriga','petit verdot','sagrantino','xinomavro'];
+const R_BIG        = ['barolo','barbaresco','brunello','pauillac','margaux','saint julien','saint estephe','pessac','pomerol','saint emilion','medoc','hermitage','cote rotie','cornas','chateauneuf','gran reserva','ribera','priorat','bandol','madiran','taurasi','amarone','napa','bolgheri'];
+const R_WHITE_LONG = ['meursault','puligny','chassagne','corton','chablis grand','chablis premier','savennieres','vouvray','mosel','rheingau','grand cru','smaragd','hunter'];
+
+function estimateWindow(w){
+  const v = w.vintage || YR();
+  const g = norm((w.grapes||[]).join(' '));
+  const r = norm([w.region, w.appellation, w.country, w.name].filter(Boolean).join(' '));
+  const has = (arr, s) => arr.some(x => s.includes(x));
+  switch(w.type){
+    case 'mousserend':
+      if(!w.vintage) { const y=YR(); return {from:y, to:y+2}; }
+      return r.includes('champagne') ? {from:v+5, to:v+15} : {from:v+1, to:v+6};
+    case 'rose': return {from:v, to:v+2};
+    case 'wit':
+      if(has(R_WHITE_LONG, r)) return {from:v+2, to:v+10};
+      if(has(G_LONG_WHITE, g)) return {from:v+1, to:v+6};
+      return {from:v, to:v+3};
+    case 'zoet': return {from:v+2, to:v+20};
+    case 'versterkt': return /vintage/.test(r) ? {from:v+10, to:v+40} : {from:v, to:v+15};
+    default:
+      if(has(R_BIG, r)) return {from:v+5, to:v+18};
+      if(has(G_BIG_RED, g)) return {from:v+3, to:v+12};
+      if(has(G_LIGHT_RED, g)) return {from:v+1, to:v+6};
+      return {from:v+2, to:v+8};
+  }
+}
+
+/* ================= spijs & wijn — regeltabel ================= */
+const FOODS = [
+  {id:'rund', label:'Rundvlees & steak', kw:['rund','biefstuk','steak','entrecote','tournedos','ribeye','ossenhaas','sucade','hachee','burger','tartaar','stoofvlees','stoof'],
+   w:{rood:4}, g:G_BIG_RED, rW:'stevig rood met rijpe tannines draagt rood vlees moeiteloos',
+   dishes:['Entrecôte met rodewijnjus','Klassiek stoofvlees','Burger van de grill'], buy:'een stevige Syrah, Malbec of Bordeaux-blend'},
+  {id:'wild', label:'Wild', kw:['wild','hert','ree','fazant','haas','wildzwijn','eendenborst','duif','patrijs'],
+   w:{rood:4}, g:['pinot','nebbiolo','syrah','grenache','mourvedre','sangiovese'], rW:'aards, gerijpt rood is de klassieke partner van wild',
+   dishes:['Hertenbiefstuk met jus van rode port','Gebraden fazant','Wildstoof'], buy:'een gerijpte Pinot Noir, Nebbiolo of noordelijke Rhône'},
+  {id:'lam', label:'Lam', kw:['lam','lamsbout','lamsrack','lamskotelet'],
+   w:{rood:4}, g:['cabernet','merlot','tempranillo','syrah','mourvedre'], rW:'lam en gestructureerd rood is een tijdloze combinatie',
+   dishes:['Lamsrack met knoflook en rozemarijn','Zeven-uurs lamsbout'], buy:'een Rioja Reserva of linkeroever-Bordeaux'},
+  {id:'varken', label:'Varken', kw:['varken','procureur','speenvarken','ham','spek','worst','saucijs'],
+   w:{rood:3, wit:2, rose:1}, g:['pinot','gamay','chardonnay','tempranillo','barbera'], rW:'soepel rood of rijk wit past bij het zachte vet van varken',
+   dishes:['Langzaam gegaarde procureur','Porchetta'], buy:'een soepele Pinot Noir of Barbera'},
+  {id:'kip', label:'Kip & gevogelte', kw:['kip','gevogelte','kalkoen','parelhoender','poussin','piri'],
+   w:{wit:3, rood:2, mousserend:1, rose:1}, g:['chardonnay','pinot','viognier','chenin'], rW:'rijk wit — of licht rood — omarmt gebraden gevogelte',
+   dishes:['Hele kip uit de oven','Coq au vin (dan rood)'], buy:'een Bourgogne blanc of soepele Pinot Noir'},
+  {id:'eend', label:'Eend', kw:['eend','confit','canard'],
+   w:{rood:4, wit:1}, g:['pinot','grenache','tannat','merlot'], rW:'zijdig rood met wat rijpheid is heerlijk bij eend',
+   dishes:['Eendenborst met sinaasappel','Confit de canard'], buy:'een rijpe Pinot Noir of Madiran'},
+  {id:'witvis', label:'Witte vis', kw:['vis','tong','kabeljauw','zeebaars','schol','tarbot','heilbot','wijting','skrei','forel'],
+   w:{wit:4, mousserend:2, rose:1}, g:['sauvignon','albarino','muscadet','chablis','verdejo','picpoul','vermentino','chardonnay'], rW:'frisse, minerale witte wijn houdt witte vis licht en zuiver',
+   dishes:['Gebakken zeebaars met citroen','Sole meunière'], buy:'een Chablis, Albariño of Muscadet'},
+  {id:'zalm', label:'Zalm & tonijn', kw:['zalm','tonijn','makreel','zwaardvis'],
+   w:{wit:3, rose:3, rood:2}, g:['pinot','chardonnay','gamay'], rW:'vette vis kan wit, rosé én licht gekoeld rood aan',
+   dishes:['Gegrilde zalm','Tonijnsteak rosé gebakken'], buy:'een rijke rosé of lichte Pinot Noir'},
+  {id:'schaal', label:'Schaal- & schelpdieren', kw:['garnaal','gamba','kreeft','krab','coquille','sint-jakobs','mossel','oester','schelp','langoustine','schaaldier'],
+   w:{mousserend:4, wit:4}, g:['chardonnay','muscadet','albarino','chenin','riesling'], rW:'zilte schaaldieren vragen om bubbels of strak mineraal wit',
+   dishes:['Oesters met citroen','Kreeft met beurre blanc','Moules-frites'], buy:'een Champagne of Muscadet sur lie'},
+  {id:'sushi', label:'Sushi & sashimi', kw:['sushi','sashimi','poke','ceviche'],
+   w:{mousserend:3, wit:4}, g:['riesling','albarino','gruner','sauvignon'], rW:'strak, aromatisch wit met spanning past bij rauwe vis',
+   dishes:['Sushi en sashimi','Ceviche'], buy:'een droge Riesling of Grüner Veltliner'},
+  {id:'pastatomaat', label:'Pasta met tomaat & pizza', kw:['pizza','tomaat','bolognese','arrabbiata','napoletana','lasagne','parmigiana','caprese'],
+   w:{rood:4, rose:2}, g:['sangiovese','barbera','montepulciano','nero','primitivo','nerello'], rW:'Italiaans rood met frisse zuren spiegelt de tomaat',
+   dishes:['Pasta al ragù','Pizza margherita'], buy:'een Chianti Classico of Barbera'},
+  {id:'pastaroom', label:'Romige pasta & risotto', kw:['carbonara','romige','roomsaus','risotto','truffelpasta','alfredo','kaassaus'],
+   w:{wit:4, mousserend:1}, g:['chardonnay','soave','pinot grigio','arneis','viognier'], rW:'rond, romig wit sluit aan bij boter en room',
+   dishes:['Risotto met parmezaan','Tagliatelle met truffelroom'], buy:'een Soave Classico of Bourgogne blanc'},
+  {id:'paddenstoel', label:'Paddenstoelen & truffel', kw:['paddenstoel','champignon','truffel','porcini','eekhoorntjesbrood','cantharel'],
+   w:{rood:4, wit:2}, g:['nebbiolo','pinot','sangiovese','chardonnay'], rW:'aardse tonen in de wijn resoneren met paddenstoel en truffel',
+   dishes:['Risotto met porcini','Tagliolini met truffel'], buy:'een Nebbiolo of gerijpte Bourgogne'},
+  {id:'kaas', label:'Kaasplank', kw:['kaas','brie','camembert','comte','gruyere','manchego','parmezaan','cheddar','oude kaas'],
+   w:{rood:3, wit:3, versterkt:2, zoet:2}, g:['chardonnay','chenin','tempranillo','pinot'], rW:'kaas houdt van contrast: rijk wit, soepel rood of iets zoets',
+   dishes:['Kaasplank met vijgenbrood','Kaasfondue (dan strak wit)'], buy:'een Chenin, rijpe Comté-partner als Jura, of Tawny Port'},
+  {id:'blauwekaas', label:'Blauwe kaas', kw:['blauwe kaas','roquefort','gorgonzola','stilton','blauwader'],
+   w:{zoet:4, versterkt:4, rood:1}, g:[], rW:'zout-blauw en zoet is een van de grootste klassiekers',
+   dishes:['Roquefort met Sauternes','Stilton met Port'], buy:'een Sauternes of Vintage Port'},
+  {id:'geitenkaas', label:'Geitenkaas', kw:['geitenkaas','geiten','chevre','crottin'],
+   w:{wit:4, rose:1}, g:['sauvignon','chenin'], rW:'de zuren van Sauvignon en geitenkaas zijn voor elkaar gemaakt',
+   dishes:['Salade met warme geitenkaas'], buy:'een Sancerre of Pouilly-Fumé'},
+  {id:'aziatisch', label:'Aziatisch & pittig', kw:['thais','curry','aziatisch','indiaas','pittig','wok','pad thai','rendang','szechuan','kimchi','ramen','dim sum','vietnam','sate','saté'],
+   w:{wit:4, mousserend:2, rose:2, rood:0}, g:['riesling','gewurztraminer','pinot gris','chenin','gruner'], rW:'aromatisch wit met een vleug zoet blust pit en omarmt specerijen',
+   dishes:['Groene curry','Pad thai'], buy:'een (off-dry) Riesling of Gewürztraminer'},
+  {id:'bbq', label:'BBQ & gerookt', kw:['bbq','barbecue','gegrild','gerookt','spareribs','pulled pork','brisket','kamado'],
+   w:{rood:4, rose:2}, g:['syrah','zinfandel','malbec','grenache','primitivo'], rW:'rokerig en royaal fruit tegen rook en karamelisatie',
+   dishes:['Spareribs','Brisket low & slow'], buy:'een Zinfandel, Malbec of zuidelijke Rhône'},
+  {id:'vega', label:'Groenten & salades', kw:['salade','groente','vegetarisch','vegan','asperge','courgette','aubergine','bloemkool','pompoen','linzen','falafel','burrata'],
+   w:{wit:4, rose:3, rood:1, mousserend:1}, g:['sauvignon','vermentino','gruner','pinot grigio','grenache'], rW:'groen en fris — de wijn moet lucht en zuren meebrengen',
+   dishes:['Gegrilde groenten met burrata','Salade niçoise'], buy:'een Grüner Veltliner of Provence-rosé'},
+  {id:'chocolade', label:'Chocolade', kw:['chocolade','chocola','brownie','moelleux','fondant'],
+   w:{versterkt:4, zoet:3}, g:['grenache'], rW:'donkere chocolade vraagt zoet met kracht — denk Banyuls of Port',
+   dishes:['Chocoladefondant','Brownie'], buy:'een Banyuls, Maury of Ruby Port'},
+  {id:'dessert', label:'Zoete desserts', kw:['dessert','taart','appeltaart','creme brulee','panna cotta','tiramisu','cheesecake','ijs','pavlova','fruit'],
+   w:{zoet:4, mousserend:2}, g:['riesling','semillon','chenin','muscat'], rW:'de wijn moet minstens zo zoet zijn als het dessert',
+   dishes:['Tarte tatin','Crème brûlée'], buy:'een Sauternes of late-harvest Riesling'},
+  {id:'borrel', label:'Borrel & aperitief', kw:['borrel','aperitief','tapas','charcuterie','olijven','nootjes','bitterballen','apero'],
+   w:{mousserend:4, wit:3, rose:2, versterkt:1}, g:['chardonnay','pinot'], rW:'bubbels of fris wit openen de avond',
+   dishes:['Charcuterie en olijven','Bitterballen'], buy:'een Crémant of droge Fino sherry'}
+];
+
+function winesForDish(text){
+  const t = norm(text);
+  const cats = FOODS.filter(f => f.kw.some(k => t.includes(norm(k))));
+  const scored = S.wines.filter(w => w.qty > 0).map(w => {
+    let sc = 0; let reason = ''; let grapeHit = false;
+    if(cats.length){
+      for(const c of cats){
+        const tw = c.w[w.type] || 0; sc += tw;
+        if(tw > 0 && (w.grapes||[]).some(g => c.g.some(cg => norm(g).includes(cg)))){ sc += 1.6; grapeHit = true; }
+        if(tw >= 3 && !reason) reason = c.rW;
+      }
+      sc = sc / cats.length;
+    } else sc = 1.6;
+    const st = windowStatus(w);
+    if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.3; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc -= 0.5;
+    return {w, sc, reason, grapeHit, st};
+  }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc).slice(0,5);
+  const mx = Math.max(4.8, ...scored.map(x=>x.sc));
+  scored.forEach(x => {
+    x.score = Math.max(4, Math.min(10, Math.round(x.sc / mx * 10)));
+    let r = x.reason ? x.reason.charAt(0).toUpperCase()+x.reason.slice(1) : 'Veelzijdige keuze uit je kelder';
+    if(x.grapeHit && x.w.grapes && x.w.grapes.length) r += ` — de ${esc(x.w.grapes[0])} doet hier precies wat nodig is`;
+    x.rHtml = r + '.';
+  });
+  return {cats, list:scored};
+}
+
+function dishesForWine(w){
+  const ranked = FOODS.map(c => {
+    let sc = (c.w[w.type] || 0);
+    if(sc > 0 && (w.grapes||[]).some(g => c.g.some(cg => norm(g).includes(cg)))) sc += 2;
+    return {c, sc};
+  }).filter(x => x.sc >= 3).sort((a,b) => b.sc - a.sc).slice(0,5);
+  const out = [];
+  for(const {c} of ranked){
+    out.push({dish:c.dishes[0], reason:c.rW.charAt(0).toUpperCase()+c.rW.slice(1)+'.'});
+    if(c.dishes[1] && out.length < 6 && ranked.length < 4) out.push({dish:c.dishes[1], reason:'Zelfde register: '+c.rW+'.'});
+  }
+  return out.slice(0,6);
+}
+
+/* ================= AI-laag (buiten de sandbox, met eigen API-sleutel) ================= */
+function aiReady(){ return !IN_SANDBOX && !!(S.settings.apiKey||'').trim(); }
+
+async function callClaude(content, maxTokens){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key':S.settings.apiKey.trim(),
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:(S.settings.model||'claude-sonnet-5').trim(), max_tokens:maxTokens||900,
+      messages:[{role:'user', content}] })
+  });
+  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('API '+res.status+' — '+t.slice(0,200)); }
+  const d = await res.json();
+  return (d.content||[]).filter(b => b.type==='text').map(b => b.text).join('');
+}
+function parseJsonLoose(s){
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if(a < 0 || b <= a) throw new Error('Geen JSON in antwoord');
+  return JSON.parse(s.slice(a, b+1));
+}
+
+async function aiScan(dataUrl){
+  const b64 = dataUrl.split(',')[1];
+  const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
+{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","alcohol":"13,5%" of null,"drink_from":2024,"drink_to":2032,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","confidence":0.0 tot 1.0}
+drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. pairing in het Nederlands. Onleesbare of onbekende velden: null.`;
+  const out = await callClaude([
+    {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
+    {type:'text', text:prompt}
+  ], 900);
+  return parseJsonLoose(out);
+}
+
+function cellarLines(){
+  return S.wines.filter(w => w.qty > 0).slice(0, 120).map(w =>
+    `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`
+  ).join('\n');
+}
+
+async function aiDish(dish){
+  const prompt = `Je bent mijn sommelier. Dit is mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
+${cellarLines()}
+
+Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou rekening met de drinkstatus. Antwoord UITSLUITEND met geldig JSON:
+{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"1-2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}`;
+  const out = await callClaude([{type:'text', text:prompt}], 1100);
+  return parseJsonLoose(out);
+}
+
+async function aiWine(w){
+  const prompt = `Je bent mijn sommelier. Welke gerechten passen bij deze wijn?
+${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.
+Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend.`;
+  const out = await callClaude([{type:'text', text:prompt}], 900);
+  return parseJsonLoose(out);
+}
+
+/* foto verkleinen */
+function resizeImg(file, maxW, q){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const sc = Math.min(1, maxW / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width*sc));
+      c.height = Math.max(1, Math.round(img.height*sc));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Foto kon niet worden gelezen')); };
+    img.src = url;
+  });
+}
+</script>
+<script>
+'use strict';
+/* ================= UI-status & dispatcher ================= */
+const UI = { tab:'kelder', q:'', ftype:null, fstatus:false, floc:null, sort:'recent',
+             pairMode:'dish', pairBusy:false, meerPage:'menu' };
+
+const INP = {};
+document.addEventListener('input', e => {
+  const el = e.target.closest('[data-in]');
+  if(el && INP[el.dataset.in]) INP[el.dataset.in](el);
+});
+
+ACT.tab = el => { UI.tab = el.dataset.tab; UI.meerPage = 'menu'; render(); };
+
+function navSync(){
+  document.querySelectorAll('.nbtn,.nfab').forEach(b => b.classList.toggle('on', b.dataset.tab === UI.tab));
+}
+function brandRow(sub){
+  return `<div class="hdr"><div><div class="brand">Caveau<span class="dot">.</span></div></div><div class="hdr-sub tnum">${sub||''}</div></div>`;
+}
+const bottleCount = () => S.wines.reduce((n,w) => n + (w.qty||0), 0);
+const cellarValue = () => S.wines.reduce((n,w) => n + (w.qty||0) * (Number(w.value ?? w.price) || 0), 0);
+
+/* ================= KELDER ================= */
+function filteredWines(){
+  let a = S.wines.slice();
+  if(UI.q){ const q = norm(UI.q);
+    a = a.filter(w => norm([w.name,w.producer,w.region,w.country,w.appellation,(w.grapes||[]).join(' '),w.location,w.note,w.vintage].join(' ')).includes(q)); }
+  if(UI.ftype) a = a.filter(w => w.type === UI.ftype);
+  if(UI.fstatus) a = a.filter(w => ['op','nu'].includes(windowStatus(w).k));
+  if(UI.floc) a = a.filter(w => (w.location||'') === UI.floc);
+  const by = {
+    recent: (x,y) => (y.addedAt||0) - (x.addedAt||0),
+    naam:   (x,y) => (x.name||'').localeCompare(y.name||'', 'nl'),
+    jaar:   (x,y) => (x.vintage||9999) - (y.vintage||9999),
+    venster:(x,y) => (URG[windowStatus(x).k] - URG[windowStatus(y).k]) || ((x.drinkTo||9999) - (y.drinkTo||9999)),
+    waarde: (x,y) => ((Number(y.value ?? y.price)||0) - (Number(x.value ?? x.price)||0))
+  };
+  a.sort(by[UI.sort] || by.recent);
+  return a;
+}
+const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster:'Drinkvenster', waarde:'Waarde'};
+
+function wineCardHtml(w){
+  const st = windowStatus(w);
+  return `<button class="wcard" data-act="detail" data-id="${w.id}">
+    <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
+    <span class="wmain">
+      <span class="wname">${esc(w.name)}</span>
+      <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
+      <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span></span>
+    </span>
+    <span class="wside">
+      <span class="qty tnum" ${!w.qty?'style="color:var(--ink3)"':''}>×${w.qty||0}</span>
+      ${w.location?`<span class="wloc">${esc(w.location)}</span>`:''}
+    </span>
+  </button>`;
+}
+
+function viewKelder(){
+  const list = filteredWines();
+  const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
+  const chips = [
+    `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`,
+    ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
+    `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`,
+    locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?esc(UI.floc):'Locatie'} ▾</button>` : '',
+    `<button class="chip" data-act="chipSort">${SORTS[UI.sort]} ↕</button>`
+  ].join('');
+  const bc = bottleCount(), val = cellarValue();
+  let body;
+  if(!S.wines.length){
+    body = `<div class="empty"><div class="big">Je kelder is nog leeg</div>
+      <p>Scan het etiket van een fles om te beginnen — of vul hem handmatig in.</p>
+      <button class="btn" data-act="tab" data-tab="scan" style="max-width:260px">Scan je eerste fles</button>
+      <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div></div>`;
+  } else if(!list.length){
+    body = `<div class="empty"><div class="big">Niets gevonden</div><p>Geen flessen die aan deze filters voldoen.</p></div>`;
+  } else {
+    body = `<div class="wlist">${list.map(wineCardHtml).join('')}</div>
+      <div class="center mt14"><button class="linkbtn" data-act="wineNew">+ Handmatig toevoegen</button></div>`;
+  }
+  return `${brandRow(`${bc} ${plur(bc,'fles','flessen')}${val?` · ${money(val)}`:''}`)}
+    <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+      <input type="search" placeholder="Zoek op naam, druif, regio, locatie…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken"></div>
+    <div class="chiprow">${chips}</div>${body}`;
+}
+INP.q = el => { UI.q = el.value; refreshList(); };
+function refreshList(){ if(UI.tab==='kelder') { render(true); } }
+ACT.chipType = el => { UI.ftype = el.dataset.t || null; render(); };
+ACT.chipStatus = () => { UI.fstatus = !UI.fstatus; render(); };
+ACT.chipLoc = () => {
+  const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
+  openSheet(`${sheetHead('Filter op locatie')}
+    <div class="menu">${['',...locs].map(l => `<button class="mitem" data-act="pickLoc" data-l="${esc(l)}"><span class="grow">${l?esc(l):'Alle locaties'}</span>${(UI.floc||'')===l?'<span style="color:var(--acc-ink)">✓</span>':''}</button>`).join('')}</div>`);
+};
+ACT.pickLoc = el => { UI.floc = el.dataset.l || null; closeSheet(); render(); };
+ACT.chipSort = () => {
+  openSheet(`${sheetHead('Sorteren')}
+    <div class="menu">${Object.entries(SORTS).map(([k,v]) => `<button class="mitem" data-act="pickSort" data-s="${k}"><span class="grow">${v}</span>${UI.sort===k?'<span style="color:var(--acc-ink)">✓</span>':''}</button>`).join('')}</div>`);
+};
+ACT.pickSort = el => { UI.sort = el.dataset.s; closeSheet(); render(); };
+
+/* ================= DETAIL ================= */
+function findWine(id){ return S.wines.find(w => w.id === id); }
+
+ACT.detail = el => openDetail(el.dataset.id);
+function openDetail(id){
+  const w = findWine(id); if(!w) return;
+  const st = windowStatus(w);
+  const sh = openSheet(`${sheetHead(esc(w.name))}
+    ${w.photo?`<div class="dphoto">${bottleSvg}<img data-photo="${w.id}" alt="Etiket van ${esc(w.name)}"></div>`:''}
+    <div class="wsub" style="font-size:14px">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</div>
+    <div class="small mt8">${esc([w.appellation, w.region, w.country].filter(Boolean).join(' · '))}</div>
+    <div class="wmeta mt8">${typeHtml(w.type)}<span class="badge ${st.cls}">${st.label}${st.sub?' · '+st.sub:''}</span></div>
+    ${(w.grapes&&w.grapes.length)?`<div class="grapes">${w.grapes.map(g=>`<span class="grape">${esc(g)}</span>`).join('')}</div>`:''}
+    ${timelineHtml(w)}
+    <div class="dgrid">
+      <div class="dcell"><div class="k">Voorraad</div>
+        <div class="stepper" style="justify-content:flex-start;gap:10px;margin-top:4px">
+          <button class="stepbtn" style="width:34px;height:34px;font-size:18px" data-act="qtyMinus" data-id="${w.id}" aria-label="Fles eraf">−</button>
+          <span class="stepval tnum" id="dQty" style="font-size:22px;min-width:34px">${w.qty||0}</span>
+          <button class="stepbtn" style="width:34px;height:34px;font-size:18px" data-act="qtyPlus" data-id="${w.id}" aria-label="Fles erbij">+</button>
+        </div></div>
+      <div class="dcell"><div class="k">Locatie</div><div class="v">${esc(w.location||'—')}</div></div>
+      <div class="dcell"><div class="k">Aankoopprijs</div><div class="v tnum">${money(w.price)}</div></div>
+      <div class="dcell"><div class="k">Geschatte waarde</div><div class="v tnum">${money(w.value ?? w.price)}</div></div>
+    </div>
+    ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
+    ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
+    <button class="btn soft" data-act="wineDishes" data-id="${w.id}" style="margin-bottom:9px">Wat eet je hierbij?</button>
+    <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
+    <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
+    <button class="btn danger" data-act="wineDel" data-id="${w.id}">Verwijderen</button></div>`);
+  fillPhotos(sh);
+}
+function timelineHtml(w){
+  const f = w.drinkFrom, t = w.drinkTo;
+  if(!f && !t) return '';
+  const y = YR(), lo = Math.min(f||y, y) - 1, hi = Math.max(t||y, y) + 1, span = Math.max(1, hi-lo);
+  const L = v => Math.min(100, Math.max(0, (v-lo)/span*100)).toFixed(1);
+  return `<div class="tl" role="img" aria-label="Drinkvenster ${f||'?'} tot ${t||'?'}"><div class="tl-track">
+    ${(f&&t)?`<div class="tl-fill" style="left:${L(f)}%;right:${(100-Number(L(t))).toFixed(1)}%"></div>`:''}
+    <div class="tl-now" style="left:${L(y)}%"></div></div>
+    <div class="tl-lab"><span>${f||'?'}</span><span>nu · ${y}</span><span>${t||'?'}</span></div></div>`;
+}
+ACT.qtyPlus = el => { const w = findWine(el.dataset.id); if(!w) return; w.qty = (w.qty||0)+1; save();
+  const q = document.getElementById('dQty'); if(q) q.textContent = w.qty; };
+ACT.qtyMinus = el => { const w = findWine(el.dataset.id); if(!w || !w.qty) return; w.qty--; save();
+  const q = document.getElementById('dQty'); if(q) q.textContent = w.qty; };
+ACT.wineDel = el => { const w = findWine(el.dataset.id); if(!w) return;
+  confirmSheet('Verwijderen?', `<b>${esc(w.name)}</b> en de bijbehorende foto verdwijnen uit je kelder. Je drink-historie blijft bewaard.`, 'Verwijder', () => {
+    S.wines = S.wines.filter(x => x.id !== w.id); pDel(w.id); save(); closeSheet(true); render(); toast('Verwijderd uit je kelder');
+  }, true); };
+
+/* ================= DRINKEN ================= */
+let drinkRating = 0;
+ACT.drinkOpen = el => openDrink(el.dataset.id);
+function openDrink(id){
+  const w = findWine(id); if(!w) return;
+  drinkRating = 0;
+  const today = new Date().toISOString().slice(0,10);
+  openSheet(`${sheetHead('Drink een fles')}
+    <div class="wsub" style="font-size:14.5px;margin-bottom:2px">${esc(w.name)} · ${w.vintage||'NV'}</div>
+    <div class="small">Voorraad gaat van ${w.qty} naar ${Math.max(0,(w.qty||0)-1)}</div>
+    <div class="stars" id="drinkStars" role="radiogroup" aria-label="Beoordeling">${[1,2,3,4,5].map(n=>`<button data-star="${n}" role="radio" aria-label="${n} sterren">★</button>`).join('')}</div>
+    <div class="field"><label>Datum</label><input type="date" class="inp" id="drDate" value="${today}"></div>
+    <div class="field"><label>Proefnotitie (optioneel)</label><textarea class="inp" id="drNote" placeholder="Hoe smaakte hij? Bij welk gerecht?"></textarea></div>
+    <button class="btn" data-act="drinkSave" data-id="${w.id}">Proost — leg vast</button>`);
+  document.querySelectorAll('#drinkStars button').forEach(b => b.onclick = () => {
+    drinkRating = Number(b.dataset.star);
+    document.querySelectorAll('#drinkStars button').forEach(x => x.classList.toggle('on', Number(x.dataset.star) <= drinkRating));
+  });
+}
+ACT.drinkSave = el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  const entry = { id:uid(), wineId:w.id, date:(document.getElementById('drDate')||{}).value || new Date().toISOString().slice(0,10),
+    name:w.name, producer:w.producer||'', vintage:w.vintage||null, type:w.type,
+    rating:drinkRating || null, note:((document.getElementById('drNote')||{}).value||'').trim() };
+  const prevQty = w.qty||0;
+  w.qty = Math.max(0, prevQty - 1);
+  S.history.unshift(entry); save(); closeSheet(true); render();
+  toast('Genoteerd — santé!', 'Ongedaan', () => { w.qty = prevQty; S.history = S.history.filter(h => h.id !== entry.id); save(); render(); });
+};
+
+/* ================= WIJNFORMULIER ================= */
+function formFields(w){
+  w = w || {};
+  const grapes = (w.grapes||[]).join(', ');
+  return `
+  <div class="field"><label>Naam van de wijn *</label><input class="inp" id="f_name" value="${esc(w.name||'')}" placeholder="bv. Château Talbot"></div>
+  <div class="frow">
+    <div class="field"><label>Producent</label><input class="inp" id="f_producer" value="${esc(w.producer||'')}" placeholder="domaine / château"></div>
+    <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="f_vintage" inputmode="numeric" value="${w.vintage||''}" placeholder="NV"></div>
+  </div>
+  <div class="field"><label>Type</label><div class="seg" id="f_type">${Object.keys(TYPES).map(t =>
+    `<button type="button" data-val="${t}" class="${(w.type||'rood')===t?'on':''}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`).join('')}</div></div>
+  <div class="field"><label>Druiven</label><input class="inp" id="f_grapes" value="${esc(grapes)}" placeholder="bv. merlot, cabernet franc"></div>
+  <div class="frow">
+    <div class="field"><label>Land</label><input class="inp" id="f_country" value="${esc(w.country||'')}" placeholder="Frankrijk"></div>
+    <div class="field"><label>Regio</label><input class="inp" id="f_region" value="${esc(w.region||'')}" placeholder="Bordeaux"></div>
+  </div>
+  <div class="field"><label>Appellation / classificatie</label><input class="inp" id="f_app" value="${esc(w.appellation||'')}" placeholder="bv. Saint-Julien Grand Cru Classé"></div>
+  <div class="frow">
+    <div class="field"><label>Op dronk van</label><input class="inp tnum" id="f_from" inputmode="numeric" value="${w.drinkFrom||''}" placeholder="2026"></div>
+    <div class="field"><label>Op dronk tot</label><input class="inp tnum" id="f_to" inputmode="numeric" value="${w.drinkTo||''}" placeholder="2035"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Aankoopprijs €</label><input class="inp tnum" id="f_price" inputmode="decimal" value="${w.price??''}"></div>
+    <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${w.value??''}" placeholder="= prijs"></div>
+  </div>
+  <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec — zone boven">
+    <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist></div>
+  <div class="field"><label>Notitie</label><textarea class="inp" id="f_note" placeholder="karakter, advies, herinnering…">${esc(w.note||'')}</textarea></div>`;
+}
+function locOptions(){
+  const set = new Set(S.wines.map(w => w.location).filter(Boolean));
+  ['Vintec — zone boven','Vintec — zone onder','Wijnrek','Kelder','Doos'].forEach(d => set.add(d));
+  return [...set];
+}
+function wireSeg(id){
+  const seg = document.getElementById(id); if(!seg) return;
+  seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+    seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); });
+}
+function readForm(){
+  const g = v => (document.getElementById(v)||{}).value || '';
+  const num = v => { const x = parseFloat(String(g(v)).replace(',','.')); return isNaN(x) ? null : x; };
+  const yr  = v => { const x = parseInt(g(v),10); return (x>=1900 && x<=2100) ? x : null; };
+  const segEl = document.querySelector('#f_type button.on');
+  return {
+    name:g('f_name').trim(), producer:g('f_producer').trim(), vintage:yr('f_vintage'),
+    type:segEl ? segEl.dataset.val : 'rood',
+    grapes:g('f_grapes').split(',').map(s=>s.trim()).filter(Boolean),
+    country:g('f_country').trim(), region:g('f_region').trim(), appellation:g('f_app').trim(),
+    drinkFrom:yr('f_from'), drinkTo:yr('f_to'),
+    price:num('f_price'), value:num('f_value'),
+    location:g('f_loc').trim(), note:g('f_note').trim()
+  };
+}
+ACT.wineNew = () => openWineForm(null);
+ACT.wineEdit = el => openWineForm(findWine(el.dataset.id));
+let formQty = 1;
+function openWineForm(w){
+  formQty = 1;
+  const isNew = !w;
+  openSheet(`${sheetHead(isNew ? 'Fles toevoegen' : 'Bewerken')}
+    ${formFields(w)}
+    ${isNew ? `<div class="field"><label>Aantal flessen</label>
+      <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">1</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
+      <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>` : ''}
+    <div class="btnrow mt8"><button class="btn plain" data-act="closeSheet">Annuleer</button>
+    <button class="btn" data-act="wineSave" data-id="${w?w.id:''}">Bewaren</button></div>
+    <div class="small center mt8">Laat het drinkvenster leeg om het automatisch te laten schatten.</div>`);
+  wireSeg('f_type');
+}
+function syncQty(){ const q = document.getElementById('fQty'); if(q) q.textContent = formQty;
+  const m = document.getElementById('mq'); if(m) m.textContent = formQty; }
+ACT.fq = el => { formQty = Math.max(1, formQty + Number(el.dataset.d)); syncQty(); };
+ACT.fqset = el => { formQty = Number(el.dataset.n); syncQty(); };
+ACT.wineSave = el => {
+  const d = readForm();
+  if(!d.name){ toast('Geef de wijn een naam'); return; }
+  if(!d.drinkFrom && !d.drinkTo){ const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to; }
+  const id = el.dataset.id;
+  if(id){ const w = findWine(id); if(!w) return; Object.assign(w, d); save(); closeSheet(true); render(); toast('Bijgewerkt'); }
+  else {
+    const w = { id:uid(), ...d, qty:formQty, pairing:[], photo:false, addedAt:Date.now() };
+    S.wines.unshift(w); save(); closeSheet(true); UI.tab = 'kelder'; render();
+    toast(`${formQty} ${plur(formQty,'fles','flessen')} toegevoegd`);
+  }
+};
+
+/* Gerechten bij een wijn (detail & pairing) */
+ACT.wineDishes = async el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  const sh = openSheet(`${sheetHead('Lekker bij ' + esc(w.name))}<div id="dishOut"><div class="banner"><span class="spin"></span> De sommelier denkt na…</div></div>`);
+  const out = sh.querySelector('#dishOut');
+  let dishes = null, src = 'Kelderregels';
+  if(aiReady()){
+    try{ const r = await aiWine(w); dishes = (r.dishes||[]).map(d=>({dish:d.dish, reason:d.reason})); src = 'Sommelier-AI'; }
+    catch(e){ dishes = null; }
+  }
+  if(!dishes || !dishes.length) dishes = dishesForWine(w);
+  if(!dishes.length){ out.innerHTML = '<p class="small">Geen suggesties gevonden — vul type of druiven aan.</p>'; return; }
+  out.innerHTML = `<div class="mb8"><span class="srcchip">${src}</span></div>` +
+    dishes.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div></div>`).join('');
+};
+</script>
+<script>
+'use strict';
+/* ================= SCAN ================= */
+let scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false };
+function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; }
+
+function aiBanner(){
+  if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon — de ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
+  if(!aiReady()) return `<div class="banner"><span>ℹ️</span><span><b>Tip:</b> zet je Anthropic API-sleutel in <button class="linkbtn" data-act="goSettings">Instellingen</button> en Claude leest etiketten automatisch — naam, druiven, drinkvenster en pairing in één keer.</span></div>`;
+  return '';
+}
+function viewScan(){
+  if(scan.stage === 'idle'){
+    return `${brandRow('')}
+      <div class="scanhero">
+        <div class="eyebrow">Etiket scannen</div>
+        <h2 class="h2">Richt je camera op de fles</h2>
+        <button class="scanbig" data-act="scanCam" aria-label="Open camera">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1l1.4-2h6.2L16.5 6h1A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-7Z"/><circle cx="12" cy="12" r="3.4"/></svg>
+          <span>Scan etiket</span></button>
+        <p class="small" style="max-width:300px;margin:0 auto">Herkennen, toevoegen, info bekijken of afboeken — de foto is genoeg.</p>
+        <div class="btnrow mt14" style="max-width:340px;margin-left:auto;margin-right:auto">
+          <button class="btn plain" data-act="scanLib">Kies een foto</button>
+          <button class="btn plain" data-act="wineNew">Handmatig</button>
+        </div>
+      </div>${aiBanner()}`;
+  }
+  /* confirm-stadium */
+  const d = scan.data || {};
+  const pre = {
+    name:d.name||'', producer:d.producer||'', vintage:d.vintage||null,
+    type:d.type?mapType(d.type):'rood', grapes:d.grapes||[], country:d.country||'', region:d.region||'',
+    appellation:d.appellation||'', drinkFrom:d.drink_from||null, drinkTo:d.drink_to||null,
+    price:null, value:null, location:'', note:d.note||''
+  };
+  return `${brandRow('')}
+    <div class="scanprev">${bottleSvg}<img id="scanImg" alt="Gescand etiket"></div>
+    ${scan.busy ? `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier leest het etiket…</span></div>` : ''}
+    ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Vul de velden zelf in — de foto blijft bewaard.</span></div>` : ''}
+    ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
+    ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
+    ${scan.busy ? '' : formFields(pre)}
+    <div class="field"><label>Aantal flessen</label>
+      <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
+      <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>
+    ${scan.match ? `<button class="btn" data-act="scanMerge" style="margin-bottom:9px">+<span id="mq">${formQty}</span> bijboeken bij bestaande</button>
+      <button class="btn ghost" data-act="scanRemove" style="margin-bottom:9px">Drink / haal er één uit de kelder</button>` :
+      `<button class="btn" data-act="scanAdd" style="margin-bottom:9px" ${scan.busy?'disabled':''}>In de kelder leggen</button>`}
+    <div class="btnrow">
+      ${scan.match?`<button class="btn soft" data-act="scanAdd">Als nieuwe bewaren</button>`:`<button class="btn soft" data-act="scanWish" ${scan.busy?'disabled':''}>Op verlanglijst</button>`}
+      <button class="btn plain" data-act="scanAgain">Opnieuw</button>
+    </div>`;
+}
+ACT.scanCam = () => document.getElementById('fCam').click();
+ACT.scanLib = () => document.getElementById('fLib').click();
+ACT.scanAgain = () => { scanReset(); render(); };
+ACT.goSettings = () => { UI.tab='meer'; UI.meerPage='settings'; render(); };
+
+async function handlePhoto(file){
+  if(!file) return;
+  formQty = 1;
+  try{
+    scan.photo = await resizeImg(file, 1100, 0.8);
+    scan.thumb = await resizeImg(file, 380, 0.72);
+  }catch(e){ toast('Foto kon niet worden gelezen'); return; }
+  scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null;
+  scan.busy = aiReady();
+  UI.tab = 'scan'; render(); showScanImg();
+  if(scan.busy){
+    try{
+      const d = await aiScan(scan.photo);
+      scan.data = d;
+      scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
+    }catch(e){ scan.err = String(e.message||e).slice(0,120); }
+    scan.busy = false; render(); showScanImg();
+  }
+}
+function showScanImg(){ const i = document.getElementById('scanImg'); if(i && scan.photo){ i.src = scan.photo; i.closest('.scanprev')?.querySelector('svg')?.remove(); } }
+
+function wineFromScanForm(){
+  const d = readForm();
+  if(!d.name){ toast('Geef de wijn minstens een naam'); return null; }
+  if(!d.drinkFrom && !d.drinkTo){ const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to; }
+  return d;
+}
+ACT.scanAdd = async () => {
+  const d = wineFromScanForm(); if(!d) return;
+  const w = { id:uid(), ...d, qty:formQty, pairing:(scan.data&&scan.data.pairing)||[], photo:!!scan.thumb, addedAt:Date.now() };
+  S.wines.unshift(w); save();
+  if(scan.thumb) await pSet(w.id, scan.thumb);
+  const n = formQty; scanReset(); UI.tab = 'kelder'; render();
+  toast(`${n} ${plur(n,'fles','flessen')} in de kelder gelegd`);
+};
+ACT.scanMerge = async () => {
+  const m = scan.match; if(!m) return;
+  m.qty = (m.qty||0) + formQty;
+  if(!m.photo && scan.thumb){ await pSet(m.id, scan.thumb); m.photo = true; }
+  save(); const n = formQty, id = m.id; scanReset(); UI.tab = 'kelder'; render();
+  toast(`+${n} bijgeboekt — nu ×${findWine(id).qty}`);
+};
+ACT.scanRemove = () => { const id = scan.match && scan.match.id; if(!id) return; scanReset(); UI.tab='kelder'; render(); openDrink(id); };
+ACT.scanWish = async () => {
+  const d = wineFromScanForm(); if(!d) return;
+  const it = { id:uid(), name:d.name, producer:d.producer, vintage:d.vintage, type:d.type,
+    region:d.region, country:d.country, price:d.price, note:d.note, photo:!!scan.thumb, addedAt:Date.now() };
+  S.wishlist.unshift(it); save();
+  if(scan.thumb) await pSet(it.id, scan.thumb);
+  scanReset(); render(); toast('Op je verlanglijst gezet');
+};
+
+/* ================= PAIRING ================= */
+let pairOut = '';
+function viewPairing(){
+  const toggle = `<div class="pairtoggle">
+    <button class="${UI.pairMode==='dish'?'on':''}" data-act="pairMode" data-m="dish">Bij mijn gerecht</button>
+    <button class="${UI.pairMode==='wine'?'on':''}" data-act="pairMode" data-m="wine">Bij een wijn</button></div>`;
+  if(!S.wines.filter(w=>w.qty>0).length && UI.pairMode==='dish'){
+    return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat past waarbij?</h2>${toggle}
+      <div class="empty"><div class="big">Nog geen flessen op voorraad</div><p>Vul je kelder, dan zoekt de sommelier de beste match bij je gerecht.</p>
+      <button class="btn" data-act="tab" data-tab="scan" style="max-width:240px">Scan een fles</button></div>`;
+  }
+  if(UI.pairMode === 'dish'){
+    const chips = ['Biefstuk','Wild','Witte vis','Schaaldieren','Sushi','Pasta met tomaat','Risotto','Kip uit de oven','Kaasplank','Thaise curry','BBQ','Chocolade']
+      .map(c => `<button class="chip" data-act="pairQuick" data-d="${esc(c)}">${c}</button>`).join('');
+    return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je eten?</h2>${toggle}
+      <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+        <input type="search" id="pairDish" placeholder="bv. hertenbiefstuk met rode kool" value="" aria-label="Gerecht"></div>
+      <div class="chiprow">${chips}</div>
+      <button class="btn" data-act="pairGo">Zoek de beste fles in mijn kelder</button>
+      <div id="pairOut" class="mt14">${pairOut}</div>`;
+  }
+  /* wijn → gerecht */
+  const list = S.wines.slice().sort((a,b)=>(b.addedAt||0)-(a.addedAt||0));
+  return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Kies een wijn</h2>${toggle}
+    <p class="small mb8">Tik een fles aan voor gerechten die erbij passen.</p>
+    <div class="wlist">${list.map(w => `<button class="wcard" data-act="wineDishes" data-id="${w.id}">
+      <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
+      <span class="wmain"><span class="wname">${esc(w.name)}</span>
+      <span class="wsub">${esc([w.producer,w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
+      <span class="wmeta">${typeHtml(w.type)}</span></span></button>`).join('')}</div>`;
+}
+ACT.pairMode = el => { UI.pairMode = el.dataset.m; pairOut=''; render(); if(UI.pairMode==='wine') fillPhotos(); };
+ACT.pairQuick = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d; ACT.pairGo(); };
+ACT.pairGo = async () => {
+  const dish = ((document.getElementById('pairDish')||{}).value||'').trim();
+  if(!dish){ toast('Vertel eerst wat je gaat eten'); return; }
+  const out = document.getElementById('pairOut');
+  out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier proeft in gedachten…</span></div>`;
+  let html = '', src = 'Kelderregels', matches = null, buyTip = null;
+  if(aiReady()){
+    try{
+      const r = await aiDish(dish);
+      matches = (r.matches||[]).map(m => ({w:findWine(m.id), score:Math.round(m.score), reason:m.reason})).filter(m => m.w);
+      buyTip = r.buy_tip || null; src = 'Sommelier-AI';
+    }catch(e){ matches = null; }
+  }
+  if(!matches || !matches.length){
+    const r = winesForDish(dish); src = (src==='Sommelier-AI')?'Kelderregels':src;
+    matches = r.list.map(x => ({w:x.w, score:x.score, reason:x.rHtml}));
+    if(!matches.length && r.cats.length) buyTip = 'Niets ideaals op voorraad. Kooptip: ' + r.cats[0].buy + '.';
+  }
+  if(matches.length){
+    html = `<div class="mb8"><span class="srcchip">${src}</span></div>` + matches.map(m => {
+      const st = windowStatus(m.w);
+      return `<div class="match"><div class="match-top"><div style="min-width:0">
+        <div class="wname" style="font-size:16px">${esc(m.w.name)}</div>
+        <div class="wsub">${esc([m.w.producer, m.w.vintage||'NV'].filter(Boolean).join(' · '))} · ×${m.w.qty}</div>
+        <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}</span></div></div>
+        <div class="mscore">${m.score}<small>/10</small></div></div>
+        <div class="mreason">${esc(m.reason||'')}</div>
+        <div class="mt8"><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button></div></div>`;
+    }).join('');
+    if(buyTip) html += `<div class="banner"><span>🛒</span><span>${esc(buyTip)}</span></div>`;
+  } else {
+    html = `<div class="empty"><div class="big">Geen goede match</div><p>${buyTip?esc(buyTip):'Probeer het gerecht anders te omschrijven.'}</p></div>`;
+  }
+  pairOut = html; out.innerHTML = html;
+};
+
+/* ================= OVERZICHT ================= */
+function barRows(pairs, dot){
+  const mx = Math.max(1, ...pairs.map(p => p[1]));
+  return pairs.map(p => `<div class="brow"><span class="l">${dot?dotHtml(p[2]):''}${esc(p[0])}</span>
+    <span class="track"><span class="fill" style="width:${Math.max(4, p[1]/mx*100)}%"></span></span>
+    <span class="v tnum">${p[1]}</span></div>`).join('');
+}
+function viewOverzicht(){
+  const bc = bottleCount(), val = cellarValue();
+  const ready = S.wines.filter(w => w.qty>0 && ['op','nu'].includes(windowStatus(w).k));
+  const readyN = ready.reduce((n,w)=>n+w.qty,0);
+  const thisYear = S.history.filter(h => (h.date||'').slice(0,4) == YR()).length;
+  const soon = S.wines.filter(w => w.qty>0 && ['nu','over'].includes(windowStatus(w).k))
+    .sort((a,b)=>URG[windowStatus(a).k]-URG[windowStatus(b).k] || (a.drinkTo||9999)-(b.drinkTo||9999)).slice(0,5);
+  const byType = Object.keys(TYPES).map(t => [TYPES[t].l, S.wines.filter(w=>w.type===t).reduce((n,w)=>n+(w.qty||0),0), t]).filter(p=>p[1]>0);
+  const landC = {};
+  S.wines.forEach(w => { const c=(w.country||'Onbekend'); landC[c]=(landC[c]||0)+(w.qty||0); });
+  const byLand = Object.entries(landC).filter(p=>p[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const jaarC = {};
+  S.wines.forEach(w => { const j=w.vintage||'NV'; jaarC[j]=(jaarC[j]||0)+(w.qty||0); });
+  const byJaar = Object.entries(jaarC).filter(p=>p[1]>0).sort((a,b)=> (b[0]==='NV')?-1:(a[0]==='NV')?1:b[0]-a[0]).slice(0,8);
+  const recent = S.history.slice(0,4);
+  if(!S.wines.length && !S.history.length)
+    return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">Nog niets te zien</h2>
+      <div class="empty"><p>Zodra er flessen in je kelder liggen zie je hier voorraad, waarde, drinkvensters en je historie.</p>
+      <button class="btn" data-act="tab" data-tab="scan" style="max-width:240px">Scan je eerste fles</button></div>`;
+  return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Flessen</div><div class="n">${bc}</div></div>
+      <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div></div>
+      <button class="tile" data-act="tileDronk"><div class="k">Nu op dronk</div><div class="n" style="color:var(--ok)">${readyN}</div><div class="s">tik voor de lijst</div></button>
+      <div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div></div>
+    </div>
+    ${soon.length?`<div class="sect"><div class="eyebrow mb8">Drink binnenkort</div><div class="panel">${soon.map(w=>{const st=windowStatus(w);
+      return `<button class="rowline" style="width:100%;text-align:left" data-act="detail" data-id="${w.id}"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">×${w.qty}${w.location?' · '+esc(w.location):''}</div></span><span class="z"><span class="badge ${st.cls}">${st.sub||st.label}</span></span></button>`;}).join('')}</div></div>`:''}
+    ${byType.length?`<div class="sect"><div class="eyebrow mb8">Per type</div><div class="panel">${barRows(byType,true)}</div></div>`:''}
+    ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand)}</div></div>`:''}
+    ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar)}</div></div>`:''}
+    ${recent.length?`<div class="sect"><div class="eyebrow mb8">Onlangs gedronken</div><div class="panel">${recent.map(h=>
+      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating?'★'.repeat(h.rating):''}</span></div>`).join('')}
+      <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
+}
+ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.ftype=null; render(); };
+ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
+
+/* ================= MEER ================= */
+function viewMeer(){
+  if(UI.meerPage==='wishlist') return viewWishlist();
+  if(UI.meerPage==='history') return viewHistory();
+  if(UI.meerPage==='settings') return viewSettings();
+  const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  return `${brandRow('')}<div class="eyebrow">Meer</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
+    <div class="menu">
+      <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
+    </div>`;
+}
+ACT.meerGo = el => { UI.meerPage = el.dataset.p; render(); };
+const backRow = `<button class="backrow" data-act="meerBack">‹ Terug</button>`;
+ACT.meerBack = () => { UI.meerPage='menu'; render(); };
+
+function viewWishlist(){
+  const body = !S.wishlist.length
+    ? `<div class="empty"><div class="big">Nog niets op je lijstje</div><p>Zet hier wijnen op die je wilt kopen — ook via de scanner in de winkel.</p></div>`
+    : `<div class="wlist">${S.wishlist.map(it => `<div class="wcard" style="cursor:default">
+        <span class="wthumb">${bottleSvg}${it.photo?`<img data-photo="${it.id}" alt="">`:''}</span>
+        <span class="wmain"><span class="wname">${esc(it.name)}</span>
+          <span class="wsub">${esc([it.producer, it.vintage||''].filter(Boolean).join(' · '))}${it.price?' · '+money(it.price):''}</span>
+          <span class="wmeta">${typeHtml(it.type||'rood')}${it.note?`<span class="small">${esc(it.note.slice(0,40))}</span>`:''}</span>
+          <span class="mt8" style="display:flex;gap:8px"><button class="btn sm" data-act="wishBuy" data-id="${it.id}">Gekocht → kelder</button>
+          <button class="btn sm plain" data-act="wishDel" data-id="${it.id}">✕</button></span>
+        </span></div>`).join('')}</div>`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Verlanglijst</div><h2 class="h2">Nog te kopen</h2>${body}
+    <div class="center mt14"><button class="linkbtn" data-act="wishNew">+ Toevoegen</button></div>`;
+}
+ACT.wishDel = el => { S.wishlist = S.wishlist.filter(x => x.id !== el.dataset.id); pDel(el.dataset.id); save(); render(); };
+ACT.wishBuy = el => {
+  const it = S.wishlist.find(x => x.id === el.dataset.id); if(!it) return;
+  formQty = 1;
+  openSheet(`${sheetHead('In de kelder leggen')}
+    <div class="wsub" style="font-size:14.5px;margin-bottom:8px">${esc(it.name)} ${it.vintage||''}</div>
+    <div class="field"><label>Aantal flessen</label>
+    <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">1</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
+    <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>
+    <div class="field"><label>Locatie</label><input class="inp" id="wb_loc" list="locList" placeholder="bv. Wijnrek"><datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist></div>
+    <button class="btn" data-act="wishBuyGo" data-id="${it.id}">Bijschrijven</button>`);
+};
+ACT.wishBuyGo = async el => {
+  const it = S.wishlist.find(x => x.id === el.dataset.id); if(!it) return;
+  const d = { name:it.name, producer:it.producer||'', vintage:it.vintage||null, type:it.type||'rood',
+    grapes:[], country:it.country||'', region:it.region||'', appellation:'', price:it.price??null, value:null,
+    location:((document.getElementById('wb_loc')||{}).value||'').trim(), note:it.note||'' };
+  const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to;
+  const w = { id:uid(), ...d, qty:formQty, pairing:[], photo:false, addedAt:Date.now() };
+  if(it.photo){ const p = await pGet(it.id); if(p){ await pSet(w.id, p); w.photo = true; } }
+  S.wines.unshift(w);
+  S.wishlist = S.wishlist.filter(x => x.id !== it.id); pDel(it.id);
+  save(); closeSheet(true); render(); toast(`${formQty} ${plur(formQty,'fles','flessen')} bijgeschreven`);
+};
+ACT.wishNew = () => {
+  openSheet(`${sheetHead('Op de verlanglijst')}
+    <div class="field"><label>Naam *</label><input class="inp" id="wl_name" placeholder="bv. Barolo Bussia"></div>
+    <div class="frow"><div class="field"><label>Producent</label><input class="inp" id="wl_prod"></div>
+    <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="wl_vint" inputmode="numeric" placeholder="NV"></div></div>
+    <div class="field"><label>Type</label><div class="seg" id="wl_type">${Object.keys(TYPES).map((t,i) =>
+      `<button type="button" data-val="${t}" class="${i===0?'on':''}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`).join('')}</div></div>
+    <div class="frow"><div class="field"><label>Richtprijs €</label><input class="inp tnum" id="wl_price" inputmode="decimal"></div>
+    <div class="field"><label>Notitie</label><input class="inp" id="wl_note" placeholder="waar gezien?"></div></div>
+    <button class="btn" data-act="wishNewGo">Op het lijstje</button>`);
+  wireSeg('wl_type');
+};
+ACT.wishNewGo = () => {
+  const g = v => (document.getElementById(v)||{}).value||'';
+  if(!g('wl_name').trim()){ toast('Geef de wijn een naam'); return; }
+  const vint = parseInt(g('wl_vint'),10);
+  const price = parseFloat(String(g('wl_price')).replace(',','.'));
+  const t = document.querySelector('#wl_type button.on');
+  S.wishlist.unshift({ id:uid(), name:g('wl_name').trim(), producer:g('wl_prod').trim(),
+    vintage:(vint>=1900&&vint<=2100)?vint:null, type:t?t.dataset.val:'rood',
+    price:isNaN(price)?null:price, note:g('wl_note').trim(), photo:false, addedAt:Date.now() });
+  save(); closeSheet(); render(); toast('Op je verlanglijst gezet');
+};
+
+function viewHistory(){
+  if(!S.history.length) return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Nog niets gedronken</h2>
+    <div class="empty"><p>Boek je eerste fles af via een fles in je kelder — met score en notitie.</p></div>`;
+  const groups = {};
+  for(const h of S.history){ const k = (h.date||'').slice(0,7) || '????'; (groups[k] = groups[k]||[]).push(h); }
+  const keys = Object.keys(groups).sort().reverse();
+  const mName = k => { try{ return new Date(k+'-01').toLocaleDateString('nl-NL',{month:'long',year:'numeric'}); }catch(e){ return k; } };
+  return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Gedronken</h2>
+    ${keys.map(k => `<div class="sect"><div class="eyebrow mb8">${esc(mName(k))}</div><div class="panel">
+      ${groups[k].map(h => `<div class="rowline"><span class="a">
+        <div class="t">${esc(h.name)} ${h.vintage||''}</div>
+        <div class="u">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
+        ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">“${esc(h.note)}”</div>`:''}</span>
+        <span class="z"><span class="starmini">${h.rating?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
+        <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
+    </div></div>`).join('')}`;
+}
+ACT.histDel = el => confirmSheet('Notitie verwijderen?', 'Deze regel verdwijnt uit je historie.', 'Verwijder', () => {
+  S.history = S.history.filter(h => h.id !== el.dataset.id); save(); closeSheet(); render();
+}, true);
+
+function viewSettings(){
+  const ai = IN_SANDBOX
+    ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat Claude etiketten automatisch leest? Host dan het app-bestand zelf (vraag Claude om de zelf-host-versie) en vul hieronder je sleutel in.</span></div>`
+    : `<div class="field"><label>Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
+       <div class="small mt8">${aiReady()?'✅ AI actief — etiketten en pairing gaan via Claude.':'Zonder sleutel werkt alles op de ingebouwde kelderregels.'} De sleutel blijft alleen op dit apparaat en gaat nooit mee in een back-up.</div></div>
+       <div class="field"><label>Model</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2">Instellingen & back-up</h2>
+    <div class="field"><label>Naam van je kelder</label><input class="inp" value="${esc(S.settings.cellarName)}" data-in="setName"></div>
+    <hr class="sep"><div class="eyebrow mb8">Sommelier-AI</div>${ai}
+    <hr class="sep"><div class="eyebrow mb8">Back-up & overzetten</div>
+    <p class="small mb8">Je kelder staat alleen op dit apparaat. Maak regelmatig een back-up; op een ander apparaat lees je die weer in.</p>
+    <div class="btnrow"><button class="btn ghost" data-act="expFull">Back-up (met foto's)</button>
+    <button class="btn ghost" data-act="expLite">Zonder foto's</button></div>
+    <button class="btn plain mt8" data-act="impGo" style="margin-top:9px">Back-up inlezen…</button>
+    <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
+    <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
+}
+INP.setName = el => { S.settings.cellarName = el.value; save(); };
+INP.setKey = el => { S.settings.apiKey = el.value; save(); };
+INP.setModel = el => { S.settings.model = el.value; save(); };
+ACT.overSheet = () => openSheet(`${sheetHead('Over Caveau')}
+  <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen — of andersom. Je gegevens blijven op je eigen apparaat; deel de link gerust, iedereen krijgt z'n eigen kelder.</p>
+  <p class="small mt14">Drinkvensters en pairing zijn schattingen — jouw smaak wint altijd. Santé!</p>`);
+
+/* export / import / wissen */
+async function buildExport(withPhotos){
+  const data = { app:'caveau', v:1, exportedAt:new Date().toISOString(), cellarName:S.settings.cellarName,
+    wines:S.wines, history:S.history, wishlist:S.wishlist };
+  if(withPhotos){
+    const photos = {};
+    for(const w of [...S.wines, ...S.wishlist]) if(w.photo){ const p = await pGet(w.id); if(p) photos[w.id] = p; }
+    data.photos = photos;
+  }
+  return JSON.stringify(data);
+}
+async function saveFile(name, text){
+  if(window.claude && window.claude.downloads){
+    try{ await window.claude.downloads.save({filename:name, data:text}); toast('Back-up opgeslagen'); }
+    catch(e){
+      if(e && e.code === 'declined') return;
+      if(e && e.code === 'rate_limited'){ toast('Er staat nog een download open — probeer zo weer'); return; }
+      try{ await navigator.clipboard.writeText(text); toast('Downloaden lukte niet — back-up staat op je klembord'); }
+      catch(e2){ toast('Back-up maken lukte niet'); }
+    }
+    return;
+  }
+  try{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type:'application/json'}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    toast('Back-up gedownload');
+  }catch(e){
+    try{ await navigator.clipboard.writeText(text); toast('Back-up staat op je klembord'); }catch(e2){ toast('Back-up maken lukte niet'); }
+  }
+}
+const stamp = () => new Date().toISOString().slice(0,10);
+ACT.expFull = async () => saveFile(`caveau-backup-${stamp()}.json`, await buildExport(true));
+ACT.expLite = async () => saveFile(`caveau-backup-${stamp()}.json`, await buildExport(false));
+ACT.impGo = () => document.getElementById('fImport').click();
+async function doImport(text){
+  let d; try{ d = JSON.parse(text); }catch(e){ toast('Geen geldig back-upbestand'); return; }
+  if(!d || d.app !== 'caveau' || !Array.isArray(d.wines)){ toast('Dit is geen Caveau-back-up'); return; }
+  openSheet(`${sheetHead('Back-up inlezen')}
+    <p style="font-size:14px;color:var(--ink2)">Gevonden: <b>${d.wines.length}</b> wijnen, ${(d.history||[]).length} historie-regels, ${(d.wishlist||[]).length} wensen${d.photos?`, ${Object.keys(d.photos).length} foto's`:''}.</p>
+    <div class="btnrow mt14"><button class="btn ghost" id="impMerge">Samenvoegen</button><button class="btn" id="impReplace">Vervangen</button></div>
+    <p class="small center mt8">Samenvoegen slaat flessen over die er al staan.</p>`);
+  const apply = async (replace) => {
+    if(replace){ S.wines = d.wines; S.history = d.history||[]; S.wishlist = d.wishlist||[]; if(d.cellarName) S.settings.cellarName = d.cellarName; }
+    else {
+      const have = new Set(S.wines.map(w => w.id));
+      d.wines.forEach(w => { if(!have.has(w.id)) S.wines.push(w); });
+      const hh = new Set(S.history.map(h => h.id));
+      (d.history||[]).forEach(h => { if(!hh.has(h.id)) S.history.push(h); });
+      const ww = new Set(S.wishlist.map(x => x.id));
+      (d.wishlist||[]).forEach(x => { if(!ww.has(x.id)) S.wishlist.push(x); });
+    }
+    if(d.photos) for(const [id, p] of Object.entries(d.photos)) await pSet(id, p);
+    save(); closeSheet(true); render(); toast('Back-up ingelezen');
+  };
+  document.getElementById('impReplace').onclick = () => apply(true);
+  document.getElementById('impMerge').onclick = () => apply(false);
+}
+ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s op dit apparaat worden gewist. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
+  const ids = await pKeys(); for(const id of ids) await pDel(id);
+  S = DEFAULTS(); save(); scanReset(); render(); toast('Alles gewist');
+}, true);
+
+/* ================= voorbeeldflessen ================= */
+ACT.demoLoad = () => {
+  const y = Date.now();
+  const demo = [
+    {name:'Château Léoville Barton', producer:'Saint-Julien, Grand Cru Classé', vintage:2016, type:'rood', grapes:['cabernet sauvignon','merlot'], country:'Frankrijk', region:'Bordeaux', appellation:'Saint-Julien', qty:6, location:'Vintec — zone onder', price:95, value:130, drinkFrom:2026, drinkTo:2045, pairing:['Entrecôte','Lamsrack','Harde kazen'], note:'Klassiek, gestructureerd — geduld wordt beloond.'},
+    {name:'Sancerre Les Romains', producer:'Domaine Vacheron', vintage:2023, type:'wit', grapes:['sauvignon blanc'], country:'Frankrijk', region:'Loire', appellation:'Sancerre', qty:4, location:'Vintec — zone boven', price:38, value:38, drinkFrom:2024, drinkTo:2028, pairing:['Geitenkaas','Witte vis','Oesters'], note:'Strak, mineraal, kruisbes.'},
+    {name:'Meursault', producer:'Olivier Leflaive', vintage:2020, type:'wit', grapes:['chardonnay'], country:'Frankrijk', region:'Bourgogne', appellation:'Meursault', qty:2, location:'Vintec — zone boven', price:58, value:70, drinkFrom:2023, drinkTo:2030, pairing:['Kreeft','Gebraden kip','Romige risotto'], note:'Boterig én fris, mooie spanning.'},
+    {name:'Brut Réserve', producer:'Billecart-Salmon', vintage:null, type:'mousserend', grapes:['pinot noir','chardonnay','meunier'], country:'Frankrijk', region:'Champagne', appellation:'Champagne', qty:3, location:'Wijnrek', price:55, value:55, drinkFrom:2025, drinkTo:2027, pairing:['Aperitief','Sushi','Oesters'], note:'Fijne mousse, brioche, altijd goed.'},
+    {name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', grapes:['tempranillo','garnacha'], country:'Spanje', region:'Rioja', qty:5, location:'Kelder', price:35, value:42, drinkFrom:2023, drinkTo:2032, appellation:'Rioja DOCa', pairing:['Lam','Paella','Manchego'], note:'Zijdeglad, vanille en kers — nu prachtig.'},
+    {name:'Maury Grenat', producer:'Mas Amiel', vintage:2019, type:'versterkt', grapes:['grenache noir'], country:'Frankrijk', region:'Roussillon', appellation:'Maury', qty:1, location:'Kelder', price:26, value:26, drinkFrom:2021, drinkTo:2040, pairing:['Chocoladefondant','Blauwe kaas'], note:'Zoet, donker fruit — dessert in een glas.'}
+  ].map((w,i) => ({id:uid(), photo:false, note:'', appellation:'', ...w, addedAt:y-i*1000}));
+  S.wines.push(...demo);
+  S.history.unshift({id:uid(), wineId:demo[4].id, date:new Date(y-86400000*12).toISOString().slice(0,10), name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', rating:5, note:'Bij lamsbout — groots.'});
+  S.wishlist.unshift({id:uid(), name:'Barolo Bussia', producer:'Giacomo Fenocchio', vintage:2019, type:'rood', price:55, note:'Getipt door Wijnhandel', photo:false, addedAt:y});
+  save(); render(); toast('6 voorbeeldflessen geladen — wissen kan via Instellingen');
+};
+
+/* ================= render & init ================= */
+function render(keepFocus){
+  navSync();
+  const v = document.getElementById('view');
+  v.innerHTML = UI.tab==='kelder' ? viewKelder()
+    : UI.tab==='pairing' ? viewPairing()
+    : UI.tab==='scan' ? viewScan()
+    : UI.tab==='overzicht' ? viewOverzicht()
+    : viewMeer();
+  fillPhotos(v);
+  if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); if(!scan.busy) wireSeg('f_type'); }
+  if(keepFocus){ const s = v.querySelector('input[type=search]'); if(s){ s.focus(); const n = s.value.length; try{ s.setSelectionRange(n,n); }catch(e){} } }
+}
+document.getElementById('fCam').addEventListener('change', e => { handlePhoto(e.target.files[0]); e.target.value=''; });
+document.getElementById('fLib').addEventListener('change', e => { handlePhoto(e.target.files[0]); e.target.value=''; });
+document.getElementById('fImport').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value='';
+  if(!f) return; const r = new FileReader();
+  r.onload = () => doImport(String(r.result)); r.readAsText(f);
+});
+render();
+</script>
+
+</body>
+</html>
