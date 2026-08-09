@@ -321,6 +321,7 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
 <div id="toastHost"></div>
 <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
 <input type="file" id="fLib" accept="image/*" hidden>
+<input type="file" id="fLoc" accept="image/*" hidden>
 <input type="file" id="fImport" accept="application/json,.json" hidden>
 
 <script>
@@ -330,7 +331,7 @@ const YR = () => new Date().getFullYear();
 const IN_SANDBOX = /claudeusercontent\.com$/i.test(location.hostname) || !!window.claude;
 const DB_KEY = 'caveau_v1';
 
-const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[],
+const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[], locations:[], pairCache:[], recipeCache:[],
   settings:{ cellarName:'Mijn kelder', apiKey:'', model:'claude-sonnet-5' } });
 
 function loadState(){
@@ -340,7 +341,7 @@ function loadState(){
     const d = JSON.parse(raw);
     const base = DEFAULTS();
     return { ...base, ...d, settings:{ ...base.settings, ...(d.settings||{}) },
-      wines:d.wines||[], history:d.history||[], wishlist:d.wishlist||[] };
+      wines:d.wines||[], history:d.history||[], wishlist:d.wishlist||[], locations:d.locations||[], pairCache:d.pairCache||[], recipeCache:d.recipeCache||[] };
   }catch(e){ return DEFAULTS(); }
 }
 let S = loadState();
@@ -698,12 +699,21 @@ Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou re
   return parseJsonLoose(out);
 }
 
-async function aiWine(w){
+async function aiWine(w, richting){
   const prompt = `Je bent mijn sommelier. Welke gerechten passen bij deze wijn?
-${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.
+${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.${richting?`
+Voorkeur van de gebruiker: "${richting}" — laat álle suggesties bij die richting aansluiten.`:''}
 Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend.`;
   const out = await callClaude([{type:'text', text:prompt}], 2000);
   return parseJsonLoose(out);
+}
+
+async function aiRecipe(dish, persons){
+  const prompt = `Geef een goed thuiskok-recept voor: "${dish}", voor ${persons} personen.
+Antwoord UITSLUITEND met geldig JSON:
+{"title":"naam van het gerecht","time":"totale bereidingstijd","ingredients":["500 g ...","..."],"steps":["stap 1","stap 2","..."]}
+Alles in het Nederlands, hoeveelheden afgestemd op ${persons} personen, stappen kort en concreet (maximaal 10).`;
+  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 2500));
 }
 
 /* foto verkleinen */
@@ -755,7 +765,7 @@ function filteredWines(){
     a = a.filter(w => norm([w.name,w.producer,w.region,w.country,w.appellation,(w.grapes||[]).join(' '),w.location,w.note,w.vintage].join(' ')).includes(q)); }
   if(UI.ftype) a = a.filter(w => w.type === UI.ftype);
   if(UI.fstatus) a = a.filter(w => ['op','nu'].includes(windowStatus(w).k));
-  if(UI.floc) a = a.filter(w => (w.location||'') === UI.floc);
+  if(UI.floc) a = a.filter(w => UI.floc === '::none' ? !w.location : (w.location||'') === UI.floc);
   const by = {
     recent: (x,y) => (y.addedAt||0) - (x.addedAt||0),
     naam:   (x,y) => (x.name||'').localeCompare(y.name||'', 'nl'),
@@ -794,7 +804,7 @@ function viewKelder(){
     `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`,
     ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`,
-    locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?esc(UI.floc):'Locatie'} ▾</button>` : '',
+    locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
     `<button class="chip" data-act="chipSort">${SORTS[UI.sort]} ↕</button>`
   ].join('');
   const bc = bottleCount(), val = cellarValue();
@@ -810,19 +820,28 @@ function viewKelder(){
     body = `<div class="wlist">${list.map(wineCardHtml).join('')}</div>
       <div class="center mt14"><button class="linkbtn" data-act="wineNew">+ Handmatig toevoegen</button></div>`;
   }
+  let locBanner = '';
+  if(UI.floc && UI.floc !== '::none'){
+    const e = locEntry(UI.floc);
+    if(e && e.photo) locBanner = `<div class="panel" style="padding:9px;margin-bottom:10px;display:flex;gap:11px;align-items:center">
+      <img data-photo="${e.id}" style="width:54px;height:54px;border-radius:10px;object-fit:cover" alt="Foto van ${esc(UI.floc)}">
+      <div><div class="eyebrow">Locatie</div><div style="font-family:var(--serif);font-size:16.5px">${esc(UI.floc)}</div></div></div>`;
+  }
   return `${brandRow(`${bc} ${plur(bc,'fles','flessen')}${val?` · ${money(val)}`:''}`)}
     <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
       <input type="search" placeholder="Zoek op naam, druif, regio, locatie…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken"></div>
-    <div class="chiprow">${chips}</div>${body}`;
+    <div class="chiprow">${chips}</div>${locBanner}${body}`;
 }
 INP.q = el => { UI.q = el.value; refreshList(); };
 function refreshList(){ if(UI.tab==='kelder') { render(true); } }
 ACT.chipType = el => { UI.ftype = el.dataset.t || null; render(); };
 ACT.chipStatus = () => { UI.fstatus = !UI.fstatus; render(); };
 ACT.chipLoc = () => {
-  const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
-  openSheet(`${sheetHead('Filter op locatie')}
-    <div class="menu">${['',...locs].map(l => `<button class="mitem" data-act="pickLoc" data-l="${esc(l)}"><span class="grow">${l?esc(l):'Alle locaties'}</span>${(UI.floc||'')===l?'<span style="color:var(--acc-ink)">✓</span>':''}</button>`).join('')}</div>`);
+  const locs = allLocations();
+  const sh = openSheet(`${sheetHead('Filter op locatie')}
+    <div class="menu">${['',...locs].map(l => { const e = l ? locEntry(l) : null;
+      return `<button class="mitem" data-act="pickLoc" data-l="${esc(l)}">${(e&&e.photo)?`<img data-photo="${e.id}" style="width:36px;height:36px;border-radius:9px;object-fit:cover" alt="">`:''}<span class="grow">${l?esc(l):'Alle locaties'}</span>${(UI.floc||'')===l?'<span style="color:var(--acc-ink)">✓</span>':''}</button>`; }).join('')}</div>`);
+  fillPhotos(sh);
 };
 ACT.pickLoc = el => { UI.floc = el.dataset.l || null; closeSheet(); render(); };
 ACT.chipSort = () => {
@@ -955,8 +974,20 @@ function formFields(w){
     <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist></div>
   <div class="field"><label>Notitie</label><textarea class="inp" id="f_note" placeholder="karakter, advies, herinnering…">${esc(w.note||'')}</textarea></div>`;
 }
+/* locatie-register: namen komen uit wijnen; register bewaart optionele foto per locatie */
+function locEntry(name, createIfMissing){
+  if(!S.locations) S.locations = [];
+  let e = S.locations.find(l => l.name === name);
+  if(!e && createIfMissing){ e = {id:uid(), name, photo:false}; S.locations.push(e); }
+  return e || null;
+}
+function allLocations(){
+  const set = new Set((S.locations||[]).map(l => l.name));
+  S.wines.forEach(w => { if(w.location) set.add(w.location); });
+  return [...set].sort((a,b) => a.localeCompare(b,'nl'));
+}
 function locOptions(){
-  const set = new Set(S.wines.map(w => w.location).filter(Boolean));
+  const set = new Set([...(S.locations||[]).map(l => l.name), ...S.wines.map(w => w.location).filter(Boolean)]);
   ['Vintec — zone boven','Vintec — zone onder','Wijnrek','Kelder','Doos'].forEach(d => set.add(d));
   return [...set];
 }
@@ -1063,21 +1094,86 @@ ACT.wineSave = el => {
   }
 };
 
-/* Gerechten bij een wijn (detail & pairing) */
-ACT.wineDishes = async el => {
+/* Gerechten bij een wijn (detail & pairing) — met richting-voorkeur en cache */
+ACT.wineDishes = el => {
   const w = findWine(el.dataset.id); if(!w) return;
-  const sh = openSheet(`${sheetHead('Lekker bij ' + esc(w.name))}<div id="dishOut"><div class="banner"><span class="spin"></span> De sommelier denkt na…</div></div>`);
-  const out = sh.querySelector('#dishOut');
+  openSheet(`${sheetHead('Lekker bij ' + esc(w.name))}
+    <div class="field"><label>Richting (optioneel)</label>
+      <div style="display:flex;gap:8px">
+        <input class="inp" id="pd_dir" placeholder="bv. Aziatisch, vegetarisch, licht &amp; zomers" style="flex:1">
+        <button class="btn sm soft" data-act="dishGo" data-id="${w.id}" style="flex:none">Toon</button>
+      </div></div>
+    <div id="dishOut"></div>`);
+  runWineDishes(w, '', false);
+};
+ACT.dishGo = el => { const w = findWine(el.dataset.id); runWineDishes(w, ((document.getElementById('pd_dir')||{}).value||'').trim(), false); };
+ACT.dishFresh = el => { const w = findWine(el.dataset.id); runWineDishes(w, el.dataset.dir||'', true); };
+
+async function runWineDishes(w, richting, force){
+  const out = document.getElementById('dishOut'); if(!out || !w) return;
+  const key = norm(richting||'') || '_';
+  const cached = !force && w.dishCache && w.dishCache[key];
+  if(cached && cached.list && cached.list.length){
+    const dt = new Date(cached.at).toLocaleDateString('nl-NL', {day:'numeric', month:'short'});
+    renderDishes(out, w, richting, cached.list, `Opgeslagen · ${dt}`, true);
+    return;
+  }
   let dishes = null, src = 'Kelderregels';
   if(aiReady()){
-    try{ const r = await aiWine(w); dishes = (r.dishes||[]).map(d=>({dish:d.dish, reason:d.reason})); src = 'Sommelier-AI'; }
-    catch(e){ dishes = null; }
+    out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier denkt na…</span></div>`;
+    try{
+      const r = await aiWine(w, richting);
+      dishes = (r.dishes||[]).map(d => ({dish:d.dish, reason:d.reason})).filter(d => d.dish);
+      if(dishes.length){ src = 'Sommelier-AI'; w.dishCache = w.dishCache || {}; w.dishCache[key] = {at:Date.now(), list:dishes}; save(); }
+    }catch(e){ dishes = null; }
   }
-  if(!dishes || !dishes.length) dishes = dishesForWine(w);
+  if(!dishes || !dishes.length){ dishes = dishesForWine(w); src = 'Kelderregels'; }
   if(!dishes.length){ out.innerHTML = '<p class="small">Geen suggesties gevonden — vul type of druiven aan.</p>'; return; }
-  out.innerHTML = `<div class="mb8"><span class="srcchip">${src}</span></div>` +
-    dishes.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div></div>`).join('');
+  renderDishes(out, w, richting, dishes, src, false);
+}
+function renderDishes(out, w, richting, list, srcLabel, cached){
+  out.innerHTML = `<div class="mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="srcchip">${esc(srcLabel)}</span>${richting?`<span class="small">richting: ${esc(richting)}</span>`:''}${cached?`<button class="linkbtn" style="font-size:12.5px" data-act="dishFresh" data-id="${w.id}" data-dir="${esc(richting||'')}">↻ vernieuw</button>`:''}</div>` +
+    list.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div><div class="mt8"><button class="linkbtn" style="font-size:13px" data-act="recipeAsk" data-dish="${esc(d.dish)}">📖 Recept tonen</button></div></div>`).join('');
+}
+
+/* ---- recepten (met personen-keuze en cache) ---- */
+ACT.recipeAsk = el => {
+  if(!aiReady() && !(S.recipeCache||[]).some(r => r.dish === el.dataset.dish)){
+    toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return;
+  }
+  const dish = el.dataset.dish;
+  openSheet(`${sheetHead('Recept — ' + esc(dish))}
+    <p class="small mb8">Voor hoeveel personen?</p>
+    <div class="btnrow">${[2,4,6,8].map(n => `<button class="btn soft" data-act="recipeGo" data-dish="${esc(dish)}" data-p="${n}">${n}</button>`).join('')}</div>`);
 };
+ACT.recipeGo = async el => {
+  const dish = el.dataset.dish, p = Number(el.dataset.p) || 4;
+  const key = norm(dish) + '|' + p;
+  closeSheet();
+  const hit = (S.recipeCache||[]).find(r => r.key === key);
+  if(hit){ showRecipe(hit.recipe, dish, p, true); return; }
+  if(!aiReady()){ toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return; }
+  const sh = openSheet(`${sheetHead('Recept — ' + esc(dish))}<div class="banner"><span class="spin"></span><span class="pulse">Recept schrijven…</span></div>`);
+  try{
+    const r = await aiRecipe(dish, p);
+    S.recipeCache = (S.recipeCache||[]).filter(x => x.key !== key);
+    S.recipeCache.unshift({key, dish, persons:p, at:Date.now(), recipe:r});
+    S.recipeCache = S.recipeCache.slice(0, 20);
+    save();
+    closeSheet(); showRecipe(r, dish, p, false);
+  }catch(e){
+    const inner = sh.querySelector('.sheet-in');
+    if(inner) inner.innerHTML = `${sheetHead('Recept')}<div class="banner"><span>⚠️</span><span>Recept ophalen lukte niet (${esc(String(e.message||e).slice(0,90))}). Probeer het zo nog eens.</span></div>`;
+  }
+};
+function showRecipe(r, dish, p, cached){
+  openSheet(`${sheetHead(esc(r.title || dish))}
+    <div class="small mb8">${p} personen${r.time ? ` · ${esc(r.time)}` : ''} · <span class="srcchip">${cached ? 'Opgeslagen' : 'Sommelier-AI'}</span></div>
+    <div class="eyebrow mb8">Ingrediënten</div>
+    <div class="panel" style="margin-bottom:14px">${(r.ingredients||[]).map(i => `<div class="rowline" style="padding:6px 0"><span class="a" style="font-size:14px">${esc(i)}</span></div>`).join('')}</div>
+    <div class="eyebrow mb8">Bereiding</div>
+    ${(r.steps||[]).map((s,i) => `<div style="display:flex;gap:10px;margin-bottom:10px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:14px;flex:1">${esc(s)}</span></div>`).join('')}`);
+}
 </script>
 <script>
 'use strict';
@@ -1250,26 +1346,45 @@ function viewPairing(){
 }
 ACT.pairMode = el => { UI.pairMode = el.dataset.m; pairOut=''; render(); if(UI.pairMode==='wine') fillPhotos(); };
 ACT.pairQuick = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d; ACT.pairGo(); };
-ACT.pairGo = async () => {
-  const dish = ((document.getElementById('pairDish')||{}).value||'').trim();
+ACT.pairGo = () => runPair(((document.getElementById('pairDish')||{}).value||'').trim(), false);
+ACT.pairFresh = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d||''; runPair(el.dataset.d||'', true); };
+async function runPair(dish, force){
   if(!dish){ toast('Vertel eerst wat je gaat eten'); return; }
-  const out = document.getElementById('pairOut');
-  out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier proeft in gedachten…</span></div>`;
-  let html = '', src = 'Kelderregels', matches = null, buyTip = null;
-  if(aiReady()){
-    try{
-      const r = await aiDish(dish);
-      matches = (r.matches||[]).map(m => ({w:findWine(m.id), score:Math.round(m.score), reason:m.reason})).filter(m => m.w);
-      buyTip = r.buy_tip || null; src = 'Sommelier-AI';
-    }catch(e){ matches = null; }
+  const out = document.getElementById('pairOut'); if(!out) return;
+  const key = norm(dish);
+  let html = '', src = 'Kelderregels', matches = null, buyTip = null, cachedAt = null;
+  /* eerder opgeslagen resultaat? (alleen wijnen die nog op voorraad zijn) */
+  if(!force){
+    const hit = (S.pairCache||[]).find(c => c.key === key);
+    if(hit){
+      const ms = (hit.matches||[]).map(m => ({w:findWine(m.id), score:m.score, reason:m.reason})).filter(m => m.w && m.w.qty > 0);
+      if(ms.length){ matches = ms; buyTip = hit.buyTip||null; src = 'Opgeslagen'; cachedAt = hit.at; }
+    }
   }
-  if(!matches || !matches.length){
-    const r = winesForDish(dish); src = (src==='Sommelier-AI')?'Kelderregels':src;
-    matches = r.list.map(x => ({w:x.w, score:x.score, reason:x.rHtml}));
-    if(!matches.length && r.cats.length) buyTip = 'Niets ideaals op voorraad. Kooptip: ' + r.cats[0].buy + '.';
+  if(!matches){
+    out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier proeft in gedachten…</span></div>`;
+    if(aiReady()){
+      try{
+        const r = await aiDish(dish);
+        matches = (r.matches||[]).map(m => ({w:findWine(m.id), score:Math.round(m.score), reason:m.reason})).filter(m => m.w);
+        buyTip = r.buy_tip || null; src = 'Sommelier-AI';
+        if(matches.length){
+          S.pairCache = (S.pairCache||[]).filter(c => c.key !== key);
+          S.pairCache.unshift({key, dish, at:Date.now(), matches:matches.map(m => ({id:m.w.id, score:m.score, reason:m.reason})), buyTip});
+          S.pairCache = S.pairCache.slice(0, 30);
+          save();
+        }
+      }catch(e){ matches = null; }
+    }
+    if(!matches || !matches.length){
+      const r = winesForDish(dish); src = 'Kelderregels';
+      matches = r.list.map(x => ({w:x.w, score:x.score, reason:x.rHtml}));
+      if(!matches.length && r.cats.length) buyTip = 'Niets ideaals op voorraad. Kooptip: ' + r.cats[0].buy + '.';
+    }
   }
   if(matches.length){
-    html = `<div class="mb8"><span class="srcchip">${src}</span></div>` + matches.map(m => {
+    const meta = src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src;
+    html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       return `<div class="match"><div class="match-top"><div style="min-width:0">
         <div class="wname" style="font-size:16px">${esc(m.w.name)}</div>
@@ -1284,7 +1399,7 @@ ACT.pairGo = async () => {
     html = `<div class="empty"><div class="big">Geen goede match</div><p>${buyTip?esc(buyTip):'Probeer het gerecht anders te omschrijven.'}</p></div>`;
   }
   pairOut = html; out.innerHTML = html;
-};
+}
 
 /* ================= OVERZICHT ================= */
 function barRows(pairs, dot){
@@ -1307,6 +1422,10 @@ function viewOverzicht(){
   const jaarC = {};
   S.wines.forEach(w => { const j=w.vintage||'NV'; jaarC[j]=(jaarC[j]||0)+(w.qty||0); });
   const byJaar = Object.entries(jaarC).filter(p=>p[1]>0).sort((a,b)=> (b[0]==='NV')?-1:(a[0]==='NV')?1:b[0]-a[0]).slice(0,8);
+  const locC = {};
+  S.wines.forEach(w => { const l = w.location||'Zonder locatie'; locC[l]=(locC[l]||0)+(w.qty||0); });
+  const byLoc = Object.entries(locC).filter(p=>p[1]>0).sort((a,b)=>b[1]-a[1]);
+  const locMax = Math.max(1, ...byLoc.map(p=>p[1]));
   const recent = S.history.slice(0,4);
   if(!S.wines.length && !S.history.length)
     return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">Nog niets te zien</h2>
@@ -1314,7 +1433,7 @@ function viewOverzicht(){
       <button class="btn" data-act="tab" data-tab="scan" style="max-width:240px">Scan je eerste fles</button></div>`;
   return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="tiles">
-      <div class="tile"><div class="k">Flessen</div><div class="n">${bc}</div></div>
+      <button class="tile" data-act="tileAll"><div class="k">Flessen</div><div class="n">${bc}</div><div class="s">tik voor de lijst</div></button>
       <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div></div>
       <button class="tile" data-act="tileDronk"><div class="k">Nu op dronk</div><div class="n" style="color:var(--ok)">${readyN}</div><div class="s">tik voor de lijst</div></button>
       <div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div></div>
@@ -1324,11 +1443,20 @@ function viewOverzicht(){
     ${byType.length?`<div class="sect"><div class="eyebrow mb8">Per type</div><div class="panel">${barRows(byType,true)}</div></div>`:''}
     ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand)}</div></div>`:''}
     ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar)}</div></div>`:''}
+    ${byLoc.length?`<div class="sect"><div class="eyebrow mb8">Per locatie</div><div class="panel">${byLoc.map(p=>{
+      const e = p[0]==='Zonder locatie' ? null : locEntry(p[0]);
+      return `<button class="brow" style="width:100%" data-act="filterLoc" data-l="${p[0]==='Zonder locatie'?'::none':esc(p[0])}">
+        <span class="l">${(e&&e.photo)?`<img data-photo="${e.id}" style="width:22px;height:22px;border-radius:6px;object-fit:cover;flex:none" alt="">`:''}${esc(p[0])}</span>
+        <span class="track"><span class="fill" style="width:${Math.max(4, p[1]/locMax*100)}%"></span></span>
+        <span class="v tnum">${p[1]}</span></button>`;
+    }).join('')}</div></div>`:''}
     ${recent.length?`<div class="sect"><div class="eyebrow mb8">Onlangs gedronken</div><div class="panel">${recent.map(h=>
       `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.ftype=null; render(); };
+ACT.tileAll = () => { UI.tab='kelder'; UI.fstatus=false; UI.ftype=null; UI.floc=null; UI.q=''; render(); };
+ACT.filterLoc = el => { UI.tab='kelder'; UI.floc=el.dataset.l||null; UI.ftype=null; UI.fstatus=false; render(); };
 ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
 
 /* ================= MEER ================= */
@@ -1337,12 +1465,14 @@ function viewMeer(){
   if(UI.meerPage==='history') return viewHistory();
   if(UI.meerPage==='settings') return viewSettings();
   if(UI.meerPage==='account') return viewAccount();
+  if(UI.meerPage==='locs') return viewLocs();
   const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   return `${brandRow('')}<div class="eyebrow">Meer</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="menu">
       <button class="mitem" data-act="meerGo" data-p="account">${ic('<circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3 3.4-4.6 6.5-4.6s5.7 1.6 6.5 4.6"/>')}<span class="grow">Account &amp; cloud-sync</span><span class="cnt">${(typeof loggedIn==='function' && loggedIn()) ? '✓ aan' : 'uit'}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="locs">${ic('<path d="M4 20V9l8-5.5L20 9v11"/><path d="M4 14.5h16M9.5 20v-5.5M14.5 20v-5.5"/>')}<span class="grow">Locaties &amp; rekken</span><span class="cnt">${allLocations().length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
     </div>`;
@@ -1433,6 +1563,33 @@ function viewHistory(){
 ACT.histDel = el => confirmSheet('Notitie verwijderen?', 'Deze regel verdwijnt uit je historie.', 'Verwijder', () => {
   S.history = S.history.filter(h => h.id !== el.dataset.id); save(); closeSheet(); render();
 }, true);
+
+function viewLocs(){
+  const locs = allLocations();
+  const counts = {};
+  S.wines.forEach(w => { if(w.location) counts[w.location] = (counts[w.location]||0) + (w.qty||0); });
+  const body = !locs.length
+    ? `<div class="empty"><div class="big">Nog geen locaties</div><p>Geef flessen een locatie bij het toevoegen of bewerken — dan verschijnen je rekken en plekken hier.</p></div>`
+    : `<div class="menu">${locs.map(n => { const e = locEntry(n); const heeft = e && e.photo;
+        return `<div class="mitem" style="cursor:default">
+          ${heeft?`<img data-photo="${e.id}" style="width:42px;height:42px;border-radius:9px;object-fit:cover;flex:none" alt="Foto van ${esc(n)}">`
+                 :`<span style="width:42px;height:42px;border-radius:9px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none">📍</span>`}
+          <button class="grow" style="text-align:left" data-act="filterLoc" data-l="${esc(n)}">
+            <div style="font-weight:600">${esc(n)}</div>
+            <div class="small">${counts[n]||0} ${plur(counts[n]||0,'fles','flessen')} · tik voor de lijst</div>
+          </button>
+          <button class="btn sm plain" data-act="locPhoto" data-n="${esc(n)}" style="flex:none">${heeft?'📷':'📷 foto'}</button>
+          ${heeft?`<button class="btn sm plain" data-act="locPhotoDel" data-n="${esc(n)}" aria-label="Foto verwijderen" style="flex:none">✕</button>`:''}
+        </div>`; }).join('')}</div>
+      <p class="small mt8">Een foto per locatie is optioneel — handig om te zien welk rek of welke kast bedoeld wordt. De foto duikt ook op als je in de kelder op locatie filtert.</p>`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Locaties</div><h2 class="h2">Rekken &amp; plekken</h2>${body}`;
+}
+let locPhotoTarget = null;
+ACT.locPhoto = el => { locPhotoTarget = el.dataset.n; document.getElementById('fLoc').click(); };
+ACT.locPhotoDel = el => {
+  const e = locEntry(el.dataset.n);
+  if(e){ pDel(e.id); if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(e.id); e.photo = false; save(); render(); }
+};
 
 function viewSettings(){
   const ai = IN_SANDBOX
@@ -1554,6 +1711,18 @@ function render(keepFocus){
 }
 document.getElementById('fCam').addEventListener('change', e => { handlePhoto(e.target.files[0]); e.target.value=''; });
 document.getElementById('fLib').addEventListener('change', e => { handlePhoto(e.target.files[0]); e.target.value=''; });
+document.getElementById('fLoc').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if(!f || !locPhotoTarget) return;
+  try{
+    const img = await resizeImg(f, 640, 0.72);
+    const en = locEntry(locPhotoTarget, true);
+    await pSet(en.id, img);
+    en.photo = true; save(); render();
+    toast('Foto bij locatie bewaard');
+  }catch(err){ toast('Foto kon niet worden gelezen'); }
+  locPhotoTarget = null;
+});
 document.getElementById('fImport').addEventListener('change', e => {
   const f = e.target.files[0]; e.target.value='';
   if(!f) return; const r = new FileReader();
@@ -1624,9 +1793,11 @@ function sbLogout(){
 }
 
 /* ---- document-sync (last-write-wins op S.rev) ---- */
-function cloudDoc(){ return { rev: S.rev||0, wines: S.wines, history: S.history, wishlist: S.wishlist, cellarName: S.settings.cellarName }; }
+function cloudDoc(){ return { rev: S.rev||0, wines: S.wines, history: S.history, wishlist: S.wishlist,
+  locations: S.locations||[], pairCache: S.pairCache||[], recipeCache: S.recipeCache||[], cellarName: S.settings.cellarName }; }
 function adoptDoc(d){
   S.wines = d.wines || []; S.history = d.history || []; S.wishlist = d.wishlist || [];
+  S.locations = d.locations || []; S.pairCache = d.pairCache || []; S.recipeCache = d.recipeCache || [];
   if(d.cellarName) S.settings.cellarName = d.cellarName;
   S.rev = d.rev || Date.now();
   save(true);
@@ -1668,7 +1839,7 @@ async function pushPhotos(){
   try{
     const rows = await sbFetch('/rest/v1/photos?select=id', {method:'GET'});
     const have = new Set((rows||[]).map(r => r.id));
-    for(const w of [...S.wines, ...S.wishlist]){
+    for(const w of [...S.wines, ...S.wishlist, ...(S.locations||[])]){
       if(w.photo && !have.has(w.id)){
         const p = await pGet(w.id);
         if(p) await sbFetch('/rest/v1/photos?on_conflict=user_id,id', {method:'POST',
@@ -1680,7 +1851,7 @@ async function pushPhotos(){
 }
 async function pullPhotos(){
   try{
-    for(const w of [...S.wines, ...S.wishlist]){
+    for(const w of [...S.wines, ...S.wishlist, ...(S.locations||[])]){
       if(w.photo && !(await pGet(w.id))){
         const rows = await sbFetch('/rest/v1/photos?select=data&id=eq.' + w.id, {method:'GET'});
         if(rows && rows[0] && rows[0].data) await pSet(w.id, rows[0].data);
