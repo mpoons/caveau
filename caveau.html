@@ -374,7 +374,8 @@ function windowStatus(w){
   return {k:'op',cls:'b-op',label:'Op dronk',sub:t?'tot '+t:''};
 }
 const badgeHtml = w => { const st = windowStatus(w); return `<span class="badge ${st.cls}">${st.label}</span>`; };
-const URG = {over:0, nu:1, op:2, jong:3, onb:4};
+/* volgorde voor de drinkvenster-sortering: op dronk → drink binnenkort → over tijd → nog te jong → onbekend */
+const URG = {op:0, nu:1, over:2, jong:3, onb:4};
 
 /* ================= foto-opslag (IndexedDB) ================= */
 let _db = null;
@@ -593,7 +594,8 @@ function winesForDish(text){
       sc = sc / cats.length;
     } else sc = 1.6;
     const st = windowStatus(w);
-    if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.3; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc -= 0.5;
+    /* urgentie telt mee: wat op moet en past, schenk je juist nú */
+    if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.4; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc += 0.8;
     return {w, sc, reason, grapeHit, st};
   }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc).slice(0,5);
   const mx = Math.max(4.8, ...scored.map(x=>x.sc));
@@ -649,8 +651,8 @@ function parseJsonLoose(s){
 async function aiScan(dataUrl){
   const b64 = dataUrl.split(',')[1];
   const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
-{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","alcohol":"13,5%" of null,"drink_from":2024,"drink_to":2032,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","confidence":0.0 tot 1.0}
-drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. pairing in het Nederlands. Onleesbare of onbekende velden: null.`;
+{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","alcohol":"13,5%" of null,"drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","confidence":0.0 tot 1.0}
+drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte actuele winkelprijs per fles in euro's (Europese retail), met value_low/value_high als realistische bandbreedte. pairing in het Nederlands. Onleesbare of onbekende velden: null.`;
   const out = await callClaude([
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
     {type:'text', text:prompt}
@@ -661,9 +663,9 @@ drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op
 async function aiRecalc(d){
   const prompt = `Je bent een ervaren sommelier. Gegevens van een wijn (deels ingevuld):
 Naam: ${d.name||'?'} | Producent: ${d.producer||'?'} | Jaargang: ${d.vintage||'NV'} | Type: ${TYPES[d.type]?TYPES[d.type].l:d.type} | Druiven: ${(d.grapes||[]).join(', ')||'?'} | Herkomst: ${[d.appellation,d.region,d.country].filter(Boolean).join(', ')||'?'}
-Schat het drinkvenster en de pairing. Antwoord UITSLUITEND met geldig JSON:
-{"drink_from":2024,"drink_to":2032,"grapes":["druif",...],"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin Nederlands over stijl en karakter"}
-pairing en note in het Nederlands. Onbekende velden: null.`;
+Schat het drinkvenster, de pairing en de winkelwaarde. Antwoord UITSLUITEND met geldig JSON:
+{"drink_from":2024,"drink_to":2032,"grapes":["druif",...],"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin Nederlands over stijl en karakter"}
+value_eur = geschatte actuele winkelprijs per fles in euro's (EU-retail), value_low/high = realistische bandbreedte. pairing en note in het Nederlands. Onbekende velden: null.`;
   return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500));
 }
 
@@ -677,7 +679,7 @@ async function aiDish(dish){
   const prompt = `Je bent mijn sommelier. Dit is mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
 ${cellarLines()}
 
-Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou rekening met de drinkstatus. Antwoord UITSLUITEND met geldig JSON:
+Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang — die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
 {"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"1-2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000);
   return parseJsonLoose(out);
@@ -690,6 +692,14 @@ Voorkeur van de gebruiker: "${richting}" — laat álle suggesties bij die richt
 Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend.`;
   const out = await callClaude([{type:'text', text:prompt}], 2000);
   return parseJsonLoose(out);
+}
+
+async function aiValues(list){
+  const lines = list.map(w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
+  const prompt = `Schat per wijn de actuele winkelwaarde per fles in euro's (Europese retail). De lijst (id | naam | producent | jaargang | herkomst):
+${lines}
+Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]} — value = beste schatting, low/high = realistische bandbreedte. Wijnen die je niet kunt inschatten sla je over.`;
+  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000));
 }
 
 async function aiRecipe(dish, persons){
@@ -760,7 +770,7 @@ function filteredWines(){
   a.sort(by[UI.sort] || by.recent);
   return a;
 }
-const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster:'Drinkvenster', waarde:'Waarde'};
+const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster:'Drinkvenster (op dronk eerst)', waarde:'Waarde'};
 
 function wineCardHtml(w){
   const st = windowStatus(w);
@@ -857,7 +867,7 @@ function openDetail(id){
         </div></div>
       <div class="dcell"><div class="k">Locatie</div><div class="v">${esc(w.location||'—')}</div></div>
       <div class="dcell"><div class="k">Aankoopprijs</div><div class="v tnum">${money(w.price)}</div></div>
-      <div class="dcell"><div class="k">Geschatte waarde</div><div class="v tnum">${money(w.value ?? w.price)}</div></div>
+      <div class="dcell"><div class="k">Geschatte waarde</div><div class="v tnum">${money(w.value ?? w.price)}</div>${(()=>{const b=Number(w.value ?? w.price); if(!b) return ''; const lo=Number(w.valueLow)||Math.round(b*0.8), hi=Number(w.valueHigh)||Math.round(b*1.2); return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>`;})()}</div>
     </div>
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
@@ -1000,6 +1010,7 @@ ACT.wineNew = () => openWineForm(null);
 ACT.wineEdit = el => openWineForm(findWine(el.dataset.id));
 let formQty = 1;
 let recalcPairing = null;
+let recalcValueRange = null;
 let vensterAuto = true; /* venster is (nog) een schatting → mag automatisch herberekend worden */
 
 /* Herbereken drinkvenster + pairing op basis van wat er nu in het formulier staat
@@ -1025,6 +1036,8 @@ async function doRecalc(el, silent){
         recalcPairing = r.pairing;
         if(scan.stage === 'confirm' && scan.data) scan.data.pairing = r.pairing;
       }
+      if(r.value_eur != null && d.value == null) setVal('f_value', Math.round(r.value_eur));
+      if(r.value_low != null && r.value_high != null) recalcValueRange = {low:Math.round(r.value_low), high:Math.round(r.value_high)};
       src = 'Sommelier-AI'; done = true;
     }catch(e){ /* val terug op regels */ }
   }
@@ -1048,7 +1061,7 @@ document.addEventListener('change', e => {
   doRecalc(document.getElementById('recalcBtn'), true);
 });
 function openWineForm(w){
-  formQty = 1; recalcPairing = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
+  formQty = 1; recalcPairing = null; recalcValueRange = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
   const isNew = !w;
   openSheet(`${sheetHead(isNew ? 'Fles toevoegen' : 'Bewerken')}
     ${formFields(w)}
@@ -1071,9 +1084,11 @@ ACT.wineSave = el => {
   const id = el.dataset.id;
   if(id){ const w = findWine(id); if(!w) return; Object.assign(w, d);
     if(recalcPairing) w.pairing = recalcPairing;
+    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
     save(); closeSheet(true); render(); toast('Bijgewerkt'); }
   else {
     const w = { id:uid(), ...d, qty:formQty, pairing:recalcPairing||[], photo:false, addedAt:Date.now() };
+    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
     S.wines.unshift(w); save(); closeSheet(true); UI.tab = 'kelder'; render();
     toast(`${formQty} ${plur(formQty,'fles','flessen')} toegevoegd`);
   }
@@ -1175,7 +1190,7 @@ ACT.recipeOpen = el => {
 'use strict';
 /* ================= SCAN ================= */
 let scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false };
-function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; recalcPairing = null; }
+function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; recalcPairing = null; recalcValueRange = null; }
 
 function aiBanner(){
   if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon — de ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
@@ -1204,7 +1219,7 @@ function viewScan(){
     name:d.name||'', producer:d.producer||'', vintage:d.vintage||null,
     type:d.type?mapType(d.type):'rood', grapes:d.grapes||[], country:d.country||'', region:d.region||'',
     appellation:d.appellation||'', drinkFrom:d.drink_from||null, drinkTo:d.drink_to||null,
-    price:null, value:null, location:'', note:d.note||''
+    price:null, value:(d.value_eur!=null?Math.round(d.value_eur):null), location:'', note:d.note||''
   };
   return `${brandRow('')}
     <div class="btnrow" style="margin-bottom:10px">
@@ -1287,6 +1302,9 @@ function wineFromScanForm(){
 ACT.scanAdd = async () => {
   const d = wineFromScanForm(); if(!d) return;
   const w = { id:uid(), ...d, qty:formQty, pairing:(scan.data&&scan.data.pairing)||recalcPairing||[], photo:!!scan.thumb, addedAt:Date.now() };
+  if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
+  if(scan.data && scan.data.value_high != null) w.valueHigh = Math.round(scan.data.value_high);
+  if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
   S.wines.unshift(w); save();
   if(scan.thumb) await pSet(w.id, scan.thumb);
   const n = formQty; scanReset(); UI.tab = 'kelder'; render();
@@ -1383,12 +1401,15 @@ async function runPair(dish, force){
     const meta = src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src;
     html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
+      const urg = st.k === 'nu' ? 'Moet toch binnenkort op — vanavond is een mooi excuus.'
+                : st.k === 'over' ? 'Over z\'n venster heen — juist nú opdrinken, niet langer bewaren.' : '';
       return `<div class="match"><div class="match-top"><div style="min-width:0">
         <div class="wname" style="font-size:16px">${esc(m.w.name)}</div>
         <div class="wsub">${esc([m.w.producer, m.w.vintage||'NV'].filter(Boolean).join(' · '))} · ×${m.w.qty}</div>
-        <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}</span></div></div>
+        <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}${st.sub?' · '+st.sub:''}</span></div></div>
         <div class="mscore">${m.score}<small>/10</small></div></div>
         <div class="mreason">${esc(m.reason||'')}</div>
+        ${urg?`<div class="mreason" style="color:var(--warn);font-weight:600">⏳ ${urg}</div>`:''}
         <div class="mt8"><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button></div></div>`;
     }).join('');
     if(buyTip) html += `<div class="banner"><span>🛒</span><span>${esc(buyTip)}</span></div>`;
@@ -1407,6 +1428,10 @@ function barRows(pairs, dot){
 }
 function viewOverzicht(){
   const bc = bottleCount(), val = cellarValue();
+  let totLow = 0, totHigh = 0;
+  S.wines.forEach(w => { const q = w.qty||0, b = Number(w.value ?? w.price)||0; if(!q || !b) return;
+    totLow += q * (Number(w.valueLow) || b*0.8); totHigh += q * (Number(w.valueHigh) || b*1.2); });
+  totLow = Math.round(totLow); totHigh = Math.round(totHigh);
   const ready = S.wines.filter(w => w.qty>0 && ['op','nu'].includes(windowStatus(w).k));
   const readyN = ready.reduce((n,w)=>n+w.qty,0);
   const thisYear = S.history.filter(h => (h.date||'').slice(0,4) == YR()).length;
@@ -1431,7 +1456,7 @@ function viewOverzicht(){
   return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="tiles">
       <button class="tile" data-act="tileAll"><div class="k">Flessen</div><div class="n">${bc}</div><div class="s">tik voor de lijst</div></button>
-      <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div></div>
+      <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div>${val?`<div class="s tnum">${money(totLow)} – ${money(totHigh)}</div>`:''}</div>
       <button class="tile" data-act="tileDronk"><div class="k">Nu op dronk</div><div class="n" style="color:var(--ok)">${readyN}</div><div class="s">tik voor de lijst</div></button>
       <div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div></div>
     </div>
@@ -1611,7 +1636,9 @@ function viewSettings(){
     ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat Claude etiketten automatisch leest? Host dan het app-bestand zelf (vraag Claude om de zelf-host-versie) en vul hieronder je sleutel in.</span></div>`
     : `<div class="field"><label>Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
        <div class="small mt8">${aiReady()?'✅ AI actief — etiketten en pairing gaan via Claude.':'Zonder sleutel werkt alles op de ingebouwde kelderregels.'} De sleutel blijft alleen op dit apparaat en gaat nooit mee in een back-up.</div></div>
-       <div class="field"><label>Model</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>`;
+       <div class="field"><label>Model</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>
+       <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
+       <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2">Instellingen & back-up</h2>
     <div class="field"><label>Naam van je kelder</label><input class="inp" value="${esc(S.settings.cellarName)}" data-in="setName"></div>
     <hr class="sep"><div class="eyebrow mb8">Sommelier-AI</div>${ai}
@@ -1623,6 +1650,30 @@ function viewSettings(){
     <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
     <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
 }
+ACT.estValues = async el => {
+  if(!aiReady()){ toast('Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)'); return; }
+  const targets = S.wines.filter(w => w.value == null);
+  if(!targets.length){ toast('Alle flessen hebben al een waarde'); return; }
+  const orig = el.textContent; el.textContent = 'Inschatten…'; el.style.pointerEvents = 'none';
+  try{
+    const r = await aiValues(targets.slice(0, 120));
+    let n = 0;
+    for(const v of (r.values||[])){
+      const w = findWine(v.id);
+      if(w && v.value != null){
+        w.value = Math.round(v.value);
+        if(v.low != null) w.valueLow = Math.round(v.low);
+        if(v.high != null) w.valueHigh = Math.round(v.high);
+        n++;
+      }
+    }
+    save(); render();
+    toast(n ? `${n} ${plur(n,'waarde','waardes')} ingeschat${targets.length>120?' (eerste 120)':''}` : 'Geen waardes kunnen inschatten');
+  }catch(e){
+    toast('Inschatten mislukte — ' + String(e.message||e).slice(0,90), null, null, 6000);
+    el.textContent = orig; el.style.pointerEvents = '';
+  }
+};
 INP.setName = el => { S.settings.cellarName = el.value; save(); };
 INP.setKey = el => { S.settings.apiKey = el.value; save(); };
 INP.setModel = el => { S.settings.model = el.value; save(); };
