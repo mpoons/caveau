@@ -930,6 +930,9 @@ function openDrink(id){
     <div class="field"><label>Datum</label><input type="date" class="inp" id="drDate" value="${today}"></div>
     <div class="field"><label>Proefnotitie (optioneel)</label><textarea class="inp" id="drNote" placeholder="Hoe smaakte hij? Bij welk gerecht?"></textarea></div>
     <button class="btn" data-act="drinkSave" data-id="${w.id}">Proost — leg vast</button>`);
+  wireStars();
+}
+function wireStars(){
   const paint = () => {
     document.querySelectorAll('#drinkStars button').forEach(x =>
       x.classList.toggle('on', drinkRating != null && Number(x.dataset.star) <= drinkRating));
@@ -943,6 +946,46 @@ function openDrink(id){
     paint();
   });
 }
+
+/* Proefnotitie buiten de kelder (restaurant, bij vrienden): telt mee in de historie, raakt de voorraad niet. */
+let drinkExternThumb = null;
+function openDrinkExtern(pre, thumb){
+  drinkRating = null; drinkExternThumb = thumb || null;
+  const today = new Date().toISOString().slice(0,10);
+  openSheet(`${sheetHead('Proefnotitie — buiten de kelder')}
+    <div class="field"><label>Wijn *</label><input class="inp" id="dx_name" value="${esc(pre.name||'')}" placeholder="naam van de wijn"></div>
+    <div class="frow"><div class="field"><label>Producent</label><input class="inp" id="dx_prod" value="${esc(pre.producer||'')}"></div>
+    <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="dx_vint" inputmode="numeric" value="${pre.vintage||''}" placeholder="NV"></div></div>
+    <div class="field"><label>Waar? (optioneel)</label><input class="inp" id="dx_place" placeholder="bv. restaurant, bij vrienden"></div>
+    <div class="stars" id="drinkStars" role="radiogroup" aria-label="Beoordeling">${[1,2,3,4,5].map(n=>`<button data-star="${n}" role="radio" aria-label="${n} sterren">★</button>`).join('')}</div>
+    <div class="small center" id="starLbl" style="margin:-2px 0 10px">Tik een ster (nogmaals dezelfde = 0 sterren)</div>
+    <div class="field"><label>Datum</label><input type="date" class="inp" id="drDate" value="${today}"></div>
+    <div class="field"><label>Proefnotitie</label><textarea class="inp" id="drNote" placeholder="Hoe smaakte hij? Bij welk gerecht?"></textarea></div>
+    <label style="display:flex;gap:9px;align-items:center;font-size:14px;margin-bottom:12px"><input type="checkbox" id="dx_wish" style="width:19px;height:19px;accent-color:var(--acc)"> Zet hem ook op mijn verlanglijst</label>
+    <button class="btn" data-act="drinkExternSave" data-type="${esc(pre.type||'rood')}">Leg vast</button>`);
+  wireStars();
+}
+ACT.drinkExternSave = async el => {
+  const g = id => (document.getElementById(id)||{}).value || '';
+  const name = g('dx_name').trim();
+  if(!name){ toast('Geef de wijn een naam'); return; }
+  const vint = parseInt(g('dx_vint'),10);
+  const entry = { id:uid(), wineId:null, extern:true, place:g('dx_place').trim(),
+    date:g('drDate') || new Date().toISOString().slice(0,10),
+    name, producer:g('dx_prod').trim(), vintage:(vint>=1900&&vint<=2100)?vint:null,
+    type:el.dataset.type||'rood', rating:drinkRating, note:g('drNote').trim() };
+  S.history.unshift(entry);
+  if((document.getElementById('dx_wish')||{}).checked){
+    const it = { id:uid(), name, producer:entry.producer, vintage:entry.vintage, type:entry.type,
+      price:null, note:['Geproefd', entry.place].filter(Boolean).join(' — '), photo:!!drinkExternThumb, addedAt:Date.now() };
+    S.wishlist.unshift(it);
+    if(drinkExternThumb) await pSet(it.id, drinkExternThumb);
+  }
+  save(); drinkExternThumb = null;
+  if(scan.stage === 'confirm') scanReset();
+  closeSheet(true); render();
+  toast('Proefnotitie vastgelegd — santé!');
+};
 ACT.drinkSave = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   const entry = { id:uid(), wineId:w.id, date:(document.getElementById('drDate')||{}).value || new Date().toISOString().slice(0,10),
@@ -982,7 +1025,8 @@ function formFields(w){
     <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${w.value??''}" placeholder="= prijs"></div>
   </div>
   <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec — zone boven">
-    <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist></div>
+    <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
+    <div class="chiprow" style="padding:7px 0 0">${locOptions().slice(0,8).map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
   <div class="field"><label>Notitie</label><textarea class="inp" id="f_note" placeholder="karakter, advies, herinnering…">${esc(w.note||'')}</textarea></div>`;
 }
 /* locatie-register: namen komen uit wijnen; register bewaart optionele foto per locatie */
@@ -1002,6 +1046,14 @@ function locOptions(){
   ['Vintec — zone boven','Vintec — zone onder','Wijnrek','Kelder','Doos'].forEach(d => set.add(d));
   return [...set];
 }
+function locSelectOptions(sel){
+  return `<option value=""${!sel?' selected':''}>— locatie —</option>` +
+    locOptions().map(l => `<option value="${esc(l)}"${l===sel?' selected':''}>${esc(l)}</option>`).join('');
+}
+ACT.fillLoc = el => {
+  const f = document.getElementById('f_loc'); if(f) f.value = el.dataset.l;
+  const q = document.getElementById('quickLoc'); if(q) q.value = el.dataset.l;
+};
 function wireSeg(id){
   const seg = document.getElementById(id); if(!seg) return;
   seg.querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -1080,7 +1132,7 @@ function openWineForm(w){
   formQty = 1; recalcPairing = null; recalcValueRange = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
   const isNew = !w;
   openSheet(`${sheetHead(isNew ? 'Fles toevoegen' : 'Bewerken')}
-    ${formFields(w)}
+    ${formFields(w || {location:(S.settings.lastLocation||'')})}
     ${isNew ? `<div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">1</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
       <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>` : ''}
@@ -1096,6 +1148,7 @@ ACT.fqset = el => { formQty = Number(el.dataset.n); syncQty(); };
 ACT.wineSave = el => {
   const d = readForm();
   if(!d.name){ toast('Geef de wijn een naam'); return; }
+  if(d.location) S.settings.lastLocation = d.location;
   if(!d.drinkFrom && !d.drinkTo){ const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to; }
   const id = el.dataset.id;
   if(id){ const w = findWine(id); if(!w) return; Object.assign(w, d);
@@ -1235,7 +1288,7 @@ function viewScan(){
     name:d.name||'', producer:d.producer||'', vintage:d.vintage||null,
     type:d.type?mapType(d.type):'rood', grapes:d.grapes||[], country:d.country||'', region:d.region||'',
     appellation:d.appellation||'', drinkFrom:d.drink_from||null, drinkTo:d.drink_to||null,
-    price:null, value:(d.value_eur!=null?Math.round(d.value_eur):null), location:'', note:d.note||''
+    price:null, value:(d.value_eur!=null?Math.round(d.value_eur):null), location:(S.settings.lastLocation||''), note:d.note||''
   };
   return `${brandRow('')}
     <div class="btnrow" style="margin-bottom:10px">
@@ -1248,6 +1301,9 @@ function viewScan(){
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
     ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b> — het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
+    ${scan.busy ? '' : `<div class="panel" style="padding:11px 13px;margin-bottom:12px"><div class="eyebrow mb8">Snel wegleggen</div>
+      <div style="display:flex;gap:8px"><select class="inp" id="quickLoc" data-in="quickLoc" style="flex:1;min-width:0" aria-label="Locatie">${locSelectOptions(pre.location)}</select>
+      <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div></div>`}
     ${scan.busy ? '' : formFields(pre)}
     <div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
@@ -1255,6 +1311,7 @@ function viewScan(){
     ${scan.match ? `<button class="btn" data-act="scanMerge" style="margin-bottom:9px">+<span id="mq">${formQty}</span> bijboeken bij bestaande</button>
       <button class="btn ghost" data-act="scanRemove" style="margin-bottom:9px">Drink / haal er één uit de kelder</button>` :
       `<button class="btn" data-act="scanAdd" style="margin-bottom:9px" ${scan.busy?'disabled':''}>In de kelder leggen</button>`}
+    <button class="btn ghost" data-act="scanDrinkNow" style="margin-bottom:9px" ${scan.busy?'disabled':''}>🥂 Drink nu — niet uit de kelder</button>
     <div class="btnrow">
       ${scan.match?`<button class="btn soft" data-act="scanAdd">Als nieuwe bewaren</button>`:`<button class="btn soft" data-act="scanWish" ${scan.busy?'disabled':''}>Op verlanglijst</button>`}
       <button class="btn plain" data-act="scanAgain">Opnieuw</button>
@@ -1264,6 +1321,11 @@ ACT.scanCam = () => document.getElementById('fCam').click();
 ACT.scanLib = () => document.getElementById('fLib').click();
 ACT.scanAgain = () => { scanReset(); render(); };
 ACT.scanNewPhoto = () => document.getElementById('fCam').click();
+ACT.scanDrinkNow = () => {
+  const d = readForm();
+  openDrinkExtern({name:d.name, producer:d.producer, vintage:d.vintage, type:d.type}, scan.thumb);
+};
+INP.quickLoc = el => { const f = document.getElementById('f_loc'); if(f) f.value = el.value; };
 
 /* venster ontbreekt in het scanresultaat → altijd alvast een regels-schatting invullen */
 function ensureWindow(d){
@@ -1317,6 +1379,7 @@ function wineFromScanForm(){
 }
 ACT.scanAdd = async () => {
   const d = wineFromScanForm(); if(!d) return;
+  if(d.location) S.settings.lastLocation = d.location;
   const w = { id:uid(), ...d, qty:formQty, pairing:(scan.data&&scan.data.pairing)||recalcPairing||[], photo:!!scan.thumb, addedAt:Date.now() };
   if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
   if(scan.data && scan.data.value_high != null) w.valueHigh = Math.round(scan.data.value_high);
@@ -1489,7 +1552,7 @@ function viewOverzicht(){
         <span class="v tnum">${p[1]}</span></button>`;
     }).join('')}</div></div>`:''}
     ${recent.length?`<div class="sect"><div class="eyebrow mb8">Onlangs gedronken</div><div class="panel">${recent.map(h=>
-      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
+      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${h.extern?'🍽️ ':''}${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.ftype=null; render(); };
@@ -1552,6 +1615,7 @@ ACT.wishBuyGo = async el => {
   const d = { name:it.name, producer:it.producer||'', vintage:it.vintage||null, type:it.type||'rood',
     grapes:[], country:it.country||'', region:it.region||'', appellation:'', price:it.price??null, value:null,
     location:((document.getElementById('wb_loc')||{}).value||'').trim(), note:it.note||'' };
+  if(d.location) S.settings.lastLocation = d.location;
   const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to;
   const w = { id:uid(), ...d, qty:formQty, pairing:[], photo:false, addedAt:Date.now() };
   if(it.photo){ const p = await pGet(it.id); if(p){ await pSet(w.id, p); w.photo = true; } }
@@ -1585,21 +1649,24 @@ ACT.wishNewGo = () => {
 
 function viewHistory(){
   if(!S.history.length) return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Nog niets gedronken</h2>
-    <div class="empty"><p>Boek je eerste fles af via een fles in je kelder — met score en notitie.</p></div>`;
+    <div class="empty"><p>Boek je eerste fles af via een fles in je kelder — of leg een proefnotitie vast van een wijn buiten de deur.</p>
+    <button class="btn ghost" data-act="histAdd" style="max-width:280px">+ Proefnotitie (buiten de kelder)</button></div>`;
   const groups = {};
   for(const h of S.history){ const k = (h.date||'').slice(0,7) || '????'; (groups[k] = groups[k]||[]).push(h); }
   const keys = Object.keys(groups).sort().reverse();
   const mName = k => { try{ return new Date(k+'-01').toLocaleDateString('nl-NL',{month:'long',year:'numeric'}); }catch(e){ return k; } };
   return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Gedronken</h2>
+    <div style="margin:-4px 0 6px"><button class="linkbtn" data-act="histAdd">+ Proefnotitie (buiten de kelder)</button></div>
     ${keys.map(k => `<div class="sect"><div class="eyebrow mb8">${esc(mName(k))}</div><div class="panel">
       ${groups[k].map(h => `<div class="rowline"><span class="a">
         <div class="t">${esc(h.name)} ${h.vintage||''}</div>
-        <div class="u">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
+        <div class="u">${esc(h.date)}${h.extern?` · 🍽️ ${esc(h.place||'buiten de kelder')}`:''}${h.producer?' · '+esc(h.producer):''}</div>
         ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">“${esc(h.note)}”</div>`:''}</span>
         <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
         <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
     </div></div>`).join('')}`;
 }
+ACT.histAdd = () => openDrinkExtern({}, null);
 ACT.histDel = el => confirmSheet('Notitie verwijderen?', 'Deze regel verdwijnt uit je historie.', 'Verwijder', () => {
   S.history = S.history.filter(h => h.id !== el.dataset.id); save(); closeSheet(); render();
 }, true);
@@ -1618,8 +1685,9 @@ function viewLocs(){
             <div style="font-weight:600">${esc(n)}</div>
             <div class="small">${counts[n]||0} ${plur(counts[n]||0,'fles','flessen')} · tik voor de lijst</div>
           </button>
-          <button class="btn sm plain" data-act="locPhoto" data-n="${esc(n)}" style="flex:none">${heeft?'📷':'📷 foto'}</button>
+          <button class="btn sm plain" data-act="locPhoto" data-n="${esc(n)}" aria-label="Foto toevoegen of wijzigen" style="flex:none">📷</button>
           ${heeft?`<button class="btn sm plain" data-act="locPhotoDel" data-n="${esc(n)}" aria-label="Foto verwijderen" style="flex:none">✕</button>`:''}
+          <button class="btn sm plain" data-act="locDel" data-n="${esc(n)}" aria-label="Locatie verwijderen" style="flex:none">🗑</button>
         </div>`; }).join('')}</div>
       <p class="small mt8">Een foto per locatie is optioneel — handig om te zien welk rek of welke kast bedoeld wordt. De foto duikt ook op als je in de kelder op locatie filtert.</p>`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Locaties</div><h2 class="h2">Rekken &amp; plekken</h2>${body}`;
@@ -1629,6 +1697,32 @@ ACT.locPhoto = el => { locPhotoTarget = el.dataset.n; document.getElementById('f
 ACT.locPhotoDel = el => {
   const e = locEntry(el.dataset.n);
   if(e){ pDel(e.id); if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(e.id); e.photo = false; save(); render(); }
+};
+ACT.locDel = el => {
+  const name = el.dataset.n;
+  const wijnen = S.wines.filter(w => w.location === name);
+  const flessen = wijnen.reduce((n,w) => n + (w.qty||0), 0);
+  const others = allLocations().filter(l => l !== name);
+  openSheet(`${sheetHead('Locatie verwijderen')}
+    <p style="font-size:14px;color:var(--ink2)">Locatie <b>${esc(name)}</b> verwijderen${wijnen.length?` — er ${wijnen.length===1?'ligt':'liggen'} nog <b>${wijnen.length}</b> ${plur(wijnen.length,'wijn','wijnen')} (${flessen} ${plur(flessen,'fles','flessen')}). Waar moeten die heen?`:'. Er liggen geen flessen op deze plek.'}</p>
+    ${wijnen.length?`<div class="field" style="margin-top:12px"><label>Verplaats de flessen naar</label>
+      <select class="inp" id="locMoveTo"><option value="">— geen locatie —</option>${others.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('')}</select></div>`:''}
+    <div class="btnrow mt8"><button class="btn plain" data-act="closeSheet">Annuleer</button>
+    <button class="btn danger" data-act="locDelGo" data-n="${esc(name)}">Verwijder locatie</button></div>`);
+};
+ACT.locDelGo = el => {
+  const name = el.dataset.n;
+  const to = ((document.getElementById('locMoveTo')||{}).value||'').trim();
+  S.wines.forEach(w => { if(w.location === name) w.location = to; });
+  const e = locEntry(name);
+  if(e){
+    if(e.photo){ pDel(e.id); if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(e.id); }
+    S.locations = (S.locations||[]).filter(l => l.id !== e.id);
+  }
+  if(S.settings.lastLocation === name) S.settings.lastLocation = to || '';
+  if(UI.floc === name) UI.floc = to || null;
+  save(); closeSheet(true); render();
+  toast(to ? `Locatie verwijderd — flessen verplaatst naar "${to}"` : 'Locatie verwijderd');
 };
 
 function viewRecipes(){
@@ -1663,6 +1757,12 @@ function viewSettings(){
     <div class="btnrow"><button class="btn ghost" data-act="expFull">Back-up (met foto's)</button>
     <button class="btn ghost" data-act="expLite">Zonder foto's</button></div>
     <button class="btn plain mt8" data-act="impGo" style="margin-top:9px">Back-up inlezen…</button>
+    ${(()=>{ const rows=[];
+      try{ const d=JSON.parse(localStorage.getItem('caveau_backup_daily')||'null'); if(d&&d.data) rows.push({k:'caveau_backup_daily', l:'Dagelijkse reservekopie', at:d.at, n:(d.data.wines||[]).length}); }catch(e){}
+      try{ const p=JSON.parse(localStorage.getItem('caveau_backup_prev')||'null'); if(p&&p.data) rows.push({k:'caveau_backup_prev', l:'Vóór laatste sync-overname', at:p.at, n:(p.data.wines||[]).length}); }catch(e){}
+      if(!rows.length) return '';
+      return `<hr class="sep"><div class="eyebrow mb8">Automatische reservekopieën (dit apparaat)</div>
+        <div class="panel">${rows.map(r=>`<div class="rowline"><span class="a"><div class="t" style="font-family:var(--sans);font-size:13.5px">${r.l}</div><div class="u tnum">${r.n} wijnen · ${new Date(r.at).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></span><span class="z"><button class="btn sm plain" data-act="restoreBackup" data-k="${r.k}">Terugzetten</button></span></div>`).join('')}</div>`; })()}
     <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
     <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
 }
@@ -1689,6 +1789,19 @@ ACT.estValues = async el => {
     toast('Inschatten mislukte — ' + String(e.message||e).slice(0,90), null, null, 6000);
     el.textContent = orig; el.style.pointerEvents = '';
   }
+};
+ACT.restoreBackup = el => {
+  let b = null; try{ b = JSON.parse(localStorage.getItem(el.dataset.k)||'null'); }catch(e){}
+  if(!b || !b.data){ toast('Reservekopie niet leesbaar'); return; }
+  const n = (b.data.wines||[]).length;
+  confirmSheet('Reservekopie terugzetten?', `Je huidige kelder wordt vervangen door deze reservekopie (<b>${n}</b> wijnen, ${new Date(b.at).toLocaleString('nl-NL',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}). Je huidige stand wordt eerst zelf als reservekopie bewaard; de teruggezette versie synct daarna naar de cloud.`, 'Zet terug', () => {
+    if(typeof snapshotLocal === 'function') snapshotLocal('caveau_backup_prev');
+    const d = b.data;
+    S.wines = d.wines||[]; S.history = d.history||[]; S.wishlist = d.wishlist||[];
+    S.locations = d.locations||[]; S.pairCache = d.pairCache||[]; S.recipeCache = d.recipeCache||[];
+    if(d.cellarName) S.settings.cellarName = d.cellarName;
+    save(); render(); toast('Reservekopie teruggezet');
+  });
 };
 INP.setName = el => { S.settings.cellarName = el.value; save(); };
 INP.setKey = el => { S.settings.apiKey = el.value; save(); };
@@ -1894,6 +2007,51 @@ async function pullDoc(){
   return (rows && rows[0] && rows[0].data) || null;
 }
 
+/* ---- vangnet: lokale reservekopieën + rem op verdachte krimp ---- */
+function snapshotLocal(key, extra){
+  try{
+    if(!(S.wines.length || S.history.length)) return;
+    localStorage.setItem(key, JSON.stringify({...(extra||{}), at:Date.now(),
+      data:{wines:S.wines, history:S.history, wishlist:S.wishlist, locations:S.locations||[],
+        pairCache:S.pairCache||[], recipeCache:S.recipeCache||[], cellarName:S.settings.cellarName}}));
+  }catch(e){}
+}
+async function applyRemote(remote){
+  snapshotLocal('caveau_backup_prev');
+  adoptDoc(remote); render(); await pullPhotos();
+}
+const shrinks = (van, naar) => van >= 5 && naar < Math.max(1, Math.ceil(van * 0.2)); /* >80% zou verdwijnen */
+
+function askShrink(mode, remote, lc, rc){
+  lastSyncNote = 'Wacht op jouw keuze — groot verschil tussen versies';
+  if(UI.tab === 'meer' && UI.meerPage === 'account') render();
+  const done = async () => { const c = cloud(); c.lastSync = Date.now(); save(true); lastSyncNote = '';
+    toast('Gesynchroniseerd ✓'); if(UI.tab === 'meer' && UI.meerPage === 'account') render(); };
+  openSheet(`${sheetHead('Even opletten')}
+    <p style="font-size:14px;color:var(--ink2)">${mode === 'adopt'
+      ? `De cloudversie bevat <b>${rc}</b> ${plur(rc,'wijn','wijnen')}, terwijl hier <b>${lc}</b> staan. Dat kan kloppen (bijvoorbeeld na "Alles wissen" op een ander apparaat), maar het kan ook een vergissing zijn — daarom neem ik dit niet stilzwijgend over.`
+      : `Dit apparaat heeft <b>${lc}</b> ${plur(lc,'wijn','wijnen')}, de cloud <b>${rc}</b>. Doorzetten zou de cloudversie overschrijven.`}</p>
+    <div class="btnrow mt14">
+      <button class="btn ghost" id="shrinkKeep">${mode === 'adopt' ? `Behoud mijn ${lc}` : `Cloud (${rc}) overnemen`}</button>
+      <button class="btn danger" id="shrinkGo">${mode === 'adopt' ? `Cloud (${rc}) overnemen` : `Toch pushen (${lc})`}</button>
+    </div>
+    <p class="small mt8">Wat je ook kiest: je huidige stand wordt eerst als lokale reservekopie bewaard (Instellingen → Reservekopieën).</p>`);
+  document.getElementById('shrinkGo').onclick = async () => { closeSheet();
+    try{
+      if(mode === 'adopt'){ await applyRemote(remote); }
+      else { snapshotLocal('caveau_backup_prev'); await pushDoc(); await pushPhotos(); }
+      await done();
+    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt — ' + lastSyncNote); }
+  };
+  document.getElementById('shrinkKeep').onclick = async () => { closeSheet();
+    try{
+      if(mode === 'adopt'){ snapshotLocal('caveau_backup_prev'); S.rev = Date.now(); save(true); await pushDoc(); await pushPhotos(); }
+      else { await applyRemote(remote); }
+      await done();
+    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt — ' + lastSyncNote); }
+  };
+}
+
 async function syncNow(interactive){
   if(!loggedIn()) return;
   if(syncBusy){ syncAgain = true; return; }
@@ -1902,8 +2060,14 @@ async function syncNow(interactive){
     if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
     const remote = await pullDoc();
     const localRev = S.rev||0, remoteRev = (remote && remote.rev)||0;
-    if(remoteRev > localRev){ adoptDoc(remote); render(); await pullPhotos(); }
-    else if(localRev > remoteRev || !remote){ await pushDoc(); await pushPhotos(); }
+    const lc = S.wines.length, rc = remote ? (remote.wines||[]).length : 0;
+    if(remoteRev > localRev){
+      if(shrinks(lc, rc)){ syncBusy = false; askShrink('adopt', remote, lc, rc); return; }
+      await applyRemote(remote);
+    } else if(localRev > remoteRev || !remote){
+      if(remote && shrinks(rc, lc)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
+      await pushDoc(); await pushPhotos();
+    }
     const c = cloud(); c.lastSync = Date.now(); save(true);
     lastSyncNote = '';
     if(interactive) toast('Gesynchroniseerd ✓');
@@ -2006,7 +2170,14 @@ async function acAuth(el, isNew){
 ACT.acSync = () => syncNow(true);
 ACT.acLogout = () => confirmSheet('Uitloggen?', 'Je kelder blijft lokaal én in de cloud bewaard; dit apparaat synchroniseert alleen niet meer.', 'Log uit', () => { sbLogout(); render(); toast('Uitgelogd'); });
 
-/* init: bestaande sessie hervatten en meteen syncen */
+/* init: dagelijkse reservekopie (vóór de eerste sync) + bestaande sessie hervatten */
+(function(){
+  try{
+    const k = 'caveau_backup_daily', today = new Date().toISOString().slice(0,10);
+    const prev = JSON.parse(localStorage.getItem(k)||'null');
+    if((S.wines.length || S.history.length) && (!prev || prev.day !== today)) snapshotLocal(k, {day:today});
+  }catch(e){}
+})();
 if(loggedIn()) syncNow();
 </script>
 
