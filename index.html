@@ -132,6 +132,9 @@ h1,h2,h3{text-wrap:balance}
 .wsub{font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
 .wside{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px;padding:2px 0}
+.wtap{display:flex;gap:12px;flex:1;min-width:0;align-items:stretch;text-align:left}
+.dbtn{width:36px;height:36px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);display:flex;align-items:center;justify-content:center}
+.dbtn:active{transform:scale(.92)}
 .qty{font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--ink);background:var(--card2);border-radius:8px;padding:3px 8px}
 .wloc{font-size:11px;color:var(--ink3);max-width:90px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tdot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
@@ -767,18 +770,21 @@ const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster
 
 function wineCardHtml(w){
   const st = windowStatus(w);
-  return `<button class="wcard" data-act="detail" data-id="${w.id}">
-    <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
-    <span class="wmain">
-      <span class="wname">${esc(w.name)}</span>
-      <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
-      <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span></span>
-    </span>
+  return `<div class="wcard">
+    <button class="wtap" data-act="detail" data-id="${w.id}">
+      <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
+      <span class="wmain">
+        <span class="wname">${esc(w.name)}</span>
+        <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
+        <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span></span>
+      </span>
+    </button>
     <span class="wside">
       <span class="qty tnum" ${!w.qty?'style="color:var(--ink3)"':''}>×${w.qty||0}</span>
       ${w.location?`<span class="wloc">${esc(w.location)}</span>`:''}
+      ${w.qty?`<button class="dbtn" data-act="drinkOpen" data-id="${w.id}" aria-label="Drink een fles ${esc(w.name)}" title="Drink een fles"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-.6 6.2a4.4 4.4 0 0 1-8.8 0L7 3Z"/><path d="M12 13.5V20"/><path d="M8.5 21h7"/></svg></button>`:''}
     </span>
-  </button>`;
+  </div>`;
 }
 
 function viewKelder(){
@@ -880,29 +886,38 @@ ACT.wineDel = el => { const w = findWine(el.dataset.id); if(!w) return;
   }, true); };
 
 /* ================= DRINKEN ================= */
-let drinkRating = 0;
+let drinkRating = null; /* null = niet beoordeeld, 0..5 = expliciete score */
 ACT.drinkOpen = el => openDrink(el.dataset.id);
 function openDrink(id){
   const w = findWine(id); if(!w) return;
-  drinkRating = 0;
+  drinkRating = null;
   const today = new Date().toISOString().slice(0,10);
   openSheet(`${sheetHead('Drink een fles')}
     <div class="wsub" style="font-size:14.5px;margin-bottom:2px">${esc(w.name)} · ${w.vintage||'NV'}</div>
     <div class="small">Voorraad gaat van ${w.qty} naar ${Math.max(0,(w.qty||0)-1)}</div>
     <div class="stars" id="drinkStars" role="radiogroup" aria-label="Beoordeling">${[1,2,3,4,5].map(n=>`<button data-star="${n}" role="radio" aria-label="${n} sterren">★</button>`).join('')}</div>
+    <div class="small center" id="starLbl" style="margin:-2px 0 10px">Tik een ster (nogmaals dezelfde = 0 sterren)</div>
     <div class="field"><label>Datum</label><input type="date" class="inp" id="drDate" value="${today}"></div>
     <div class="field"><label>Proefnotitie (optioneel)</label><textarea class="inp" id="drNote" placeholder="Hoe smaakte hij? Bij welk gerecht?"></textarea></div>
     <button class="btn" data-act="drinkSave" data-id="${w.id}">Proost — leg vast</button>`);
+  const paint = () => {
+    document.querySelectorAll('#drinkStars button').forEach(x =>
+      x.classList.toggle('on', drinkRating != null && Number(x.dataset.star) <= drinkRating));
+    const l = document.getElementById('starLbl');
+    if(l) l.textContent = drinkRating == null ? 'Tik een ster (nogmaals dezelfde = 0 sterren)'
+      : drinkRating === 0 ? '0 van 5 — die was niks' : `${drinkRating} van 5`;
+  };
   document.querySelectorAll('#drinkStars button').forEach(b => b.onclick = () => {
-    drinkRating = Number(b.dataset.star);
-    document.querySelectorAll('#drinkStars button').forEach(x => x.classList.toggle('on', Number(x.dataset.star) <= drinkRating));
+    const n = Number(b.dataset.star);
+    drinkRating = (drinkRating === n) ? 0 : n;
+    paint();
   });
 }
 ACT.drinkSave = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   const entry = { id:uid(), wineId:w.id, date:(document.getElementById('drDate')||{}).value || new Date().toISOString().slice(0,10),
     name:w.name, producer:w.producer||'', vintage:w.vintage||null, type:w.type,
-    rating:drinkRating || null, note:((document.getElementById('drNote')||{}).value||'').trim() };
+    rating:drinkRating, note:((document.getElementById('drNote')||{}).value||'').trim() };
   const prevQty = w.qty||0;
   w.qty = Math.max(0, prevQty - 1);
   S.history.unshift(entry); save(); closeSheet(true); render();
@@ -1310,7 +1325,7 @@ function viewOverzicht(){
     ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand)}</div></div>`:''}
     ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar)}</div></div>`:''}
     ${recent.length?`<div class="sect"><div class="eyebrow mb8">Onlangs gedronken</div><div class="panel">${recent.map(h=>
-      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating?'★'.repeat(h.rating):''}</span></div>`).join('')}
+      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.ftype=null; render(); };
@@ -1411,7 +1426,7 @@ function viewHistory(){
         <div class="t">${esc(h.name)} ${h.vintage||''}</div>
         <div class="u">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
         ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">“${esc(h.note)}”</div>`:''}</span>
-        <span class="z"><span class="starmini">${h.rating?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
+        <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
         <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
     </div></div>`).join('')}`;
 }
