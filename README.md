@@ -6,7 +6,7 @@ Persoonlijke wijnkelder-app: etiketten scannen, voorraad en locaties bijhouden, 
 
 ## Hoe het werkt
 
-- Alle gegevens (kelder, foto's, historie) staan **alleen op je eigen apparaat** (localStorage + IndexedDB). Back-up en overzetten via Instellingen → export/import. Iedereen die de link opent krijgt z'n eigen lege kelder.
+- Gegevens staan lokaal op je apparaat (localStorage + IndexedDB) en synchroniseren optioneel automatisch via **cloud-sync** (Meer → Account, e-mail + wachtwoord via Supabase; last-write-wins, foto's incrementeel). Zonder account blijft alles puur lokaal; back-up/overzetten kan altijd via Instellingen → export/import.
 - **AI-scannen:** plak je eigen Anthropic API-sleutel in Instellingen; Claude leest dan etiketfoto's uit (naam, druiven, drinkvenster, pairing). De sleutel blijft op het apparaat en gaat nooit mee in een back-up. Zonder sleutel werkt alles op ingebouwde sommelier-regels.
 - Werkt offline dankzij een service worker (behalve de AI-functies).
 

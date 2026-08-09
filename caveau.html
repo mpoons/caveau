@@ -325,7 +325,12 @@ function loadState(){
   }catch(e){ return DEFAULTS(); }
 }
 let S = loadState();
-function save(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt — opslag vol?'); } }
+/* save(true) = technische schrijfactie (tokens, sync-adoptie): geen rev-bump, geen cloud-push */
+function save(skipCloud){
+  if(!skipCloud) S.rev = Date.now();
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt — opslag vol?'); }
+  if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
+}
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -853,7 +858,9 @@ ACT.qtyMinus = el => { const w = findWine(el.dataset.id); if(!w || !w.qty) retur
   const q = document.getElementById('dQty'); if(q) q.textContent = w.qty; };
 ACT.wineDel = el => { const w = findWine(el.dataset.id); if(!w) return;
   confirmSheet('Verwijderen?', `<b>${esc(w.name)}</b> en de bijbehorende foto verdwijnen uit je kelder. Je drink-historie blijft bewaard.`, 'Verwijder', () => {
-    S.wines = S.wines.filter(x => x.id !== w.id); pDel(w.id); save(); closeSheet(true); render(); toast('Verwijderd uit je kelder');
+    S.wines = S.wines.filter(x => x.id !== w.id); pDel(w.id);
+    if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(w.id);
+    save(); closeSheet(true); render(); toast('Verwijderd uit je kelder');
   }, true); };
 
 /* ================= DRINKEN ================= */
@@ -1267,9 +1274,11 @@ function viewMeer(){
   if(UI.meerPage==='wishlist') return viewWishlist();
   if(UI.meerPage==='history') return viewHistory();
   if(UI.meerPage==='settings') return viewSettings();
+  if(UI.meerPage==='account') return viewAccount();
   const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   return `${brandRow('')}<div class="eyebrow">Meer</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="menu">
+      <button class="mitem" data-act="meerGo" data-p="account">${ic('<circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3 3.4-4.6 6.5-4.6s5.7 1.6 6.5 4.6"/>')}<span class="grow">Account &amp; cloud-sync</span><span class="cnt">${(typeof loggedIn==='function' && loggedIn()) ? '✓ aan' : 'uit'}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
@@ -1446,7 +1455,7 @@ async function doImport(text){
   document.getElementById('impReplace').onclick = () => apply(true);
   document.getElementById('impMerge').onclick = () => apply(false);
 }
-ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s op dit apparaat worden gewist. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
+ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s worden gewist — en als cloud-sync aanstaat, ook in de cloud. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
   const ids = await pKeys(); for(const id of ids) await pDel(id);
   S = DEFAULTS(); save(); scanReset(); render(); toast('Alles gewist');
 }, true);
@@ -1489,4 +1498,199 @@ document.getElementById('fImport').addEventListener('change', e => {
   r.onload = () => doImport(String(r.result)); r.readAsText(f);
 });
 render();
+</script>
+<script>
+'use strict';
+/* ================= CLOUD-SYNC (Supabase) =================
+   Inloggen met e-mail + wachtwoord (eenmalig per apparaat). Elke wijziging wordt
+   met een korte vertraging naar de cloud gepusht; bij openen wordt de nieuwste
+   versie opgehaald (last-write-wins op documentniveau, foto's incrementeel).
+   API-sleutel (AI) en sessietokens verlaten het apparaat nooit. */
+const SB_URL = 'https://dbzgrkipcoebglacsqwe.supabase.co';
+const SB_KEY = 'sb_publishable_Qvrq6CS6M-CPY5nwQ6suAw_lkpwYrYR';
+const CLOUD_OK = !IN_SANDBOX;
+
+let sbAccess = null;
+let syncTimer = null, syncBusy = false, syncAgain = false, lastSyncNote = '';
+
+function cloud(){ if(!S.settings.cloud) S.settings.cloud = {refresh:null, email:null, uid:null, lastSync:null}; return S.settings.cloud; }
+function loggedIn(){ return CLOUD_OK && !!cloud().refresh; }
+
+async function sbFetch(path, opts, noAuth){
+  opts = opts || {};
+  const h = { 'apikey': SB_KEY, 'content-type': 'application/json', ...(opts.headers||{}) };
+  if(!noAuth && sbAccess) h['authorization'] = 'Bearer ' + sbAccess;
+  const res = await fetch(SB_URL + path, {...opts, headers: h});
+  if(!res.ok){
+    const t = await res.text().catch(()=> '');
+    const e = new Error('HTTP ' + res.status + ' ' + t.slice(0,160)); e.status = res.status; throw e;
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.text();
+}
+
+function applySession(s){
+  sbAccess = s.access_token || sbAccess;
+  const c = cloud();
+  if(s.refresh_token) c.refresh = s.refresh_token;
+  if(s.user){ c.uid = s.user.id; c.email = s.user.email; }
+  save(true);
+}
+
+async function sbSignup(email, pass){
+  const r = await sbFetch('/auth/v1/signup', {method:'POST', body:JSON.stringify({email, password:pass})}, true);
+  if(r.access_token){ applySession(r); return 'ok'; }
+  return 'confirm';
+}
+async function sbLogin(email, pass){
+  const r = await sbFetch('/auth/v1/token?grant_type=password', {method:'POST', body:JSON.stringify({email, password:pass})}, true);
+  applySession(r); return 'ok';
+}
+async function sbRefresh(){
+  if(!cloud().refresh) return false;
+  try{
+    const r = await sbFetch('/auth/v1/token?grant_type=refresh_token', {method:'POST', body:JSON.stringify({refresh_token: cloud().refresh})}, true);
+    applySession(r); return true;
+  }catch(e){
+    if(e.status === 400 || e.status === 401 || e.status === 403){ const c = cloud(); c.refresh = null; sbAccess = null; save(true); }
+    return false;
+  }
+}
+function sbLogout(){
+  try{ if(sbAccess) sbFetch('/auth/v1/logout', {method:'POST'}).catch(()=>{}); }catch(e){}
+  sbAccess = null; const c = cloud(); c.refresh = null; c.uid = null; save(true);
+}
+
+/* ---- document-sync (last-write-wins op S.rev) ---- */
+function cloudDoc(){ return { rev: S.rev||0, wines: S.wines, history: S.history, wishlist: S.wishlist, cellarName: S.settings.cellarName }; }
+function adoptDoc(d){
+  S.wines = d.wines || []; S.history = d.history || []; S.wishlist = d.wishlist || [];
+  if(d.cellarName) S.settings.cellarName = d.cellarName;
+  S.rev = d.rev || Date.now();
+  save(true);
+}
+async function pushDoc(){
+  await sbFetch('/rest/v1/cellars?on_conflict=user_id', {method:'POST',
+    headers:{'prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify([{user_id: cloud().uid, data: cloudDoc(), updated_at: new Date().toISOString()}])});
+}
+async function pullDoc(){
+  const rows = await sbFetch('/rest/v1/cellars?select=data&user_id=eq.' + cloud().uid, {method:'GET'});
+  return (rows && rows[0] && rows[0].data) || null;
+}
+
+async function syncNow(interactive){
+  if(!loggedIn()) return;
+  if(syncBusy){ syncAgain = true; return; }
+  syncBusy = true;
+  try{
+    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
+    const remote = await pullDoc();
+    const localRev = S.rev||0, remoteRev = (remote && remote.rev)||0;
+    if(remoteRev > localRev){ adoptDoc(remote); render(); await pullPhotos(); }
+    else if(localRev > remoteRev || !remote){ await pushDoc(); await pushPhotos(); }
+    const c = cloud(); c.lastSync = Date.now(); save(true);
+    lastSyncNote = '';
+    if(interactive) toast('Gesynchroniseerd ✓');
+  }catch(e){
+    lastSyncNote = String(e.message||e).slice(0,110);
+    if(interactive) toast('Sync mislukt — ' + lastSyncNote, null, null, 6000);
+  }
+  syncBusy = false;
+  if(syncAgain){ syncAgain = false; syncNow(); }
+  if(UI.tab === 'meer' && UI.meerPage === 'account') render();
+}
+
+/* foto's incrementeel */
+async function pushPhotos(){
+  try{
+    const rows = await sbFetch('/rest/v1/photos?select=id', {method:'GET'});
+    const have = new Set((rows||[]).map(r => r.id));
+    for(const w of [...S.wines, ...S.wishlist]){
+      if(w.photo && !have.has(w.id)){
+        const p = await pGet(w.id);
+        if(p) await sbFetch('/rest/v1/photos?on_conflict=user_id,id', {method:'POST',
+          headers:{'prefer':'resolution=merge-duplicates,return=minimal'},
+          body: JSON.stringify([{user_id: cloud().uid, id: w.id, data: p}])});
+      }
+    }
+  }catch(e){}
+}
+async function pullPhotos(){
+  try{
+    for(const w of [...S.wines, ...S.wishlist]){
+      if(w.photo && !(await pGet(w.id))){
+        const rows = await sbFetch('/rest/v1/photos?select=data&id=eq.' + w.id, {method:'GET'});
+        if(rows && rows[0] && rows[0].data) await pSet(w.id, rows[0].data);
+      }
+    }
+    fillPhotos();
+  }catch(e){}
+}
+function cloudDeletePhoto(id){
+  if(!loggedIn()) return;
+  sbFetch('/rest/v1/photos?id=eq.' + id, {method:'DELETE', headers:{'prefer':'return=minimal'}}).catch(()=>{});
+}
+
+/* hook — aangeroepen vanuit save() */
+function cloudOnSave(){
+  if(!loggedIn()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>syncNow(), 2500);
+}
+
+/* ================= account-pagina ================= */
+function viewAccount(){
+  const c = cloud();
+  if(!CLOUD_OK)
+    return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync</h2>
+      <div class="banner"><span>🔒</span><span>Sync is niet beschikbaar in deze omgeving — gebruik de app via <b>mpoons.github.io/caveau</b>.</span></div>`;
+  if(!loggedIn()){
+    return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync aanzetten</h2>
+      <p class="small mb8">Log in en je kelder synchroniseert automatisch tussen al je apparaten. Nog geen account? Kies een wachtwoord en tik op "Account aanmaken".</p>
+      <div class="field"><label>E-mail</label><input class="inp" id="ac_email" type="email" autocomplete="username" inputmode="email" value="${esc(c.email||'')}" placeholder="jij@voorbeeld.nl"></div>
+      <div class="field"><label>Wachtwoord</label><input class="inp" id="ac_pass" type="password" autocomplete="current-password" placeholder="minimaal 8 tekens"></div>
+      <button class="btn" data-act="acLogin" style="margin-bottom:9px">Inloggen</button>
+      <button class="btn ghost" data-act="acSignup">Account aanmaken</button>
+      <p class="small mt8">Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Je AI-sleutel en foto's van etiketten blijven van jou; alleen jíj kunt bij je kelder.</p>`;
+  }
+  const last = c.lastSync ? new Date(c.lastSync).toLocaleString('nl-NL', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'nog niet';
+  return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync actief</h2>
+    <div class="panel"><div class="rowline"><span class="a">
+      <div class="t" style="font-family:var(--sans)">${esc(c.email||'')}</div>
+      <div class="u">Laatste sync: ${esc(last)}${syncBusy?' · bezig…':''}${lastSyncNote?` · ⚠️ ${esc(lastSyncNote)}`:''}</div>
+    </span></div></div>
+    <button class="btn mt14" data-act="acSync">Nu synchroniseren</button>
+    <button class="btn plain" data-act="acLogout" style="margin-top:9px">Uitloggen op dit apparaat</button>
+    <p class="small mt8">Elke wijziging gaat een paar seconden later automatisch naar de cloud; bij het openen wordt de nieuwste versie opgehaald. Uitloggen verwijdert niets.</p>`;
+}
+ACT.acLogin = el => acAuth(el, false);
+ACT.acSignup = el => acAuth(el, true);
+async function acAuth(el, isNew){
+  const email = ((document.getElementById('ac_email')||{}).value||'').trim().toLowerCase();
+  const pass = (document.getElementById('ac_pass')||{}).value||'';
+  if(!/.+@.+\..+/.test(email)){ toast('Vul een geldig e-mailadres in'); return; }
+  if(pass.length < 8){ toast('Gebruik een wachtwoord van minimaal 8 tekens'); return; }
+  const orig = el.textContent; el.textContent = 'Even geduld…'; el.style.pointerEvents = 'none';
+  try{
+    const r = isNew ? await sbSignup(email, pass) : await sbLogin(email, pass);
+    if(r === 'confirm'){
+      toast('Bevestig je account via je mail — of log in als je al een account had', null, null, 7000);
+    } else {
+      toast('Ingelogd — synchroniseren…');
+      render();
+      await syncNow(true);
+      return;
+    }
+  }catch(e){
+    const m = String(e.message||'');
+    toast(/invalid|credentials/i.test(m) ? 'Onjuiste inloggegevens' : 'Lukte niet — ' + m.slice(0,90), null, null, 6000);
+  }
+  el.textContent = orig; el.style.pointerEvents = '';
+}
+ACT.acSync = () => syncNow(true);
+ACT.acLogout = () => confirmSheet('Uitloggen?', 'Je kelder blijft lokaal én in de cloud bewaard; dit apparaat synchroniseert alleen niet meer.', 'Log uit', () => { sbLogout(); render(); toast('Uitgelogd'); });
+
+/* init: bestaande sessie hervatten en meteen syncen */
+if(loggedIn()) syncNow();
 </script>
