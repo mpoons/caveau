@@ -877,6 +877,7 @@ function openDetail(id){
     </div>
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
+    ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
     <button class="btn soft" data-act="wineDishes" data-id="${w.id}" style="margin-bottom:9px">Wat eet je hierbij?</button>
     <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
     <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
@@ -1133,7 +1134,7 @@ async function runWineDishes(w, richting, force){
 }
 function renderDishes(out, w, richting, list, srcLabel, cached){
   out.innerHTML = `<div class="mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="srcchip">${esc(srcLabel)}</span>${richting?`<span class="small">richting: ${esc(richting)}</span>`:''}${cached?`<button class="linkbtn" style="font-size:12.5px" data-act="dishFresh" data-id="${w.id}" data-dir="${esc(richting||'')}">↻ vernieuw</button>`:''}</div>` +
-    list.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div><div class="mt8"><button class="linkbtn" style="font-size:13px" data-act="recipeAsk" data-dish="${esc(d.dish)}">📖 Recept tonen</button></div></div>`).join('');
+    list.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div><div class="mt8"><button class="linkbtn" style="font-size:13px" data-act="recipeAsk" data-dish="${esc(d.dish)}" data-wid="${w.id}">📖 Recept tonen</button></div></div>`).join('');
 }
 
 /* ---- recepten (met personen-keuze en cache) ---- */
@@ -1141,39 +1142,50 @@ ACT.recipeAsk = el => {
   if(!aiReady() && !(S.recipeCache||[]).some(r => r.dish === el.dataset.dish)){
     toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return;
   }
-  const dish = el.dataset.dish;
+  const dish = el.dataset.dish, wid = el.dataset.wid || '';
   openSheet(`${sheetHead('Recept — ' + esc(dish))}
     <p class="small mb8">Voor hoeveel personen?</p>
-    <div class="btnrow">${[2,4,6,8].map(n => `<button class="btn soft" data-act="recipeGo" data-dish="${esc(dish)}" data-p="${n}">${n}</button>`).join('')}</div>`);
+    <div class="btnrow">${[2,4,6,8].map(n => `<button class="btn soft" data-act="recipeGo" data-dish="${esc(dish)}" data-wid="${wid}" data-p="${n}">${n}</button>`).join('')}</div>`);
 };
 ACT.recipeGo = async el => {
-  const dish = el.dataset.dish, p = Number(el.dataset.p) || 4;
+  const dish = el.dataset.dish, p = Number(el.dataset.p) || 4, wid = el.dataset.wid || null;
   const key = norm(dish) + '|' + p;
   closeSheet();
   const hit = (S.recipeCache||[]).find(r => r.key === key);
-  if(hit){ showRecipe(hit.recipe, dish, p, true); return; }
+  if(hit){ showRecipe({...hit, cached:true}); return; }
   if(!aiReady()){ toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return; }
   const sh = openSheet(`${sheetHead('Recept — ' + esc(dish))}<div class="banner"><span class="spin"></span><span class="pulse">Recept schrijven…</span></div>`);
   try{
     const r = await aiRecipe(dish, p);
+    const wijn = wid ? findWine(wid) : null;
+    const entry = {key, dish, persons:p, at:Date.now(), wineId:wid, wineName:wijn?`${wijn.name}${wijn.vintage?' '+wijn.vintage:''}`:null, recipe:r};
     S.recipeCache = (S.recipeCache||[]).filter(x => x.key !== key);
-    S.recipeCache.unshift({key, dish, persons:p, at:Date.now(), recipe:r});
-    S.recipeCache = S.recipeCache.slice(0, 20);
+    S.recipeCache.unshift(entry);
+    S.recipeCache = S.recipeCache.slice(0, 50);
     save();
-    closeSheet(); showRecipe(r, dish, p, false);
+    closeSheet(); showRecipe({...entry, cached:false});
   }catch(e){
     const inner = sh.querySelector('.sheet-in');
     if(inner) inner.innerHTML = `${sheetHead('Recept')}<div class="banner"><span>⚠️</span><span>Recept ophalen lukte niet (${esc(String(e.message||e).slice(0,90))}). Probeer het zo nog eens.</span></div>`;
   }
 };
-function showRecipe(r, dish, p, cached){
-  openSheet(`${sheetHead(esc(r.title || dish))}
-    <div class="small mb8">${p} personen${r.time ? ` · ${esc(r.time)}` : ''} · <span class="srcchip">${cached ? 'Opgeslagen' : 'Sommelier-AI'}</span></div>
+function showRecipe(e){
+  const r = e.recipe || {};
+  const wijn = e.wineId ? findWine(e.wineId) : null;
+  const wijnRow = wijn
+    ? `<button class="linkbtn" style="font-size:13px" data-act="detail" data-id="${wijn.id}">🍷 ${esc(e.wineName||wijn.name)} →</button>`
+    : (e.wineName ? `<span class="small">🍷 ${esc(e.wineName)} (niet meer in je kelder)</span>` : '');
+  openSheet(`${sheetHead(esc(r.title || e.dish))}
+    <div class="small mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${e.persons} personen${r.time ? ` · ${esc(r.time)}` : ''} · <span class="srcchip">${e.cached ? 'Opgeslagen' : 'Sommelier-AI'}</span>${wijnRow}</div>
     <div class="eyebrow mb8">Ingrediënten</div>
     <div class="panel" style="margin-bottom:14px">${(r.ingredients||[]).map(i => `<div class="rowline" style="padding:6px 0"><span class="a" style="font-size:14px">${esc(i)}</span></div>`).join('')}</div>
     <div class="eyebrow mb8">Bereiding</div>
     ${(r.steps||[]).map((s,i) => `<div style="display:flex;gap:10px;margin-bottom:10px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:14px;flex:1">${esc(s)}</span></div>`).join('')}`);
 }
+ACT.recipeOpen = el => {
+  const r = (S.recipeCache||[]).find(x => x.key === el.dataset.k);
+  if(r) showRecipe({...r, cached:true});
+};
 </script>
 <script>
 'use strict';
@@ -1327,9 +1339,10 @@ function viewPairing(){
   if(UI.pairMode === 'dish'){
     const chips = ['Biefstuk','Wild','Witte vis','Schaaldieren','Sushi','Pasta met tomaat','Risotto','Kip uit de oven','Kaasplank','Thaise curry','BBQ','Chocolade']
       .map(c => `<button class="chip" data-act="pairQuick" data-d="${esc(c)}">${c}</button>`).join('');
-    return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je eten?</h2>${toggle}
+    return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je (ongeveer) eten?</h2>${toggle}
+      <p class="small mb8">Vaag mag — "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
       <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-        <input type="search" id="pairDish" placeholder="bv. hertenbiefstuk met rode kool" value="" aria-label="Gerecht"></div>
+        <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="" aria-label="Gerecht"></div>
       <div class="chiprow">${chips}</div>
       <button class="btn" data-act="pairGo">Zoek de beste fles in mijn kelder</button>
       <div id="pairOut" class="mt14">${pairOut}</div>`;
@@ -1466,6 +1479,7 @@ function viewMeer(){
   if(UI.meerPage==='settings') return viewSettings();
   if(UI.meerPage==='account') return viewAccount();
   if(UI.meerPage==='locs') return viewLocs();
+  if(UI.meerPage==='recipes') return viewRecipes();
   const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   return `${brandRow('')}<div class="eyebrow">Meer</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="menu">
@@ -1473,6 +1487,7 @@ function viewMeer(){
       <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="locs">${ic('<path d="M4 20V9l8-5.5L20 9v11"/><path d="M4 14.5h16M9.5 20v-5.5M14.5 20v-5.5"/>')}<span class="grow">Locaties &amp; rekken</span><span class="cnt">${allLocations().length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="recipes">${ic('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5V5.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>')}<span class="grow">Recepten</span><span class="cnt">${(S.recipeCache||[]).length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
     </div>`;
@@ -1590,6 +1605,22 @@ ACT.locPhotoDel = el => {
   const e = locEntry(el.dataset.n);
   if(e){ pDel(e.id); if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(e.id); e.photo = false; save(); render(); }
 };
+
+function viewRecipes(){
+  const recs = S.recipeCache || [];
+  const body = !recs.length
+    ? `<div class="empty"><div class="big">Nog geen recepten</div><p>Vraag bij een fles "Wat eet je hierbij?" en tik bij een gerecht op 📖 Recept tonen — hier bouw je vanzelf je receptenboek op.</p></div>`
+    : `<div class="menu">${recs.map(r => `<div class="mitem" style="cursor:default">
+        <button class="grow" style="text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}">
+          <div style="font-weight:600">📖 ${esc(r.recipe.title||r.dish)}</div>
+          <div class="small">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}${r.wineName?' · 🍷 '+esc(r.wineName):''} · ${new Date(r.at).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
+        </button>
+        <button class="btn sm plain" data-act="recipeDel" data-k="${esc(r.key)}" aria-label="Recept verwijderen" style="flex:none">✕</button>
+      </div>`).join('')}</div>
+      <p class="small mt8">Recepten worden bewaard (max 50) en syncen mee met je account. Vanuit een fles zie je de gekoppelde recepten; vanuit een recept spring je met 🍷 naar de fles.</p>`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Recepten</div><h2 class="h2">Receptenboek</h2>${body}`;
+}
+ACT.recipeDel = el => { S.recipeCache = (S.recipeCache||[]).filter(r => r.key !== el.dataset.k); save(); render(); toast('Recept verwijderd'); };
 
 function viewSettings(){
   const ai = IN_SANDBOX
