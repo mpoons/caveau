@@ -953,16 +953,18 @@ ACT.wineNew = () => openWineForm(null);
 ACT.wineEdit = el => openWineForm(findWine(el.dataset.id));
 let formQty = 1;
 let recalcPairing = null;
+let vensterAuto = true; /* venster is (nog) een schatting → mag automatisch herberekend worden */
 
 /* Herbereken drinkvenster + pairing op basis van wat er nu in het formulier staat
    (bv. na het zelf invullen van jaargang of druiven). AI indien beschikbaar, anders kelderregels. */
-ACT.recalc = async el => {
+async function doRecalc(el, silent){
   const d = readForm();
   if(!d.name && !(d.grapes||[]).length && !d.region && !d.appellation){
-    toast('Vul eerst minstens een naam, druif of regio in'); return;
+    if(!silent) toast('Vul eerst minstens een naam, druif of regio in');
+    return;
   }
-  const orig = el.innerHTML;
-  el.innerHTML = 'Herberekenen…'; el.style.pointerEvents = 'none';
+  const orig = el ? el.innerHTML : '';
+  if(el){ el.innerHTML = 'Herberekenen…'; el.style.pointerEvents = 'none'; }
   const setVal = (id, v) => { const x = document.getElementById(id); if(x && v != null && v !== '') x.value = v; };
   let src = 'Kelderregels', done = false;
   if(aiReady()){
@@ -983,11 +985,23 @@ ACT.recalc = async el => {
     const est = estimateWindow(d);
     setVal('f_from', est.from); setVal('f_to', est.to);
   }
-  el.innerHTML = orig; el.style.pointerEvents = '';
+  if(el){ el.innerHTML = orig; el.style.pointerEvents = ''; }
   toast(`Drinkvenster bijgewerkt (${src})`);
-};
+}
+ACT.recalc = el => doRecalc(el, false);
+
+/* venster met de hand aangepast → niet meer automatisch overschrijven */
+document.addEventListener('input', e => {
+  const t = e.target;
+  if(t && (t.id === 'f_from' || t.id === 'f_to')) vensterAuto = false;
+});
+/* jaargang ingevuld of gewijzigd → venster automatisch bijrekenen zolang het een schatting is */
+document.addEventListener('change', e => {
+  if(!e.target || e.target.id !== 'f_vintage' || !vensterAuto) return;
+  doRecalc(document.getElementById('recalcBtn'), true);
+});
 function openWineForm(w){
-  formQty = 1; recalcPairing = null;
+  formQty = 1; recalcPairing = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
   const isNew = !w;
   openSheet(`${sheetHead(isNew ? 'Fles toevoegen' : 'Bewerken')}
     ${formFields(w)}
@@ -1070,10 +1084,15 @@ function viewScan(){
     price:null, value:null, location:'', note:d.note||''
   };
   return `${brandRow('')}
+    <div class="btnrow" style="margin-bottom:10px">
+      <button class="btn sm plain" data-act="scanAgain">‹ Annuleer</button>
+      <button class="btn sm plain" data-act="scanNewPhoto">📷 Nieuwe foto</button>
+    </div>
     <div class="scanprev">${bottleSvg}<img id="scanImg" alt="Gescand etiket"></div>
     ${scan.busy ? `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier leest het etiket…</span></div>` : ''}
     ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken" — de foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
+    ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b> — het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
     ${scan.busy ? '' : formFields(pre)}
     <div class="field"><label>Aantal flessen</label>
@@ -1090,12 +1109,23 @@ function viewScan(){
 ACT.scanCam = () => document.getElementById('fCam').click();
 ACT.scanLib = () => document.getElementById('fLib').click();
 ACT.scanAgain = () => { scanReset(); render(); };
+ACT.scanNewPhoto = () => document.getElementById('fCam').click();
+
+/* venster ontbreekt in het scanresultaat → altijd alvast een regels-schatting invullen */
+function ensureWindow(d){
+  if(d.drink_from && d.drink_to) return;
+  const est = estimateWindow({ type: mapType(d.type||'rood'), grapes: d.grapes||[], region: d.region,
+    appellation: d.appellation, country: d.country, name: d.name, vintage: d.vintage||null });
+  d.drink_from = d.drink_from || est.from;
+  d.drink_to = d.drink_to || est.to;
+}
 ACT.scanRetry = async () => {
   if(!scan.photo || scan.busy) return;
   if(!aiReady()){ toast('AI-scannen staat hier uit — vul de velden in en gebruik Herbereken'); return; }
-  scan.err = null; scan.busy = true; render(); showScanImg();
+  scan.err = null; scan.busy = true; vensterAuto = true; render(); showScanImg();
   try{
     const d = await aiScan(scan.photo);
+    ensureWindow(d);
     scan.data = d;
     scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
   }catch(e){ scan.err = String(e.message||e).slice(0,120); }
@@ -1111,11 +1141,12 @@ async function handlePhoto(file){
     scan.thumb = await resizeImg(file, 380, 0.72);
   }catch(e){ toast('Foto kon niet worden gelezen'); return; }
   scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null;
-  scan.busy = aiReady();
+  scan.busy = aiReady(); vensterAuto = true;
   UI.tab = 'scan'; render(); showScanImg();
   if(scan.busy){
     try{
       const d = await aiScan(scan.photo);
+      ensureWindow(d);
       scan.data = d;
       scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
     }catch(e){ scan.err = String(e.message||e).slice(0,120); }
