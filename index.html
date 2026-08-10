@@ -331,7 +331,7 @@ const YR = () => new Date().getFullYear();
 const IN_SANDBOX = /claudeusercontent\.com$/i.test(location.hostname) || !!window.claude;
 const DB_KEY = 'caveau_v1';
 
-const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[], locations:[], pairCache:[], recipeCache:[],
+const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[], locations:[], pairCache:[], recipeCache:[], tonight:[],
   settings:{ cellarName:'Mijn kelder', apiKey:'', model:'claude-sonnet-5' } });
 
 function loadState(){
@@ -341,7 +341,7 @@ function loadState(){
     const d = JSON.parse(raw);
     const base = DEFAULTS();
     return { ...base, ...d, settings:{ ...base.settings, ...(d.settings||{}) },
-      wines:d.wines||[], history:d.history||[], wishlist:d.wishlist||[], locations:d.locations||[], pairCache:d.pairCache||[], recipeCache:d.recipeCache||[] };
+      wines:d.wines||[], history:d.history||[], wishlist:d.wishlist||[], locations:d.locations||[], pairCache:d.pairCache||[], recipeCache:d.recipeCache||[], tonight:d.tonight||[] };
   }catch(e){ return DEFAULTS(); }
 }
 let S = loadState();
@@ -806,7 +806,7 @@ function wineCardHtml(w){
       <span class="wmain">
         <span class="wname">${esc(w.name)}</span>
         <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
-        <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span></span>
+        <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span>${onTable(w.id)?'<span class="badge b-nu">🍷 op tafel</span>':''}</span>
       </span>
     </button>
     <span class="wside">
@@ -851,7 +851,7 @@ function viewKelder(){
   return `${brandRow(`${bc} ${plur(bc,'fles','flessen')}${val?` · ${money(val)}`:''}`)}
     <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
       <input type="search" placeholder="Zoek op naam, druif, regio, locatie…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken"></div>
-    <div class="chiprow">${chips}</div>${locBanner}${body}`;
+    <div class="chiprow">${chips}</div>${tonightBanner()}${locBanner}${body}`;
 }
 INP.q = el => { UI.q = el.value; refreshList(); };
 function refreshList(){ if(UI.tab==='kelder') { render(true); } }
@@ -902,6 +902,9 @@ function openDetail(id){
     ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
     <button class="btn soft" data-act="wineDishes" data-id="${w.id}" style="margin-bottom:9px">Wat eet je hierbij?</button>
     <button class="btn soft" data-act="askSomm" data-id="${w.id}" style="margin-bottom:9px">💬 Vraag de sommelier</button>
+    ${onTable(w.id)
+      ? `<button class="btn soft" data-act="tafelAf" data-id="${w.id}" style="margin-bottom:9px">✓ Staat op tafel — haal eraf</button>`
+      : `<button class="btn soft" data-act="tafelOp" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">🍷 Vanavond drinken (zet op tafel)</button>`}
     <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
     <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
     <button class="btn danger" data-act="wineDel" data-id="${w.id}">Verwijderen</button></div>`);
@@ -930,6 +933,7 @@ ACT.wineDel = el => { const w = findWine(el.dataset.id); if(!w) return;
   confirmSheet('Verwijderen?', `<b>${esc(w.name)}</b> en de bijbehorende foto verdwijnen uit je kelder. Je drink-historie blijft bewaard.`, 'Verwijder', () => {
     S.wines = S.wines.filter(x => x.id !== w.id); pDel(w.id);
     if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(w.id);
+    S.tonight = (S.tonight||[]).filter(t => t.wineId !== w.id);
     save(); closeSheet(true); render(); toast('Verwijderd uit je kelder');
   }, true); };
 
@@ -1011,6 +1015,7 @@ ACT.drinkSave = el => {
     rating:drinkRating, note:((document.getElementById('drNote')||{}).value||'').trim() };
   const prevQty = w.qty||0;
   w.qty = Math.max(0, prevQty - 1);
+  S.tonight = (S.tonight||[]).filter(t => t.wineId !== w.id);
   S.history.unshift(entry); save(); closeSheet(true); render();
   toast('Genoteerd — santé!', 'Ongedaan', () => { w.qty = prevQty; S.history = S.history.filter(h => h.id !== entry.id); save(); render(); });
 };
@@ -1098,6 +1103,34 @@ let formQty = 1;
 let recalcPairing = null;
 let recalcValueRange = null;
 let vensterAuto = true; /* venster is (nog) een schatting → mag automatisch herberekend worden */
+
+/* ---- "Op tafel": fles gekozen om vanavond te drinken, nog niet afgestreept ---- */
+function onTable(id){ return (S.tonight||[]).some(t => t.wineId === id); }
+ACT.tafelOp = el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  if(!S.tonight) S.tonight = [];
+  if(!onTable(w.id)) S.tonight.push({wineId:w.id, at:Date.now()});
+  save(); closeSheet(true); render();
+  toast(`🍷 "${w.name}" staat op tafel — je ziet hem bovenaan tot je hem afstreept`);
+};
+ACT.tafelAf = el => {
+  S.tonight = (S.tonight||[]).filter(t => t.wineId !== el.dataset.id);
+  save(); render();
+};
+function tonightList(){ return (S.tonight||[]).map(t => ({t, w:findWine(t.wineId)})).filter(x => x.w); }
+function tonightBanner(){
+  const items = tonightList(); if(!items.length) return '';
+  return `<div class="panel" style="border-color:var(--warn);margin-bottom:10px;padding:10px 13px">
+    <div class="eyebrow mb8">🍷 Op tafel</div>
+    ${items.map(({w}) => `<div class="rowline"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">gekozen om te drinken — nog niet afgestreept</div></span>
+      <span class="z" style="display:flex;gap:6px;align-items:center"><button class="btn sm" data-act="drinkOpen" data-id="${w.id}">Afstrepen</button><button class="btn sm plain" data-act="tafelAf" data-id="${w.id}" aria-label="Van tafel halen">✕</button></span></div>`).join('')}</div>`;
+}
+function updateBadge(){
+  try{
+    const n = (S.tonight||[]).length;
+    if(navigator.setAppBadge){ n ? navigator.setAppBadge(n) : (navigator.clearAppBadge && navigator.clearAppBadge()); }
+  }catch(e){}
+}
 
 /* Herbereken drinkvenster + pairing op basis van wat er nu in het formulier staat
    (bv. na het zelf invullen van jaargang of druiven). AI indien beschikbaar, anders kelderregels. */
@@ -1355,7 +1388,8 @@ function viewScan(){
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
     ${scan.busy ? '' : `<div class="panel" style="padding:11px 13px;margin-bottom:12px"><div class="eyebrow mb8">Snel wegleggen</div>
       <div style="display:flex;gap:8px"><select class="inp" id="quickLoc" data-in="quickLoc" style="flex:1;min-width:0" aria-label="Locatie">${locSelectOptions(pre.location)}</select>
-      <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div></div>`}
+      <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="scanTonight" style="width:18px;height:18px;accent-color:var(--acc)"> 🍷 Vanavond drinken — herinner me om af te strepen</label></div>`}
     ${scan.busy ? '' : formFields(pre)}
     <div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
@@ -1436,6 +1470,7 @@ ACT.scanAdd = async () => {
   if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
   if(scan.data && scan.data.value_high != null) w.valueHigh = Math.round(scan.data.value_high);
   if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
+  if((document.getElementById('scanTonight')||{}).checked){ if(!S.tonight) S.tonight = []; S.tonight.push({wineId:w.id, at:Date.now()}); }
   S.wines.unshift(w); save();
   if(scan.thumb) await pSet(w.id, scan.thumb);
   const n = formQty; scanReset(); UI.tab = 'kelder'; render();
@@ -1444,6 +1479,7 @@ ACT.scanAdd = async () => {
 ACT.scanMerge = async () => {
   const m = scan.match; if(!m) return;
   m.qty = (m.qty||0) + formQty;
+  if((document.getElementById('scanTonight')||{}).checked && !onTable(m.id)){ if(!S.tonight) S.tonight = []; S.tonight.push({wineId:m.id, at:Date.now()}); }
   if(!m.photo && scan.thumb){ await pSet(m.id, scan.thumb); m.photo = true; }
   save(); const n = formQty, id = m.id; scanReset(); UI.tab = 'kelder'; render();
   toast(`+${n} bijgeboekt — nu ×${findWine(id).qty}`);
@@ -1541,7 +1577,7 @@ async function runPair(dish, force){
         <div class="mscore">${m.score}<small>/10</small></div></div>
         <div class="mreason">${esc(m.reason||'')}</div>
         ${urg?`<div class="mreason" style="color:var(--warn);font-weight:600">⏳ ${urg}</div>`:''}
-        <div class="mt8" style="display:flex;gap:16px"><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button><button class="linkbtn" data-act="askSomm" data-id="${m.w.id}" data-dish="${esc(dish)}">💬 Vraag</button></div></div>`;
+        <div class="mt8" style="display:flex;gap:16px;flex-wrap:wrap"><button class="linkbtn" data-act="${onTable(m.w.id)?'tafelAf':'tafelOp'}" data-id="${m.w.id}">${onTable(m.w.id)?'✓ Op tafel':'✓ Deze kies ik'}</button><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button><button class="linkbtn" data-act="askSomm" data-id="${m.w.id}" data-dish="${esc(dish)}">💬 Vraag</button></div></div>`;
     }).join('');
     if(buyTip) html += `<div class="banner"><span>🛒</span><span>${esc(buyTip)}</span></div>`;
   } else {
@@ -1585,6 +1621,7 @@ function viewOverzicht(){
       <div class="empty"><p>Zodra er flessen in je kelder liggen zie je hier voorraad, waarde, drinkvensters en je historie.</p>
       <button class="btn" data-act="tab" data-tab="scan" style="max-width:240px">Scan je eerste fles</button></div>`;
   return `${brandRow('')}<div class="eyebrow">Overzicht</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
+    ${tonightBanner()}
     <div class="tiles">
       <button class="tile" data-act="tileAll"><div class="k">Flessen</div><div class="n">${bc}</div><div class="s">tik voor de lijst</div></button>
       <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div>${val?`<div class="s tnum">${money(totLow)} – ${money(totHigh)}</div>`:''}</div>
@@ -1967,6 +2004,7 @@ function render(keepFocus){
     : UI.tab==='overzicht' ? viewOverzicht()
     : viewMeer();
   fillPhotos(v);
+  if(typeof updateBadge === 'function') updateBadge();
   if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); if(!scan.busy) wireSeg('f_type'); }
   if(keepFocus){ const s = v.querySelector('input[type=search]'); if(s){ s.focus(); const n = s.value.length; try{ s.setSelectionRange(n,n); }catch(e){} } }
 }
@@ -1990,6 +2028,12 @@ document.getElementById('fImport').addEventListener('change', e => {
   r.onload = () => doImport(String(r.result)); r.readAsText(f);
 });
 render();
+/* herinnering: staat er nog iets van gisteren op tafel? */
+setTimeout(() => {
+  const oud = (S.tonight||[]).find(t => Date.now() - t.at > 12*3600*1000);
+  if(oud){ const w = findWine(oud.wineId);
+    if(w) toast(`🍷 "${w.name}" staat nog op tafel — vergeet niet af te strepen`, 'Bekijk', () => { UI.tab='kelder'; render(); }, 9000); }
+}, 900);
 </script>
 <script>
 'use strict';
@@ -2055,10 +2099,11 @@ function sbLogout(){
 
 /* ---- document-sync (last-write-wins op S.rev) ---- */
 function cloudDoc(){ return { rev: S.rev||0, wines: S.wines, history: S.history, wishlist: S.wishlist,
-  locations: S.locations||[], pairCache: S.pairCache||[], recipeCache: S.recipeCache||[], cellarName: S.settings.cellarName }; }
+  locations: S.locations||[], pairCache: S.pairCache||[], recipeCache: S.recipeCache||[], tonight: S.tonight||[], cellarName: S.settings.cellarName }; }
 function adoptDoc(d){
   S.wines = d.wines || []; S.history = d.history || []; S.wishlist = d.wishlist || [];
   S.locations = d.locations || []; S.pairCache = d.pairCache || []; S.recipeCache = d.recipeCache || [];
+  S.tonight = d.tonight || [];
   if(d.cellarName) S.settings.cellarName = d.cellarName;
   S.rev = d.rev || Date.now();
   save(true);
