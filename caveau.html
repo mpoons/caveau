@@ -694,6 +694,15 @@ Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederla
   return parseJsonLoose(out);
 }
 
+async function aiAsk(w, dish, question){
+  const prompt = `Je bent mijn sommelier. Context:
+Wijn: ${w.name} — ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
+Gerecht waar het om gaat: ${dish}.`:''}
+Vraag: ${question}
+Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON.`;
+  return await callClaude([{type:'text', text:prompt}], 1000);
+}
+
 async function aiValues(list){
   const lines = list.map(w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
   const prompt = `Schat per wijn de actuele winkelwaarde per fles in euro's (Europese retail). De lijst (id | naam | producent | jaargang | herkomst):
@@ -732,7 +741,7 @@ function resizeImg(file, maxW, q){
 <script>
 'use strict';
 /* ================= UI-status & dispatcher ================= */
-const UI = { tab:'kelder', q:'', ftype:null, fstatus:false, floc:null, sort:'recent',
+const UI = { tab:'kelder', q:'', ftype:null, fstatus:false, fovertijd:false, floc:null, sort:'recent',
              pairMode:'dish', pairBusy:false, meerPage:'menu' };
 
 const INP = {};
@@ -759,6 +768,7 @@ function filteredWines(){
     a = a.filter(w => norm([w.name,w.producer,w.region,w.country,w.appellation,(w.grapes||[]).join(' '),w.location,w.note,w.vintage].join(' ')).includes(q)); }
   if(UI.ftype) a = a.filter(w => w.type === UI.ftype);
   if(UI.fstatus) a = a.filter(w => ['op','nu'].includes(windowStatus(w).k));
+  if(UI.fovertijd) a = a.filter(w => windowStatus(w).k === 'over');
   if(UI.floc) a = a.filter(w => UI.floc === '::none' ? !w.location : (w.location||'') === UI.floc);
   const by = {
     recent: (x,y) => (y.addedAt||0) - (x.addedAt||0),
@@ -798,6 +808,7 @@ function viewKelder(){
     `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`,
     ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`,
+    `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">⏳ Over tijd</button>`,
     locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
     `<button class="chip" data-act="chipSort">${SORTS[UI.sort]} ↕</button>`
   ].join('');
@@ -829,7 +840,8 @@ function viewKelder(){
 INP.q = el => { UI.q = el.value; refreshList(); };
 function refreshList(){ if(UI.tab==='kelder') { render(true); } }
 ACT.chipType = el => { UI.ftype = el.dataset.t || null; render(); };
-ACT.chipStatus = () => { UI.fstatus = !UI.fstatus; render(); };
+ACT.chipStatus = () => { UI.fstatus = !UI.fstatus; if(UI.fstatus) UI.fovertijd = false; render(); };
+ACT.chipOver = () => { UI.fovertijd = !UI.fovertijd; if(UI.fovertijd) UI.fstatus = false; render(); };
 ACT.chipLoc = () => {
   const locs = allLocations();
   const sh = openSheet(`${sheetHead('Filter op locatie')}
@@ -873,6 +885,7 @@ function openDetail(id){
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
     <button class="btn soft" data-act="wineDishes" data-id="${w.id}" style="margin-bottom:9px">Wat eet je hierbij?</button>
+    <button class="btn soft" data-act="askSomm" data-id="${w.id}" style="margin-bottom:9px">💬 Vraag de sommelier</button>
     <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
     <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
     <button class="btn danger" data-act="wineDel" data-id="${w.id}">Verwijderen</button></div>`);
@@ -883,10 +896,15 @@ function timelineHtml(w){
   if(!f && !t) return '';
   const y = YR(), lo = Math.min(f||y, y) - 1, hi = Math.max(t||y, y) + 1, span = Math.max(1, hi-lo);
   const L = v => Math.min(100, Math.max(0, (v-lo)/span*100)).toFixed(1);
+  const labs = [];
+  if(f) labs.push([f, String(f)]);
+  labs.push([y, `nu · ${y}`]);
+  if(t && t !== f) labs.push([t, String(t)]);
+  labs.sort((a,b) => a[0] - b[0]);
   return `<div class="tl" role="img" aria-label="Drinkvenster ${f||'?'} tot ${t||'?'}"><div class="tl-track">
     ${(f&&t)?`<div class="tl-fill" style="left:${L(f)}%;right:${(100-Number(L(t))).toFixed(1)}%"></div>`:''}
     <div class="tl-now" style="left:${L(y)}%"></div></div>
-    <div class="tl-lab"><span>${f||'?'}</span><span>nu · ${y}</span><span>${t||'?'}</span></div></div>`;
+    <div class="tl-lab">${labs.map(l=>`<span>${l[1]}</span>`).join('')}</div></div>`;
 }
 ACT.qtyPlus = el => { const w = findWine(el.dataset.id); if(!w) return; w.qty = (w.qty||0)+1; save();
   const q = document.getElementById('dQty'); if(q) q.textContent = w.qty; };
@@ -1238,6 +1256,40 @@ ACT.recipeOpen = el => {
   const r = (S.recipeCache||[]).find(x => x.key === el.dataset.k);
   if(r) showRecipe({...r, cached:true});
 };
+
+/* ---- vraag de sommelier (vrije vraag over wijn/pairing) ---- */
+ACT.askSomm = el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  if(!aiReady()){ toast('Vragen stellen vergt de AI-sleutel (Meer → Instellingen)'); return; }
+  const dish = el.dataset.dish || '';
+  openSheet(`${sheetHead('Vraag de sommelier')}
+    <div class="small mb8">${esc(w.name)} ${w.vintage||''}${dish?` · bij "${esc(dish)}"`:''}</div>
+    <div id="askOut"></div>
+    <div class="field"><div style="display:flex;gap:8px">
+      <input class="inp" id="askQ" placeholder="bv. past dit bij paddenstoelen?" style="flex:1;min-width:0">
+      <button class="btn sm" data-act="askGo" data-id="${w.id}" data-dish="${esc(dish)}" style="flex:none">Vraag</button></div></div>
+    <div class="chiprow">${['Moet deze gekoeld?','Decanteren?','Hoe lang van tevoren open?'].map(q=>`<button class="chip" data-act="askQuick" data-q="${esc(q)}">${q}</button>`).join('')}</div>`);
+};
+ACT.askQuick = el => {
+  const i = document.getElementById('askQ'); if(i) i.value = el.dataset.q;
+  const b = document.querySelector('[data-act="askGo"]'); if(b) ACT.askGo(b);
+};
+ACT.askGo = async el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  const inp = document.getElementById('askQ');
+  const q = ((inp||{}).value||'').trim();
+  if(!q){ toast('Typ eerst je vraag'); return; }
+  const out = document.getElementById('askOut'); if(!out) return;
+  const aid = 'ans' + Date.now();
+  out.insertAdjacentHTML('beforeend', `<div class="dishcard"><div class="d">${esc(q)}</div><div class="r" id="${aid}"><span class="spin"></span></div></div>`);
+  if(inp) inp.value = '';
+  try{
+    const ans = await aiAsk(w, el.dataset.dish||'', q);
+    const t = document.getElementById(aid); if(t) t.textContent = String(ans||'').trim();
+  }catch(e){
+    const t = document.getElementById(aid); if(t) t.textContent = 'Lukte niet — ' + String(e.message||e).slice(0,80);
+  }
+};
 </script>
 <script>
 'use strict';
@@ -1473,7 +1525,7 @@ async function runPair(dish, force){
         <div class="mscore">${m.score}<small>/10</small></div></div>
         <div class="mreason">${esc(m.reason||'')}</div>
         ${urg?`<div class="mreason" style="color:var(--warn);font-weight:600">⏳ ${urg}</div>`:''}
-        <div class="mt8"><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button></div></div>`;
+        <div class="mt8" style="display:flex;gap:16px"><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button><button class="linkbtn" data-act="askSomm" data-id="${m.w.id}" data-dish="${esc(dish)}">💬 Vraag</button></div></div>`;
     }).join('');
     if(buyTip) html += `<div class="banner"><span>🛒</span><span>${esc(buyTip)}</span></div>`;
   } else {
@@ -1539,9 +1591,9 @@ function viewOverzicht(){
       `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${h.extern?'🍽️ ':''}${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
-ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.ftype=null; render(); };
-ACT.tileAll = () => { UI.tab='kelder'; UI.fstatus=false; UI.ftype=null; UI.floc=null; UI.q=''; render(); };
-ACT.filterLoc = el => { UI.tab='kelder'; UI.floc=el.dataset.l||null; UI.ftype=null; UI.fstatus=false; render(); };
+ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.fovertijd=false; UI.ftype=null; render(); };
+ACT.tileAll = () => { UI.tab='kelder'; UI.fstatus=false; UI.fovertijd=false; UI.ftype=null; UI.floc=null; UI.q=''; render(); };
+ACT.filterLoc = el => { UI.tab='kelder'; UI.floc=el.dataset.l||null; UI.ftype=null; UI.fstatus=false; UI.fovertijd=false; render(); };
 ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
 
 /* ================= MEER ================= */
@@ -1642,15 +1694,29 @@ function viewHistory(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Gedronken</h2>
     <div style="margin:-4px 0 6px"><button class="linkbtn" data-act="histAdd">+ Proefnotitie (buiten de kelder)</button></div>
     ${keys.map(k => `<div class="sect"><div class="eyebrow mb8">${esc(mName(k))}</div><div class="panel">
-      ${groups[k].map(h => `<div class="rowline"><span class="a">
+      ${groups[k].map(h => `<div class="rowline"><button class="a" style="text-align:left;flex:1;min-width:0" data-act="histOpen" data-id="${h.id}">
         <div class="t">${esc(h.name)} ${h.vintage||''}</div>
         <div class="u">${esc(h.date)}${h.extern?` · 🍽️ ${esc(h.place||'buiten de kelder')}`:''}${h.producer?' · '+esc(h.producer):''}</div>
-        ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">“${esc(h.note)}”</div>`:''}</span>
+        ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">"${esc(h.note.slice(0,60))}${h.note.length>60?'…':''}"</div>`:''}</button>
         <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
         <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
     </div></div>`).join('')}`;
 }
 ACT.histAdd = () => openDrinkExtern({}, null);
+ACT.histOpen = el => {
+  const h = S.history.find(x => x.id === el.dataset.id); if(!h) return;
+  const w = h.wineId ? findWine(h.wineId) : null;
+  openSheet(`${sheetHead(esc(h.name) + (h.vintage?' '+h.vintage:''))}
+    <div class="wmeta">${typeHtml(h.type||'rood')}${h.extern?`<span class="badge b-onb">🍽️ ${esc(h.place||'buiten de kelder')}</span>`:''}</div>
+    <div class="small mt8">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
+    <div class="stars" style="pointer-events:none;margin-top:10px">${[1,2,3,4,5].map(n=>`<button class="${h.rating!=null&&n<=h.rating?'on':''}">★</button>`).join('')}</div>
+    <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5 — die was niks':`${h.rating} van 5`}</div>
+    ${h.note?`<div class="panel" style="margin:10px 0"><p style="font-size:14.5px;font-style:italic;line-height:1.6">"${esc(h.note)}"</p></div>`:''}
+    ${w?`<div class="eyebrow mb8" style="margin-top:6px">Deze fles</div>
+      ${(w.pairing&&w.pairing.length)?`<div class="grapes" style="margin-bottom:10px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
+      <button class="btn soft" data-act="detail" data-id="${w.id}">🍷 Bekijk fles in kelder (×${w.qty})</button>`
+    : (h.wineId?`<p class="small">Deze fles ligt niet meer in je kelder.</p>`:'')}`);
+};
 ACT.histDel = el => confirmSheet('Notitie verwijderen?', 'Deze regel verdwijnt uit je historie.', 'Verwijder', () => {
   S.history = S.history.filter(h => h.id !== el.dataset.id); save(); closeSheet(); render();
 }, true);
