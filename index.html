@@ -283,6 +283,19 @@ textarea.inp{resize:vertical;min-height:64px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .pulse{animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+/* live-scanner (QR-gevoel) */
+.livewrap{position:fixed;inset:0;z-index:70;background:#000;display:flex}
+.livewrap video{width:100%;height:100%;object-fit:cover}
+.liveframe{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:76%;max-width:420px;aspect-ratio:3/4;border:2.5px solid rgba(255,247,242,.92);border-radius:18px;box-shadow:0 0 0 200vmax rgba(0,0,0,.35);pointer-events:none;overflow:hidden}
+.livescanline{position:absolute;left:6%;right:6%;height:2.5px;background:linear-gradient(90deg,transparent,var(--gold),transparent);animation:scanline 2.2s ease-in-out infinite}
+@keyframes scanline{0%,100%{top:10%}50%{top:88%}}
+.livehint{position:absolute;left:0;right:0;bottom:130px;text-align:center;color:#FFF7F2;font-size:14px;font-weight:600;text-shadow:0 1px 5px rgba(0,0,0,.7)}
+.livebar{position:absolute;left:0;right:0;bottom:0;padding:16px 26px calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between}
+.liveshut{width:70px;height:70px;border-radius:50%;background:#FFF7F2;border:5px solid rgba(255,247,242,.35)}
+.liveshut:active{transform:scale(.93)}
+.livex{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px}
+.livelib{color:#FFF7F2;font-size:13.5px;font-weight:600;text-shadow:0 1px 5px rgba(0,0,0,.7);width:44px}
+.liveflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .18s}
 .matchbanner{background:var(--acc-soft);border:1px solid var(--acc);border-radius:12px;padding:11px 13px;font-size:13.5px;margin-bottom:12px;color:var(--ink)}
 hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
 .small{font-size:12.5px;color:var(--ink3)}
@@ -769,7 +782,7 @@ document.addEventListener('input', e => {
   if(el && INP[el.dataset.in]) INP[el.dataset.in](el);
 });
 
-ACT.tab = el => { UI.tab = el.dataset.tab; UI.meerPage = 'menu'; render(); };
+ACT.tab = el => { if(typeof closeLiveScan === 'function') closeLiveScan(); UI.tab = el.dataset.tab; UI.meerPage = 'menu'; render(); };
 
 function navSync(){
   document.querySelectorAll('.nbtn,.nfab').forEach(b => b.classList.toggle('on', b.dataset.tab === UI.tab));
@@ -1412,10 +1425,73 @@ function viewScan(){
       <button class="btn plain" data-act="scanAgain">Opnieuw</button>
     </div>`;
 }
-ACT.scanCam = () => document.getElementById('fCam').click();
+ACT.scanCam = () => openLiveScan();
 ACT.scanLib = () => document.getElementById('fLib').click();
 ACT.scanAgain = () => { scanReset(); render(); };
-ACT.scanNewPhoto = () => document.getElementById('fCam').click();
+ACT.scanNewPhoto = () => openLiveScan();
+
+/* ================= live-scanner: QR-gevoel met auto-vangst ================= */
+let liveStream = null, liveTimer = null, livePrev = null, liveStable = 0, liveEl = null, liveStartAt = 0;
+async function openLiveScan(){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ document.getElementById('fCam').click(); return; }
+  try{
+    liveStream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}, audio:false });
+  }catch(e){ document.getElementById('fCam').click(); return; } /* geweigerd of geen camera → systeemcamera */
+  const div = document.createElement('div'); div.className = 'livewrap'; div.id = 'liveScan';
+  div.innerHTML = `<video autoplay playsinline muted></video>
+    <div class="liveframe"><div class="livescanline"></div></div>
+    <div class="livehint" id="liveHint">Houd het etiket in het kader — hij vangt vanzelf</div>
+    <div class="liveflash" id="liveFlash"></div>
+    <div class="livebar">
+      <button class="livex" data-act="liveClose" aria-label="Sluiten">✕</button>
+      <button class="liveshut" data-act="liveSnap" aria-label="Maak foto"></button>
+      <button class="livelib" data-act="liveLib">galerij</button>
+    </div>`;
+  document.body.appendChild(div); liveEl = div;
+  const v = div.querySelector('video'); v.srcObject = liveStream;
+  liveStartAt = Date.now(); livePrev = null; liveStable = 0;
+  liveTimer = setInterval(() => liveCheck(v), 260);
+}
+function closeLiveScan(){
+  if(liveTimer){ clearInterval(liveTimer); liveTimer = null; }
+  if(liveStream){ try{ liveStream.getTracks().forEach(t => t.stop()); }catch(e){} liveStream = null; }
+  if(liveEl){ liveEl.remove(); liveEl = null; }
+}
+ACT.liveClose = () => closeLiveScan();
+ACT.liveLib = () => { closeLiveScan(); document.getElementById('fLib').click(); };
+ACT.liveSnap = () => liveCapture();
+function liveCheck(v){
+  if(!v || !v.videoWidth) return;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d', {willReadFrequently:true});
+  try{ ctx.drawImage(v, 0, 0, 64, 64); }catch(e){ return; }
+  const d = ctx.getImageData(0, 0, 64, 64).data;
+  const g = new Float32Array(4096);
+  for(let i = 0; i < 4096; i++) g[i] = (d[i*4] + d[i*4+1] + d[i*4+2]) / 3;
+  let edge = 0;
+  for(let y = 0; y < 64; y++) for(let x = 0; x < 63; x++) edge += Math.abs(g[y*64+x] - g[y*64+x+1]);
+  edge /= 4032;
+  let diff = 999;
+  if(livePrev){ diff = 0; for(let i = 0; i < 4096; i += 4) diff += Math.abs(g[i] - livePrev[i]); diff /= 1024; }
+  livePrev = g;
+  const stil = diff < 6, scherp = edge > 7;
+  liveStable = (stil && scherp) ? liveStable + 1 : 0;
+  const hint = document.getElementById('liveHint');
+  if(hint) hint.textContent = !scherp ? 'Iets dichterbij, of meer licht…' : (!stil ? 'Houd stil…' : 'Vasthouden…');
+  if(liveStable >= 3 && Date.now() - liveStartAt > 1200) liveCapture();
+}
+function liveCapture(){
+  const v = liveEl && liveEl.querySelector('video');
+  if(!v || !v.videoWidth) return;
+  if(liveTimer){ clearInterval(liveTimer); liveTimer = null; }
+  const fl = document.getElementById('liveFlash');
+  if(fl){ fl.style.opacity = '0.75'; setTimeout(() => { if(fl) fl.style.opacity = '0'; }, 180); }
+  const sc = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(v.videoWidth * sc); c.height = Math.round(v.videoHeight * sc);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  c.toBlob(b => { closeLiveScan(); if(b) handlePhoto(b); }, 'image/jpeg', 0.85);
+}
 ACT.scanDrinkNow = () => {
   const d = readForm();
   openDrinkExtern({name:d.name, producer:d.producer, vintage:d.vintage, type:d.type}, scan.thumb);
