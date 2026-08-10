@@ -199,6 +199,7 @@ textarea.inp{resize:vertical;min-height:64px}
 .stars{display:flex;gap:6px;justify-content:center;margin:6px 0}
 .stars button{font-size:30px;line-height:1;color:var(--line);transition:transform .08s}
 .stars button.on{color:var(--gold)}
+.stars button.half{background:linear-gradient(90deg,var(--gold) 50%,var(--line) 50%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stars button:active{transform:scale(1.2)}
 .starmini{color:var(--gold);font-size:12.5px;letter-spacing:1px}
 /* ---------- pairing ---------- */
@@ -374,6 +375,8 @@ function windowStatus(w){
   return {k:'op',cls:'b-op',label:'Op dronk',sub:t?'tot '+t:''};
 }
 const badgeHtml = w => { const st = windowStatus(w); return `<span class="badge ${st.cls}">${st.label}</span>`; };
+/* sterren als tekst, met halve: ★★★½ */
+const starsText = r => r == null ? '' : (r === 0 ? '0 ★' : '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : ''));
 /* volgorde voor de drinkvenster-sortering: op dronk → drink binnenkort → over tijd → nog te jong → onbekend */
 const URG = {op:0, nu:1, over:2, jong:3, onb:4};
 
@@ -806,9 +809,9 @@ function viewKelder(){
   const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
   const chips = [
     `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`,
-    ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`,
     `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">⏳ Over tijd</button>`,
+    ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
     `<button class="chip" data-act="chipSort">${SORTS[UI.sort]} ↕</button>`
   ].join('');
@@ -940,15 +943,21 @@ function openDrink(id){
 }
 function wireStars(){
   const paint = () => {
-    document.querySelectorAll('#drinkStars button').forEach(x =>
-      x.classList.toggle('on', drinkRating != null && Number(x.dataset.star) <= drinkRating));
+    document.querySelectorAll('#drinkStars button').forEach(x => {
+      const n = Number(x.dataset.star);
+      x.classList.toggle('on', drinkRating != null && drinkRating >= n);
+      x.classList.toggle('half', drinkRating != null && drinkRating === n - 0.5);
+    });
     const l = document.getElementById('starLbl');
-    if(l) l.textContent = drinkRating == null ? 'Tik een ster (nogmaals dezelfde = 0 sterren)'
-      : drinkRating === 0 ? '0 van 5 — die was niks' : `${drinkRating} van 5`;
+    if(l) l.textContent = drinkRating == null ? 'Tik een ster — linkerhelft = halve ster, nogmaals dezelfde = 0'
+      : drinkRating === 0 ? '0 van 5 — die was niks' : `${String(drinkRating).replace('.',',')} van 5`;
   };
-  document.querySelectorAll('#drinkStars button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#drinkStars button').forEach(b => b.onclick = ev => {
     const n = Number(b.dataset.star);
-    drinkRating = (drinkRating === n) ? 0 : n;
+    const rect = b.getBoundingClientRect();
+    const half = ev.clientX && (ev.clientX - rect.left) < rect.width / 2;
+    const v = half ? n - 0.5 : n;
+    drinkRating = (drinkRating === v) ? 0 : v;
     paint();
   });
 }
@@ -1625,7 +1634,7 @@ function viewOverzicht(){
         <span class="v tnum">${p[1]}</span></button>`;
     }).join('')}</div></div>`:''}
     ${recent.length?`<div class="sect"><div class="eyebrow mb8">Onlangs gedronken</div><div class="panel">${recent.map(h=>
-      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${h.extern?'🍽️ ':''}${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${h.rating!=null?(h.rating===0?'0 ★':'★'.repeat(h.rating)):''}</span></div>`).join('')}
+      `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${h.extern?'🍽️ ':''}${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${starsText(h.rating)}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.fovertijd=false; UI.ftype=null; render(); };
@@ -1735,7 +1744,7 @@ function viewHistory(){
         <div class="t">${esc(h.name)} ${h.vintage||''}</div>
         <div class="u">${esc(h.date)}${h.extern?` · 🍽️ ${esc(h.place||'buiten de kelder')}`:''}${h.producer?' · '+esc(h.producer):''}</div>
         ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">"${esc(h.note.slice(0,60))}${h.note.length>60?'…':''}"</div>`:''}</button>
-        <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(h.rating)+'<span style="color:var(--line)">'+'★'.repeat(5-h.rating)+'</span>':''}</span><br>
+        <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(Math.floor(h.rating))+(h.rating%1?'½':'')+'<span style="color:var(--line)">'+'★'.repeat(5-Math.ceil(h.rating))+'</span>':''}</span><br>
         <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
     </div></div>`).join('')}`;
 }
@@ -1746,8 +1755,8 @@ ACT.histOpen = el => {
   openSheet(`${sheetHead(esc(h.name) + (h.vintage?' '+h.vintage:''))}
     <div class="wmeta">${typeHtml(h.type||'rood')}${h.extern?`<span class="badge b-onb">🍽️ ${esc(h.place||'buiten de kelder')}</span>`:''}</div>
     <div class="small mt8">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
-    <div class="stars" style="pointer-events:none;margin-top:10px">${[1,2,3,4,5].map(n=>`<button class="${h.rating!=null&&n<=h.rating?'on':''}">★</button>`).join('')}</div>
-    <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5 — die was niks':`${h.rating} van 5`}</div>
+    <div class="stars" style="pointer-events:none;margin-top:10px">${[1,2,3,4,5].map(n=>`<button class="${h.rating!=null&&h.rating>=n?'on':(h.rating===n-0.5?'half':'')}">★</button>`).join('')}</div>
+    <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5 — die was niks':`${String(h.rating).replace('.',',')} van 5`}</div>
     ${h.note?`<div class="panel" style="margin:10px 0"><p style="font-size:14.5px;font-style:italic;line-height:1.6">"${esc(h.note)}"</p></div>`:''}
     ${w?`<div class="eyebrow mb8" style="margin-top:6px">Deze fles</div>
       ${(w.pairing&&w.pairing.length)?`<div class="grapes" style="margin-bottom:10px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
