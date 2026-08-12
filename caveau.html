@@ -378,14 +378,14 @@ const typeHtml = t => `${dotHtml(t)}<span class="tlabel">${esc(TYPES[t]?TYPES[t]
 function windowStatus(w){
   const y = YR(), f = w.drinkFrom||null, t = w.drinkTo||null;
   if(!f && !t) return {k:'onb',cls:'b-onb',label:'Venster onbekend',sub:''};
-  if(f && y < f) return {k:'jong',cls:'b-jong',label:'Nog te jong',sub:'vanaf '+f};
-  if(t && y > t) return {k:'over',cls:'b-over',label:'Over de piek?',sub:'was op dronk t/m '+t};
+  if(f && y < f) return {k:'jong',cls:'b-jong',label:'Nog te jong',sub:'op dronk '+f+(t?'–'+t:'')};
+  if(t && y > t) return {k:'over',cls:'b-over',label:'Over de piek?',sub:'was op dronk '+(f?f+'–'+t:'t/m '+t)};
   if(t){
     const span = Math.max(1, t-(f||t)), rem = t-y;
     if(rem <= Math.max(1, Math.round(span*0.18)))
-      return {k:'nu',cls:'b-nu',label:'Drink binnenkort',sub:'nog t/m '+t};
+      return {k:'nu',cls:'b-nu',label:'Drink binnenkort',sub:(f?'venster '+f+'–'+t:'nog t/m '+t)};
   }
-  return {k:'op',cls:'b-op',label:'Op dronk',sub:t?'tot '+t:''};
+  return {k:'op',cls:'b-op',label:'Op dronk',sub:t?(f?'venster '+f+'–'+t:'tot '+t):''};
 }
 const badgeHtml = w => { const st = windowStatus(w); return `<span class="badge ${st.cls}">${st.label}</span>`; };
 /* sterren als tekst, met halve: ★★★½ */
