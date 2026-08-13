@@ -639,9 +639,30 @@ function dishesForWine(w){
 }
 
 /* ================= AI-laag (buiten de sandbox, met eigen API-sleutel) ================= */
-function aiReady(){ return !IN_SANDBOX && !!(S.settings.apiKey||'').trim(); }
+function aiReady(){
+  if(IN_SANDBOX) return false;
+  if((S.settings.apiKey||'').trim()) return true;
+  return typeof loggedIn === 'function' && loggedIn(); /* ingelogd → AI via de Caveau-server */
+}
 
-async function callClaude(content, maxTokens){
+/* Antwoordstijl (instelbaar in Instellingen) — bepaalt de toon van alle AI-teksten */
+function styleNote(){
+  const s = S.settings.aiStyle || 'kenner';
+  return s === 'simpel'
+    ? 'Schrijf alle uitlegteksten in eenvoudige taal zonder wijnjargon, kort en praktisch, alsof je het aan een beginner uitlegt.'
+    : s === 'sommelier'
+    ? 'Schrijf als sommeliers onder elkaar: vaktermen zijn welkom (tannine, zuurgraad, terroir, structuur), wees precies over stijl en waarom iets werkt.'
+    : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.';
+}
+
+/* Routering: eigen sleutel gaat vóór (rechtstreeks naar Anthropic, onbeperkt);
+   anders via de Caveau-serverfunctie met het account-tegoed. */
+async function callClaude(content, maxTokens, kind){
+  if((S.settings.apiKey||'').trim()) return callAnthropicDirect(content, maxTokens);
+  if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind);
+  throw new Error('Log in (Meer → Account) of vul een API-sleutel in');
+}
+async function callAnthropicDirect(content, maxTokens){
   const model = (S.settings.model||'claude-sonnet-5').trim();
   const body = { model, max_tokens:maxTokens||2000, messages:[{role:'user', content}] };
   /* Sonnet 5 / Opus 5 denken standaard mee in het antwoordbudget — voor JSON-extractie
@@ -668,11 +689,11 @@ async function aiScan(dataUrl){
   const b64 = dataUrl.split(',')[1];
   const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
 {"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","alcohol":"13,5%" of null,"drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","confidence":0.0 tot 1.0}
-drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte actuele winkelprijs per fles in euro's (Europese retail), met value_low/value_high als realistische bandbreedte. pairing in het Nederlands. Onleesbare of onbekende velden: null.`;
+drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte actuele winkelprijs per fles in euro's (Europese retail), met value_low/value_high als realistische bandbreedte. pairing in het Nederlands. ${styleNote()} Onleesbare of onbekende velden: null.`;
   const out = await callClaude([
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
     {type:'text', text:prompt}
-  ], 2500);
+  ], 2500, 'scan');
   return parseJsonLoose(out);
 }
 
@@ -681,8 +702,8 @@ async function aiRecalc(d){
 Naam: ${d.name||'?'} | Producent: ${d.producer||'?'} | Jaargang: ${d.vintage||'NV'} | Type: ${TYPES[d.type]?TYPES[d.type].l:d.type} | Druiven: ${(d.grapes||[]).join(', ')||'?'} | Herkomst: ${[d.appellation,d.region,d.country].filter(Boolean).join(', ')||'?'}
 Schat het drinkvenster, de pairing en de winkelwaarde. Antwoord UITSLUITEND met geldig JSON:
 {"drink_from":2024,"drink_to":2032,"grapes":["druif",...],"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin Nederlands over stijl en karakter"}
-value_eur = geschatte actuele winkelprijs per fles in euro's (EU-retail), value_low/high = realistische bandbreedte. pairing en note in het Nederlands. Onbekende velden: null.`;
-  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500));
+value_eur = geschatte actuele winkelprijs per fles in euro's (EU-retail), value_low/high = realistische bandbreedte. pairing en note in het Nederlands. ${styleNote()} Onbekende velden: null.`;
+  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken'));
 }
 
 function cellarLines(){
@@ -696,8 +717,9 @@ async function aiDish(dish){
 ${cellarLines()}
 
 Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang — die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
-{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"1-2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}`;
-  const out = await callClaude([{type:'text', text:prompt}], 3000);
+{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"1-2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
+De redenen in deze stijl: ${styleNote()}`;
+  const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
   return parseJsonLoose(out);
 }
 
@@ -705,8 +727,8 @@ async function aiWine(w, richting){
   const prompt = `Je bent mijn sommelier. Welke gerechten passen bij deze wijn?
 ${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.${richting?`
 Voorkeur van de gebruiker: "${richting}" — laat álle suggesties bij die richting aansluiten.`:''}
-Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend.`;
-  const out = await callClaude([{type:'text', text:prompt}], 2000);
+Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend. De redenen in deze stijl: ${styleNote()}`;
+  const out = await callClaude([{type:'text', text:prompt}], 2000, 'gerechten');
   return parseJsonLoose(out);
 }
 
@@ -715,8 +737,8 @@ async function aiAsk(w, dish, question){
 Wijn: ${w.name} — ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
 Gerecht waar het om gaat: ${dish}.`:''}
 Vraag: ${question}
-Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON.`;
-  return await callClaude([{type:'text', text:prompt}], 1000);
+Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON. ${styleNote()}`;
+  return await callClaude([{type:'text', text:prompt}], 1000, 'vraag');
 }
 
 async function aiValues(list){
@@ -724,7 +746,7 @@ async function aiValues(list){
   const prompt = `Schat per wijn de actuele winkelwaarde per fles in euro's (Europese retail). De lijst (id | naam | producent | jaargang | herkomst):
 ${lines}
 Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]} — value = beste schatting, low/high = realistische bandbreedte. Wijnen die je niet kunt inschatten sla je over.`;
-  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000));
+  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000, 'waardes'));
 }
 
 async function aiRecipe(dish, persons){
@@ -732,7 +754,7 @@ async function aiRecipe(dish, persons){
 Antwoord UITSLUITEND met geldig JSON:
 {"title":"naam van het gerecht","time":"totale bereidingstijd","ingredients":["500 g ...","..."],"steps":["stap 1","stap 2","..."]}
 Alles in het Nederlands, hoeveelheden afgestemd op ${persons} personen, stappen kort en concreet (maximaal 10).`;
-  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 2500));
+  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 2500, 'recept'));
 }
 
 /* foto verkleinen */
@@ -1738,7 +1760,7 @@ function viewMeer(){
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
     </div>`;
 }
-ACT.meerGo = el => { UI.meerPage = el.dataset.p; render(); };
+ACT.meerGo = el => { UI.meerPage = el.dataset.p; render(); if(el.dataset.p === 'account' && typeof fetchQuota === 'function') fetchQuota(); };
 const backRow = `<button class="backrow" data-act="meerBack">‹ Terug</button>`;
 ACT.meerBack = () => { UI.meerPage='menu'; render(); };
 
@@ -1916,9 +1938,12 @@ ACT.recipeDel = el => { S.recipeCache = (S.recipeCache||[]).filter(r => r.key !=
 function viewSettings(){
   const ai = IN_SANDBOX
     ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat Claude etiketten automatisch leest? Host dan het app-bestand zelf (vraag Claude om de zelf-host-versie) en vul hieronder je sleutel in.</span></div>`
-    : `<div class="field"><label>Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
-       <div class="small mt8">${aiReady()?'✅ AI actief — etiketten en pairing gaan via Claude.':'Zonder sleutel werkt alles op de ingebouwde kelderregels.'} De sleutel blijft alleen op dit apparaat en gaat nooit mee in een back-up.</div></div>
-       <div class="field"><label>Model</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>
+    : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account). Een eigen sleutel hieronder is optioneel en gaat dan vóór (onbeperkt, op je eigen Anthropic-tegoed).':'<b>Tip:</b> log in via Meer → Account en AI werkt direct — zonder sleutelgedoe. Of vul hieronder een eigen sleutel in.'}</span></div>
+      <div class="field"><label>Antwoordstijl sommelier</label><div class="seg" id="styleSeg">${[['simpel','Simpel'],['kenner','Kenner'],['sommelier','Sommelier']].map(([k,l])=>`<button type="button" data-act="aiStyle" data-s="${k}" class="${(S.settings.aiStyle||'kenner')===k?'on':''}">${l}</button>`).join('')}</div>
+       <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden — van jip-en-janneke tot sommeliers onder elkaar.</div></div>
+      <div class="field"><label>Eigen Anthropic API-sleutel (optioneel)</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
+       <div class="small mt8">De sleutel blijft alleen op dit apparaat en gaat nooit mee in een back-up of naar de cloud.</div></div>
+       <div class="field"><label>Model (bij eigen sleutel)</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>
        <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
        <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2">Instellingen & back-up</h2>
@@ -1938,6 +1963,7 @@ function viewSettings(){
     <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
     <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
 }
+ACT.aiStyle = el => { S.settings.aiStyle = el.dataset.s; save(true); render(); toast(`Antwoordstijl: ${el.textContent}`); };
 ACT.estValues = async el => {
   if(!aiReady()){ toast('Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)'); return; }
   const targets = S.wines.filter(w => w.value == null);
@@ -2291,6 +2317,45 @@ function cloudDeletePhoto(id){
   sbFetch('/rest/v1/photos?id=eq.' + id, {method:'DELETE', headers:{'prefer':'return=minimal'}}).catch(()=>{});
 }
 
+/* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
+async function sbAI(content, maxTokens, kind){
+  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in bij Meer → Account'); }
+  const res = await fetch(SB_URL + '/functions/v1/ai', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+    body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, messages:[{role:'user', content}] })
+  });
+  const d = await res.json().catch(() => ({}));
+  if(!res.ok){
+    const e = new Error(res.status === 402 ? 'Je gratis AI-tegoed voor deze maand is op'
+      : res.status === 429 ? (d.error || 'Even rustig aan — daglimiet bereikt')
+      : res.status === 404 ? 'De serverfunctie is nog niet geplaatst (zie instructies)'
+      : (d.error || ('Serverfout ' + res.status)));
+    e.status = res.status; throw e;
+  }
+  return (d.content||[]).filter(b => b.type === 'text').map(b => b.text).join('');
+}
+async function fetchQuota(){
+  const el = document.getElementById('aiQuota');
+  if(!el || !loggedIn()) return;
+  try{
+    if(!sbAccess){ const ok = await sbRefresh(); if(!ok){ el.textContent = 'AI-tegoed: log opnieuw in'; return; } }
+    const ms = new Date(); ms.setUTCDate(1); ms.setUTCHours(0,0,0,0);
+    const [prof, used] = await Promise.all([
+      sbFetch('/rest/v1/profiles?select=plan,bonus_credits', {method:'GET'}),
+      sbFetch('/rest/v1/ai_usage?select=id&created_at=gte.' + encodeURIComponent(ms.toISOString()), {method:'GET'})
+    ]);
+    const plan = (prof && prof[0] && prof[0].plan) || 'free';
+    const bonus = (prof && prof[0] && prof[0].bonus_credits) || 0;
+    const n = (used||[]).length;
+    let txt = plan === 'unlimited' ? `AI: onbeperkt · ${n} acties deze maand`
+      : plan === 'plus' ? `Caveau Plus · ${n} van 500 AI-acties deze maand`
+      : `AI-tegoed: ${n} van ${15 + bonus} gratis acties deze maand`;
+    if((S.settings.apiKey||'').trim()) txt += ' · eigen sleutel actief (telt niet mee)';
+    el.textContent = txt;
+  }catch(e){ el.textContent = 'AI-tegoed: nog niet beschikbaar'; }
+}
+
 /* hook — aangeroepen vanuit save() */
 function cloudOnSave(){
   if(!loggedIn()) return;
@@ -2318,6 +2383,7 @@ function viewAccount(){
     <div class="panel"><div class="rowline"><span class="a">
       <div class="t" style="font-family:var(--sans)">${esc(c.email||'')}</div>
       <div class="u">Laatste sync: ${esc(last)}${syncBusy?' · bezig…':''}${lastSyncNote?` · ⚠️ ${esc(lastSyncNote)}`:''}</div>
+      <div class="u" id="aiQuota">AI-tegoed: laden…</div>
     </span></div></div>
     <button class="btn mt14" data-act="acSync">Nu synchroniseren</button>
     <button class="btn plain" data-act="acLogout" style="margin-top:9px">Uitloggen op dit apparaat</button>
