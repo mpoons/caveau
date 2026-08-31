@@ -746,21 +746,25 @@ function tasteLines(){
 }
 
 /* wijnkaart van een restaurant lezen en er de beste flessen uit kiezen */
-async function aiMenu(shots, dish, budget, glass){
-  const content = shots.map(s => ({type:'image', source:{type:'base64', media_type:'image/jpeg', data:s.split(',')[1]}}));
+const imgBlock = s => ({type:'image', source:{type:'base64', media_type:'image/jpeg', data:s.split(',')[1]}});
+async function aiMenu(shots, food, dish, budget, glass){
+  /* tekstblokken tussen de foto's vertellen het model welke foto wat is */
+  const content = [{type:'text', text:`Foto's van de WIJNKAART (${shots.length} ${plur(shots.length,'pagina',"pagina's")}):`}, ...shots.map(imgBlock)];
+  if(food.length) content.push({type:'text', text:`Foto's van het MENU — dit is wat er gegeten wordt (${food.length} ${plur(food.length,'pagina',"pagina's")}):`}, ...food.map(imgBlock));
   const taste = tasteLines();
-  content.push({type:'text', text:`Je bent mijn sommelier en zit met me mee aan tafel in een restaurant. Op de foto's staat de wijnkaart${shots.length>1?` (${shots.length} pagina's)`:''}.
-
-Ik ga dit eten: "${dish}".${budget?`
+  content.push({type:'text', text:`Je bent mijn sommelier en zit met me mee aan tafel in een restaurant.
+${food.length?`Lees eerst het menu van de foto's: welke gangen en gerechten staan erop? Is het een vast menu of proefmenu, ga er dan van uit dat ik álle gangen eet.`:''}${dish?`
+${food.length?'Daarnaast heb ik zelf gezegd':'Ik ga dit eten'}: "${dish}".`:''}${budget?`
 Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één fles er net boven écht veel beter is — zeg dat dan expliciet.`:''}${glass?`
 Ik drink liever per glas: geef voorrang aan wijnen die per glas op de kaart staan.`:''}${taste?`
 Wijnen die ik eerder hoog beoordeelde (mijn smaak): ${taste}`:''}
 
-Lees de kaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 tot 5 beste wijnen DIE ECHT OP DEZE KAART STAAN bij mijn eten — verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is. Zijn er meerdere gerechten, kies dan bij voorkeur één fles die bij alles werkt en geef zo nodig een glas-advies per gerecht.
+Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 tot 5 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten — verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
+Bij meerdere gangen of gerechten: kies bij voorkeur één fles die het hele menu draagt, en geef daarnaast alleen dáár een tweede fles of een glas-advies waar dat écht beter is. Zet bij elke wijn voor welke gang of welk gerecht hij bedoeld is.
 
 Antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
-{"restaurant":"naam van het restaurant als die op de kaart staat, anders null","readable":true,"picks":[{"name":"wijn zoals op de kaart","producer":"producent of null","vintage":2021 of null,"type":"rood|wit|rose|mousserend|zoet|versterkt","region":"streek/land of null","price":42 of null,"unit":"fles|glas","flag":"beste match|prijstip|avontuurlijk|veilige keuze","score":1 tot 10,"reason":"1-2 zinnen: waarom deze wijn bij dit eten past","value":"korte opmerking over prijs-kwaliteit, of null"}],"glass_advice":"advies voor wijn per glas, of null","skip":"welke voor de hand liggende fles je hier juist laat staan en waarom, of null","note":"één korte praktische tip (schenktemperatuur, karafferen, jaargang navragen), of null"}
-price = het bedrag op de kaart in hele euro's als getal, zonder valutateken. Is de kaart onleesbaar of staan er geen wijnen op: {"readable":false,"picks":[]}. Alles in het Nederlands. ${styleNote()}`});
+{"restaurant":"naam van het restaurant als die op de kaart staat, anders null","readable":true,"courses":["de gangen/gerechten die je van het menu of uit mijn tekst hebt gelezen, in volgorde"],"picks":[{"name":"wijn zoals op de kaart","producer":"producent of null","vintage":2021 of null,"type":"rood|wit|rose|mousserend|zoet|versterkt","region":"streek/land of null","price":42 of null,"unit":"fles|glas","course":"bij welke gang of welk gerecht, of 'hele menu'","flag":"beste match|prijstip|avontuurlijk|veilige keuze","score":1 tot 10,"reason":"1-2 zinnen: waarom deze wijn bij dit eten past","value":"korte opmerking over prijs-kwaliteit, of null"}],"glass_advice":"advies voor wijn per glas, of null","skip":"welke voor de hand liggende fles je hier juist laat staan en waarom, of null","note":"één korte praktische tip (schenktemperatuur, karafferen, jaargang navragen), of null"}
+price = het bedrag op de wijnkaart in hele euro's als getal, zonder valutateken. courses is een lege lijst als je geen gangen kunt lezen. Is de wijnkaart onleesbaar of staan er geen wijnen op: {"readable":false,"picks":[]}. Alles in het Nederlands. ${styleNote()}`});
   return parseJsonLoose(await callClaude(content, 4000, 'wijnkaart'));
 }
 
@@ -1490,7 +1494,7 @@ async function openLiveScan(mode){
   try{
     liveStream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}, audio:false });
   }catch(e){ document.getElementById('fCam').click(); return; } /* geweigerd of geen camera → systeemcamera */
-  const kaart = liveMode === 'kaart';
+  const kaart = liveMode === 'kaart' || liveMode === 'menu';
   const div = document.createElement('div'); div.className = 'livewrap'; div.id = 'liveScan';
   div.innerHTML = `<video autoplay playsinline muted></video>
     <div class="liveframe${kaart?' page':''}">${kaart?'':'<div class="livescanline"></div>'}</div>
@@ -1511,12 +1515,12 @@ function closeLiveScan(){
   if(liveStream){ try{ liveStream.getTracks().forEach(t => t.stop()); }catch(e){} liveStream = null; }
   if(liveEl){ liveEl.remove(); liveEl = null; }
 }
-ACT.liveClose = () => { const k = liveMode === 'kaart'; closeLiveScan(); if(k) render(); };
+ACT.liveClose = () => { const k = liveMode !== 'etiket'; closeLiveScan(); if(k) render(); };
 ACT.liveLib = () => { closeLiveScan(); document.getElementById('fLib').click(); };
 ACT.liveSnap = () => liveCapture();
 function liveCheck(v){
   if(!v || !v.videoWidth) return;
-  if(liveMode === 'kaart'){ /* wijnkaart: geen auto-vangst, de gast kadreert zelf */
+  if(liveMode !== 'etiket'){ /* kaart of menu: geen auto-vangst, de gast kadreert zelf */
     const h = document.getElementById('liveHint');
     if(h) h.textContent = 'Hele pagina in beeld — tik op de knop';
     return;
@@ -1542,7 +1546,7 @@ function liveCheck(v){
 function liveCapture(){
   const v = liveEl && liveEl.querySelector('video');
   if(!v || !v.videoWidth) return;
-  const kaart = liveMode === 'kaart';
+  const kaart = liveMode === 'kaart' || liveMode === 'menu';
   if(liveTimer && !kaart){ clearInterval(liveTimer); liveTimer = null; }
   const fl = document.getElementById('liveFlash');
   if(fl){ fl.style.opacity = '0.75'; setTimeout(() => { if(fl) fl.style.opacity = '0'; }, 180); }
@@ -1553,10 +1557,11 @@ function liveCapture(){
   c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
   if(kaart){
     /* camera blijft open: meerdere pagina's achter elkaar fotograferen */
-    addMenuShot(c.toDataURL('image/jpeg', 0.82));
+    addMenuShot(c.toDataURL('image/jpeg', 0.82), liveMode);
+    const n = shotList(liveMode).length;
     const h = document.getElementById('liveHint');
-    if(menu.shots.length >= MENU_MAX){ closeLiveScan(); render(); return; }
-    if(h) h.textContent = `Pagina ${menu.shots.length} vastgelegd — nog een pagina? Anders op ✕`;
+    if(n >= shotMax(liveMode)){ closeLiveScan(); render(); return; }
+    if(h) h.textContent = `Pagina ${n} vastgelegd — nog een pagina? Anders op ✕`;
     return;
   }
   c.toBlob(b => { closeLiveScan(); if(b) handlePhoto(b); }, 'image/jpeg', 0.85);
@@ -1747,29 +1752,39 @@ async function runPair(dish, force){
 }
 
 /* ================= WIJNKAART (restaurant) ================= */
-const MENU_MAX = 4;
+const MENU_MAX = 4;       /* pagina's wijnkaart */
+const FOOD_MAX = 2;       /* pagina's menukaart (het eten) */
 const BUDGETS = [[0,'geen budget'],[40,'tot € 40'],[60,'tot € 60'],[80,'tot € 80'],[120,'tot € 120']];
-let menu = { shots:[], dish:'', budget:0, glass:false, busy:false, err:null };
+let menu = { shots:[], food:[], dish:'', budget:0, glass:false, busy:false, err:null };
 let menuOut = '';
 
-function addMenuShot(dataUrl){ if(menu.shots.length < MENU_MAX) menu.shots.push(dataUrl); }
-async function handleMenuFile(file){
+const shotList = t => t === 'menu' ? menu.food : menu.shots;
+const shotMax = t => t === 'menu' ? FOOD_MAX : MENU_MAX;
+function addMenuShot(dataUrl, target){ const l = shotList(target); if(l.length < shotMax(target)) l.push(dataUrl); }
+async function handleMenuFile(file, target){
   if(!file) return;
-  if(menu.shots.length >= MENU_MAX){ toast(`Maximaal ${MENU_MAX} pagina's`); return; }
-  try{ addMenuShot(await resizeImg(file, 1568, 0.82)); }
+  if(shotList(target).length >= shotMax(target)){ toast(`Maximaal ${shotMax(target)} pagina's`); return; }
+  try{ addMenuShot(await resizeImg(file, 1568, 0.82), target); }
   catch(e){ toast('Foto kon niet worden gelezen'); return; }
   UI.tab = 'pairing'; UI.pairMode = 'menu'; render();
 }
 /* foto's van de kaart blijven in het geheugen — ze horen niet in je kelder of in de cloud */
-function menuFillShots(){ menu.shots.forEach((s,i) => { const im = document.getElementById('ms'+i); if(im) im.src = s; }); }
+function menuFillShots(){
+  menu.shots.forEach((s,i) => { const im = document.getElementById('ms'+i); if(im) im.src = s; });
+  menu.food.forEach((s,i) => { const im = document.getElementById('mf'+i); if(im) im.src = s; });
+}
+/* strip met paginaminiaturen; prefix ms = wijnkaart, mf = menukaart */
+function shotStrip(list, prefix, delAct, addAct, max, label){
+  const tiles = list.map((s,i) => `<div class="mshot"><img id="${prefix}${i}" alt="${label} pagina ${i+1}">
+    <button class="del" data-act="${delAct}" data-i="${i}" aria-label="Pagina ${i+1} weghalen">✕</button></div>`).join('');
+  const add = list.length < max
+    ? `<button class="mshotadd" data-act="${addAct}" aria-label="${label} fotograferen"><span style="font-size:20px">＋</span><span>${list.length?'pagina':label}</span></button>` : '';
+  return `<div class="mshots">${tiles}${add}</div>`;
+}
 
 function viewMenu(){
   const chips = ['Biefstuk','Wild','Witte vis','Schaaldieren','Sushi','Pasta met tomaat','Kaasplank','Vegetarisch','Thaise curry']
     .map(c => `<button class="chip${norm(menu.dish)===norm(c)?' on':''}" data-act="menuQuick" data-d="${esc(c)}">${c}</button>`).join('');
-  const shots = menu.shots.map((s,i) => `<div class="mshot"><img id="ms${i}" alt="Pagina ${i+1} van de wijnkaart">
-    <button class="del" data-act="menuDel" data-i="${i}" aria-label="Pagina ${i+1} weghalen">✕</button></div>`).join('');
-  const add = menu.shots.length < MENU_MAX
-    ? `<button class="mshotadd" data-act="menuCam" aria-label="Pagina fotograferen"><span style="font-size:20px">＋</span><span>${menu.shots.length?'pagina':'kaart'}</span></button>` : '';
   const budgets = BUDGETS.map(([v,l]) => `<button class="chip${menu.budget===v?' on':''}" data-act="menuBudget" data-b="${v}">${l}</button>`).join('')
     + `<button class="chip${menu.glass?' on':''}" data-act="menuGlass">🥂 ook per glas</button>`;
   if(!menuOut && S.menuLast && Date.now() - (S.menuLast.at||0) < 12*3600*1000) menuOut = menuResultHtml(S.menuLast);
@@ -1777,54 +1792,61 @@ function viewMenu(){
     <p class="small mb8">Fotografeer de kaart, zeg wat je eet — de sommelier kiest de beste flessen ván die kaart, met een oordeel over de prijs.</p>
     ${aiReady() ? '' : `<div class="banner"><span>ℹ️</span><span><b>Kaart lezen vraagt AI.</b> Log in bij <button class="linkbtn" data-act="goAccount">Meer → Account</button> of vul je eigen API-sleutel in bij <button class="linkbtn" data-act="goSettings">Instellingen</button>. Zonder AI krijg je hieronder wel de kaartgids: waar je bij dit gerecht op moet letten.</span></div>`}
     <div class="panel" style="margin-bottom:12px">
-      <div class="eyebrow mb8">1 · De kaart</div>
-      <div class="mshots">${shots}${add}</div>
+      <div class="eyebrow mb8">1 · De wijnkaart</div>
+      ${shotStrip(menu.shots, 'ms', 'menuDel', 'menuCam', MENU_MAX, 'kaart')}
       <div class="btnrow"><button class="btn sm plain" data-act="menuCam">📷 Fotografeer</button><button class="btn sm plain" data-act="menuLib">Kies foto</button></div>
       <p class="small mt8">Lange kaart? Fotografeer tot ${MENU_MAX} pagina's — of alleen het stuk dat je aanspreekt.</p>
     </div>
     <div class="panel" style="margin-bottom:12px">
       <div class="eyebrow mb8">2 · Wat ga je eten?</div>
-      <input class="inp" id="menuDish" data-in="menuDish" value="${esc(menu.dish)}" placeholder="bv. 'ik neem zeebaars, zij hertenbiefstuk'" aria-label="Gerecht">
+      ${shotStrip(menu.food, 'mf', 'menuFoodDel', 'menuFoodCam', FOOD_MAX, 'menu')}
+      <div class="btnrow"><button class="btn sm plain" data-act="menuFoodCam">📷 Menu fotograferen</button><button class="btn sm plain" data-act="menuFoodLib">Kies foto</button></div>
+      <p class="small mt8 mb8">Proefmenu of dagmenu? Fotografeer de menukaart — de sommelier leest de gangen en kiest er één fles bij (of per gang een glas).</p>
+      <input class="inp" id="menuDish" data-in="menuDish" value="${esc(menu.dish)}" placeholder="of typ het: 'ik neem zeebaars, zij hertenbiefstuk'" aria-label="Gerecht">
       <div class="chiprow">${chips}</div>
       <div class="eyebrow mb8 mt8">3 · Budget</div>
       <div class="chiprow">${budgets}</div>
     </div>
     <button class="btn" data-act="menuGo" ${menu.busy?'disabled':''}>Lees de kaart en kies</button>
-    ${menu.shots.length||menuOut ? `<button class="btn plain mt8" data-act="menuClear">Begin opnieuw</button>` : ''}
+    ${menu.shots.length||menu.food.length||menuOut ? `<button class="btn plain mt8" data-act="menuClear">Begin opnieuw</button>` : ''}
     <div id="menuOut" class="mt14">${menuOut}</div>`;
 }
 ACT.menuCam = () => openLiveScan('kaart');
 ACT.menuLib = () => { photoTarget = 'kaart'; document.getElementById('fLib').click(); };
 ACT.menuDel = el => { menu.shots.splice(Number(el.dataset.i), 1); render(); };
+ACT.menuFoodCam = () => openLiveScan('menu');
+ACT.menuFoodLib = () => { photoTarget = 'menu'; document.getElementById('fLib').click(); };
+ACT.menuFoodDel = el => { menu.food.splice(Number(el.dataset.i), 1); render(); };
 ACT.menuBudget = el => { menu.budget = Number(el.dataset.b); render(); };
 ACT.menuGlass = () => { menu.glass = !menu.glass; render(); };
 ACT.menuQuick = el => { menu.dish = el.dataset.d; render(); };
 ACT.menuGo = () => runMenu();
-ACT.menuClear = () => { menu = { shots:[], dish:'', budget:0, glass:false, busy:false, err:null }; menuOut = ''; S.menuLast = null; save(); render(); };
+ACT.menuClear = () => { menu = { shots:[], food:[], dish:'', budget:0, glass:false, busy:false, err:null }; menuOut = ''; S.menuLast = null; save(); render(); };
 ACT.goAccount = () => { UI.tab='meer'; UI.meerPage='account'; render(); if(typeof fetchQuota === 'function') fetchQuota(); };
 INP.menuDish = el => { menu.dish = el.value; };
 
 async function runMenu(){
   const out = document.getElementById('menuOut'); if(!out) return;
   const dish = (menu.dish||'').trim();
-  if(!dish){ toast('Vertel eerst wat je gaat eten'); return; }
+  if(!dish && !menu.food.length){ toast('Vertel wat je gaat eten, of fotografeer het menu'); return; }
   if(!aiReady()){ menuOut = menuGuideHtml(dish, true); out.innerHTML = menuOut; return; }
   if(!menu.shots.length){ toast('Maak eerst een foto van de wijnkaart'); return; }
   menu.busy = true; menu.err = null;
   menuOut = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier leest de kaart…</span></div>`;
   out.innerHTML = menuOut;
   try{
-    const d = await aiMenu(menu.shots, dish, menu.budget||null, menu.glass);
+    const d = await aiMenu(menu.shots, menu.food, dish, menu.budget||null, menu.glass);
     const picks = (d.picks||[]).filter(p => p && p.name).slice(0, 5).map(p => ({
       name:String(p.name), producer:p.producer||'', vintage:(p.vintage>=1900&&p.vintage<=2100)?p.vintage:null,
       type:mapType(p.type||'rood'), region:p.region||'',
       price:(p.price!=null && !isNaN(p.price)) ? Math.round(Number(p.price)) : null,
-      unit:(norm(p.unit)==='glas')?'glas':'fles', flag:p.flag||'',
+      unit:(norm(p.unit)==='glas')?'glas':'fles', flag:p.flag||'', course:p.course||'',
       score:Math.max(1, Math.min(10, Math.round(Number(p.score)||7))),
       reason:p.reason||'', value:p.value||''
     }));
     if(d.readable === false || !picks.length) throw new Error('geen wijnen op de foto herkend');
     S.menuLast = { at:Date.now(), dish, budget:menu.budget||null, glass:!!menu.glass, restaurant:d.restaurant||null,
+      courses:(Array.isArray(d.courses)?d.courses:[]).filter(c => typeof c === 'string' && c.trim()).slice(0,12),
       picks, glassAdvice:d.glass_advice||null, skip:d.skip||null, note:d.note||null };
     save();
     menuOut = menuResultHtml(S.menuLast);
@@ -1837,11 +1859,16 @@ async function runMenu(){
 }
 
 function menuResultHtml(m){
-  const meta = [m.restaurant, `bij "${m.dish}"`, m.budget?`tot ${money(m.budget)}`:''].filter(Boolean).join(' · ');
+  const cs = m.courses || [];
+  const meta = [m.restaurant, m.dish?`bij "${m.dish}"`:(cs.length?`${cs.length} ${plur(cs.length,'gang','gangen')}`:''), m.budget?`tot ${money(m.budget)}`:''].filter(Boolean).join(' · ');
   let html = `<div class="mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
     <span class="srcchip">Sommelier-AI</span><span class="small">${esc(meta)}</span></div>`;
+  /* wat er van het menu gelezen is, zodat je kunt controleren of dat klopt */
+  if(cs.length) html += `<div class="panel" style="padding:11px 13px;margin-bottom:10px">
+    <div class="eyebrow mb8">Van het menu gelezen</div>
+    <div style="font-size:13.5px;color:var(--ink2)">${cs.map(c => esc(c)).join(' · ')}</div></div>`;
   html += m.picks.map((p, i) => `<div class="match">
-    ${p.flag?`<span class="mflag">${esc(p.flag)}</span>`:''}
+    ${p.flag?`<span class="mflag">${esc(p.flag)}</span>`:''}${p.course?`<span class="mflag" style="color:var(--ink3);margin-left:6px">${esc(p.course)}</span>`:''}
     <div class="match-top"><div style="min-width:0">
       <div class="wname" style="font-size:16px">${esc(p.name)}</div>
       <div class="wsub">${esc([p.producer, p.vintage||'NV', p.region].filter(Boolean).join(' · '))}</div>
@@ -2324,7 +2351,7 @@ function render(keepFocus){
 /* dezelfde twee bestandskiezers bedienen zowel het etiket als de wijnkaart */
 function routePhoto(file){
   const t = photoTarget; photoTarget = 'etiket';
-  if(t === 'kaart') handleMenuFile(file); else handlePhoto(file);
+  if(t === 'kaart' || t === 'menu') handleMenuFile(file, t); else handlePhoto(file);
 }
 document.getElementById('fCam').addEventListener('change', e => { routePhoto(e.target.files[0]); e.target.value=''; });
 document.getElementById('fLib').addEventListener('change', e => { routePhoto(e.target.files[0]); e.target.value=''; });
