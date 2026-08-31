@@ -681,6 +681,15 @@ function styleNote(){
     : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.';
 }
 
+/* Wat een AI-actie kost aan tegoed. Moet gelijk blijven aan creditsFor() in
+   supabase/ai-function.ts: foto's bepalen de kosten, en een kaartpagina (1568 px)
+   is ongeveer twee keer zo duur als een etiket (1100 px). */
+function creditCost(kind, images){
+  images = images || 0;
+  if(kind === 'wijnkaart') return Math.max(2, images * 2);
+  return Math.max(1, images);
+}
+
 /* Routering: eigen sleutel gaat vóór (rechtstreeks naar Anthropic, onbeperkt);
    anders via de Caveau-serverfunctie met het account-tegoed. */
 async function callClaude(content, maxTokens, kind){
@@ -1823,9 +1832,15 @@ function viewMenu(){
       <div class="eyebrow mb8 mt8">3 · Budget</div>
       <div class="chiprow">${budgets}</div>
     </div>
-    <button class="btn" data-act="menuGo" ${menu.busy?'disabled':''}>Lees de kaart en kies</button>
+    <button class="btn" data-act="menuGo" ${menu.busy?'disabled':''}>Lees de kaart en kies${creditNote()}</button>
     ${menu.shots.length||menu.food.length||menuOut ? `<button class="btn plain mt8" data-act="menuClear">Begin opnieuw</button>` : ''}
     <div id="menuOut" class="mt14">${menuOut}</div>`;
+}
+/* eerlijk vooraf: wat kost deze scan aan tegoed? (niet bij een eigen API-sleutel) */
+function creditNote(){
+  if((S.settings.apiKey||'').trim() || !aiReady() || typeof creditCost !== 'function') return '';
+  const n = creditCost('wijnkaart', menu.shots.length + menu.food.length);
+  return menu.shots.length ? ` · ${n} credits` : '';
 }
 ACT.menuCam = () => openLiveScan('kaart');
 ACT.menuLib = () => { photoTarget = 'kaart'; document.getElementById('fLib').click(); };
@@ -2593,7 +2608,7 @@ async function sbAI(content, maxTokens, kind){
   });
   const d = await res.json().catch(() => ({}));
   if(!res.ok){
-    const e = new Error(res.status === 402 ? 'Je gratis AI-tegoed voor deze maand is op'
+    const e = new Error(res.status === 402 ? 'Je AI-tegoed voor deze maand is op — kijk bij Meer → Account'
       : res.status === 429 ? (d.error || 'Even rustig aan — daglimiet bereikt')
       : res.status === 404 ? 'De serverfunctie is nog niet geplaatst (zie instructies)'
       : (d.error || ('Serverfout ' + res.status)));
@@ -2601,6 +2616,62 @@ async function sbAI(content, maxTokens, kind){
   }
   return (d.content||[]).filter(b => b.type === 'text').map(b => b.text).join('');
 }
+/* tegoed en abonnement, gevuld door fetchQuota() */
+const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
+let quota = null;
+function planBoxHtml(){
+  if(!quota) return '';
+  if(quota.plan === 'unlimited') return `<div class="banner"><span>∞</span><span>Onbeperkt tegoed op dit account.</span></div>`;
+  if(quota.plan === 'plus'){
+    const t = quota.renews ? new Date(quota.renews).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : null;
+    const op = quota.status && quota.status !== 'active';
+    return `<div class="panel" style="margin-top:12px">
+      <div class="eyebrow mb8">Caveau Plus</div>
+      <p style="font-size:14px;margin-bottom:8px">${quota.limit} credits per maand${t?` · ${op?'loopt af':'verlengt'} op ${esc(t)}`:''}.
+      ${op?`<br><b>Let op:</b> de betaling is niet gelukt (${esc(quota.status)}) — werk je betaalmethode bij om Plus te houden.`:''}</p>
+      <button class="btn plain" data-act="acPortal">Abonnement beheren</button></div>`;
+  }
+  const over = Math.max(0, quota.limit - quota.used);
+  return `<div class="panel" style="margin-top:12px">
+    <div class="eyebrow mb8">Caveau Plus · ${PLUS_PRIJS}</div>
+    <p style="font-size:14px;margin-bottom:8px">Je hebt nog <b>${over} van de ${quota.limit} gratis credits</b> deze maand. Met Plus krijg je er <b>${PLUS_CREDITS} per maand</b> — genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten.</p>
+    <p class="small mb8">Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Maandelijks opzegbaar.</p>
+    <button class="btn" data-act="acUpgrade">Plus nemen</button></div>`;
+}
+async function sbFn(name, body){
+  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
+  const res = await fetch(SB_URL + '/functions/v1/' + name, {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+    body: JSON.stringify(body||{})
+  });
+  const d = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(d.error || (res.status === 404 ? 'De betaalfunctie is nog niet geplaatst' : 'Serverfout ' + res.status));
+  return d;
+}
+async function billingGo(action, el){
+  if(el){ el.disabled = true; el.textContent = 'Even geduld…'; }
+  try{
+    const d = await sbFn('billing', {action});
+    if(d.url) location.href = d.url; else throw new Error('Geen betaallink ontvangen');
+  }catch(e){ toast(String(e.message||e)); if(el){ el.disabled = false; render(); } }
+}
+ACT.acUpgrade = el => billingGo('checkout', el);
+ACT.acPortal = el => billingGo('portal', el);
+
+/* terug uit Stripe Checkout: ?plus=ok / ?plus=annuleer */
+(function(){
+  const q = new URLSearchParams(location.search).get('plus');
+  if(!q) return;
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => {
+    if(q === 'ok'){
+      UI.tab = 'meer'; UI.meerPage = 'account'; render(); fetchQuota();
+      toast('Welkom bij Caveau Plus — je tegoed staat klaar', null, null, 6000);
+    } else toast('Afgebroken — er is niets afgeschreven');
+  }, 400);
+})();
+
 async function fetchQuota(){
   const el = document.getElementById('aiQuota');
   if(!el || !loggedIn()) return;
@@ -2608,17 +2679,21 @@ async function fetchQuota(){
     if(!sbAccess){ const ok = await sbRefresh(); if(!ok){ el.textContent = 'AI-tegoed: log opnieuw in'; return; } }
     const ms = new Date(); ms.setUTCDate(1); ms.setUTCHours(0,0,0,0);
     const [prof, used] = await Promise.all([
-      sbFetch('/rest/v1/profiles?select=plan,bonus_credits', {method:'GET'}),
-      sbFetch('/rest/v1/ai_usage?select=id&created_at=gte.' + encodeURIComponent(ms.toISOString()), {method:'GET'})
+      sbFetch('/rest/v1/profiles?select=plan,bonus_credits,plan_status,plan_renews_at', {method:'GET'}),
+      sbFetch('/rest/v1/ai_usage?select=cost_units&created_at=gte.' + encodeURIComponent(ms.toISOString()), {method:'GET'})
     ]);
-    const plan = (prof && prof[0] && prof[0].plan) || 'free';
-    const bonus = (prof && prof[0] && prof[0].bonus_credits) || 0;
-    const n = (used||[]).length;
-    let txt = plan === 'unlimited' ? `AI: onbeperkt · ${n} acties deze maand`
-      : plan === 'plus' ? `Caveau Plus · ${n} van 500 AI-acties deze maand`
-      : `AI-tegoed: ${n} van ${15 + bonus} gratis acties deze maand`;
+    const p = (prof && prof[0]) || {};
+    quota = { plan:p.plan || 'free', bonus:p.bonus_credits || 0, status:p.plan_status || null,
+      renews:p.plan_renews_at || null,
+      used:(used||[]).reduce((n,r) => n + (r.cost_units || 1), 0) };
+    quota.limit = quota.plan === 'plus' ? PLUS_CREDITS : FREE_CREDITS + quota.bonus;
+    let txt = quota.plan === 'unlimited' ? `AI: onbeperkt · ${quota.used} credits deze maand`
+      : quota.plan === 'plus' ? `Caveau Plus · ${quota.used} van ${quota.limit} credits deze maand`
+      : `Gratis tegoed: ${Math.max(0, quota.limit - quota.used)} van ${quota.limit} credits over deze maand`;
     if((S.settings.apiKey||'').trim()) txt += ' · eigen sleutel actief (telt niet mee)';
     el.textContent = txt;
+    const box = document.getElementById('planBox');
+    if(box) box.innerHTML = planBoxHtml();
   }catch(e){ el.textContent = 'AI-tegoed: nog niet beschikbaar'; }
 }
 
@@ -2651,6 +2726,7 @@ function viewAccount(){
       <div class="u">Laatste sync: ${esc(last)}${syncBusy?' · bezig…':''}${lastSyncNote?` · ⚠️ ${esc(lastSyncNote)}`:''}</div>
       <div class="u" id="aiQuota">AI-tegoed: laden…</div>
     </span></div></div>
+    <div id="planBox">${planBoxHtml()}</div>
     <button class="btn mt14" data-act="acSync">Nu synchroniseren</button>
     <button class="btn plain" data-act="acLogout" style="margin-top:9px">Uitloggen op dit apparaat</button>
     <p class="small mt8">Elke wijziging gaat een paar seconden later automatisch naar de cloud; bij het openen wordt de nieuwste versie opgehaald. Uitloggen verwijdert niets.</p>`;

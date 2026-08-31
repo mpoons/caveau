@@ -27,5 +27,6 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 ## Status & vervolg
 - Fase 1 (AI-proxy) app-kant staat live; Max' serverstappen: SQL (`supabase/schema-fase1.sql`) plakken, secret zetten, functie `ai` deployen via dashboard.
 - Wijnkaart-scan (restaurant): Pairing → derde stand "Wijnkaart" (`viewMenu`/`runMenu`/`aiMenu`, kind `wijnkaart`, tot 4 foto's, alleen in het geheugen — nooit in IndexedDB of cloud). Laatste advies leeft in `S.menuLast` (12 uur zichtbaar). Zonder AI: `menuGuideHtml` (FOODS-regels) als kaartgids.
-- Fase 2-plan: Stripe Checkout + webhook → `profiles.plan='plus'` (€1,99/mnd), klantportaal; daarna privacy/voorwaarden-pagina's. Supabase Pro pas bij betalende gebruikers.
+- Fase 2 (app-kant klaar, server nog niet): **gewogen credits** i.p.v. acties — `creditsFor()` in `ai-function.ts` en `creditCost()` in caveau.html moeten gelijk blijven (etiket/tekst = 1, wijnkaart = 2 per foto). Gratis 20 credits/mnd, Plus 300 voor €2,99. Stripe direct (btw regelt Max zelf later): `billing-function.ts` (Checkout + portaal, JWT aan) en `stripe-webhook.ts` (**JWT uit**, handtekening via `constructEventAsync`). SQL: `schema-fase2.sql`.
+- Nog te doen na fase 2: privacy/voorwaarden-pagina's, Supabase Pro bij echte gebruikers, daarna marketingplan.
 - Wens-backlog: échte pushmeldingen (vergt berichtenserver), meertalige versie, AI-sommelier-kwaliteit verder onder de loep.
