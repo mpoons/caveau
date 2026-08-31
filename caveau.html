@@ -606,7 +606,9 @@ const FOODS = [
    dishes:['Charcuterie en olijven','Bitterballen'], buy:'een Crémant of droge Fino sherry'}
 ];
 
-function winesForDish(text){
+/* scoort de hele kelder tegen een gerecht; gedeeld door de kelderregels
+   (winesForDish) en het voorfilter dat de AI-prompt klein houdt */
+function scoreWines(text){
   const t = norm(text);
   const cats = FOODS.filter(f => f.kw.some(k => t.includes(norm(k))));
   const scored = S.wines.filter(w => w.qty > 0).map(w => {
@@ -623,7 +625,13 @@ function winesForDish(text){
     /* urgentie telt mee: wat op moet en past, schenk je juist nú */
     if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.4; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc += 0.8;
     return {w, sc, reason, grapeHit, st};
-  }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc).slice(0,5);
+  }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc);
+  return {cats, scored};
+}
+
+function winesForDish(text){
+  const {cats, scored:all} = scoreWines(text);
+  const scored = all.slice(0,5);
   const mx = Math.max(4.8, ...scored.map(x=>x.sc));
   scored.forEach(x => {
     x.score = Math.max(4, Math.min(10, Math.round(x.sc / mx * 10)));
@@ -725,18 +733,36 @@ value_eur = geschatte actuele winkelprijs per fles in euro's (EU-retail), value_
   return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken'));
 }
 
-function cellarLines(){
-  return S.wines.filter(w => w.qty > 0).slice(0, 120).map(w =>
-    `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`
-  ).join('\n');
+const CELLAR_MAX = 25;   /* hoeveel wijnen er hoogstens meegaan in een AI-prompt */
+const wineLine = w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
+
+/* Een hele kelder meesturen is zonde van het tegoed: bij een bekend gerecht
+   sturen we alleen de plausibele kandidaten (kelderregels doen de voorselectie),
+   aangevuld met flessen die toch bijna op moeten. Zonder gerecht, of als de
+   regels het gerecht niet kennen, gaat de kelder gewoon mee zoals eerst. */
+function cellarLines(dish){
+  const inStock = S.wines.filter(w => w.qty > 0);
+  let list = inStock;
+  if(dish && inStock.length > CELLAR_MAX){
+    const {cats, scored} = scoreWines(dish);
+    if(cats.length && scored.length){
+      const pick = new Map();
+      scored.slice(0, CELLAR_MAX).forEach(x => pick.set(x.w.id, x.w));
+      /* wat op moet mag nooit uit beeld vallen, ook als het net niet scoort */
+      inStock.filter(w => ['nu','over'].includes(windowStatus(w).k))
+        .slice(0, 5).forEach(w => pick.set(w.id, w));
+      list = [...pick.values()];
+    }
+  }
+  return list.slice(0, 120).map(wineLine).join('\n');
 }
 
 async function aiDish(dish){
-  const prompt = `Je bent mijn sommelier. Dit is mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
-${cellarLines()}
+  const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
+${cellarLines(dish)}
 
-Ik ga dit eten: "${dish}". Kies de 3 tot 5 beste flessen UIT DEZE KELDER, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang — die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
-{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"1-2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
+Ik ga dit eten: "${dish}". Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang — die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
+{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
   return parseJsonLoose(out);
@@ -768,11 +794,11 @@ Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één f
 Ik drink liever per glas: geef voorrang aan wijnen die per glas op de kaart staan.`:''}${taste?`
 Wijnen die ik eerder hoog beoordeelde (mijn smaak): ${taste}`:''}
 
-Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 tot 5 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten — verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
+Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 of 4 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten — verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
 Bij meerdere gangen of gerechten: kies bij voorkeur één fles die het hele menu draagt, en geef daarnaast alleen dáár een tweede fles of een glas-advies waar dat écht beter is. Zet bij elke wijn voor welke gang of welk gerecht hij bedoeld is.
 
 Antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
-{"restaurant":"naam van het restaurant als die op de kaart staat, anders null","readable":true,"courses":["de gangen/gerechten die je van het menu of uit mijn tekst hebt gelezen, in volgorde"],"picks":[{"name":"wijn zoals op de kaart","producer":"producent of null","vintage":2021 of null,"type":"rood|wit|rose|mousserend|zoet|versterkt","region":"streek/land of null","price":42 of null,"unit":"fles|glas","course":"bij welke gang of welk gerecht, of 'hele menu'","flag":"beste match|prijstip|avontuurlijk|veilige keuze","score":1 tot 10,"reason":"1-2 zinnen: waarom deze wijn bij dit eten past","value":"korte opmerking over prijs-kwaliteit, of null"}],"glass_advice":"advies voor wijn per glas, of null","skip":"welke voor de hand liggende fles je hier juist laat staan en waarom, of null","note":"één korte praktische tip (schenktemperatuur, karafferen, jaargang navragen), of null"}
+{"restaurant":"naam van het restaurant als die op de kaart staat, anders null","readable":true,"courses":["de gangen/gerechten die je van het menu of uit mijn tekst hebt gelezen, in volgorde"],"picks":[{"name":"wijn zoals op de kaart","producer":"producent of null","vintage":2021 of null,"type":"rood|wit|rose|mousserend|zoet|versterkt","region":"streek/land of null","price":42 of null,"unit":"fles|glas","course":"bij welke gang of welk gerecht, of 'hele menu'","flag":"beste match|prijstip|avontuurlijk|veilige keuze","score":1 tot 10,"reason":"maximaal 2 zinnen: waarom deze wijn bij dit eten past","value":"korte opmerking over prijs-kwaliteit, of null"}],"glass_advice":"advies voor wijn per glas, of null","skip":"welke voor de hand liggende fles je hier juist laat staan en waarom, of null","note":"één korte praktische tip (schenktemperatuur, karafferen, jaargang navragen), of null"}
 price = het bedrag op de wijnkaart in hele euro's als getal, zonder valutateken. courses is een lege lijst als je geen gangen kunt lezen. Is de wijnkaart onleesbaar of staan er geen wijnen op: {"readable":false,"picks":[]}. Alles in het Nederlands. ${styleNote()}`});
   return parseJsonLoose(await callClaude(content, 4000, 'wijnkaart'));
 }
@@ -781,7 +807,7 @@ async function aiWine(w, richting){
   const prompt = `Je bent mijn sommelier. Welke gerechten passen bij deze wijn?
 ${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.${richting?`
 Voorkeur van de gebruiker: "${richting}" — laat álle suggesties bij die richting aansluiten.`:''}
-Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend. De redenen in deze stijl: ${styleNote()}`;
+Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend, elke reden één zin. De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 2000, 'gerechten');
   return parseJsonLoose(out);
 }
@@ -1851,7 +1877,7 @@ async function runMenu(){
   out.innerHTML = menuOut;
   try{
     const d = await aiMenu(menu.shots, menu.food, dish, menu.budget||null, menu.glass);
-    const picks = (d.picks||[]).filter(p => p && p.name).slice(0, 5).map(p => ({
+    const picks = (d.picks||[]).filter(p => p && p.name).slice(0, 4).map(p => ({
       name:String(p.name), producer:p.producer||'', vintage:(p.vintage>=1900&&p.vintage<=2100)?p.vintage:null,
       type:mapType(p.type||'rood'), region:p.region||'',
       price:(p.price!=null && !isNaN(p.price)) ? Math.round(Number(p.price)) : null,

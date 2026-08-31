@@ -26,6 +26,18 @@ function countImages(messages: unknown): number {
   return n
 }
 
+// Model per actiesoort. Sonnet 5 ($3/$15 per M tokens) is de standaard; Haiku 4.5
+// ($1/$5) is drie keer goedkoper maar merkbaar zwakker in wijnkennis — daarom
+// alleen voor acties waar het om schrijven gaat, niet om weten of kijken.
+// Een soort verplaatsen = één regel hieronder; daarna de functie opnieuw deployen.
+const MODEL_DEFAULT = 'claude-sonnet-5'
+const MODEL_BY_KIND: Record<string, string> = {
+  recept: 'claude-haiku-4-5',      // kookrecept uitschrijven: geen wijnkennis nodig
+  gerechten: 'claude-haiku-4-5',   // gerechten bij een wijn: patroonwerk
+  // scan / wijnkaart (beeld), waardes / herbereken (prijs- en jaargangkennis),
+  // pairing en vraag (kwaliteit die de gebruiker direct merkt) blijven op Sonnet.
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
@@ -77,7 +89,7 @@ Deno.serve(async (req) => {
 
     // verzoek doorsturen — de server bepaalt model en instellingen
     const payload = {
-      model: 'claude-sonnet-5',
+      model: MODEL_BY_KIND[kind] || MODEL_DEFAULT,
       max_tokens: Math.min(Number(body.max_tokens) || 2000, 4000),
       thinking: { type: 'disabled' },
       messages: body.messages,
