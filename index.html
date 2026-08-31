@@ -103,6 +103,7 @@ html,body{background:var(--bg)}
 body{
   font-family:var(--sans); color:var(--ink); font-size:15px; line-height:1.5;
   -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation; /* dubbeltik zoomt niet meer per ongeluk in; knijpen blijft gewoon werken */
 }
 img{max-width:100%;display:block}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
@@ -219,6 +220,9 @@ h1,h2,h3{text-wrap:balance}
 .inp{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:15px;outline:none}
 .inp:focus{border-color:var(--acc)}
 textarea.inp{resize:vertical;min-height:64px}
+/* iOS zoomt vanzelf in zodra je een tekstveld kleiner dan 16px aantikt, en zoomt daarna
+   niet terug — op een aanraakscherm dus 16px, zodat de app niet scheef ingezoomd blijft staan. */
+@media (pointer:coarse){ .inp, .search input, input, select, textarea { font-size:16px } }
 .frow{display:flex;gap:9px}
 .frow>.field{flex:1;min-width:0}
 .seg{display:flex;background:var(--card2);border-radius:11px;padding:3px;gap:3px;flex-wrap:wrap}
