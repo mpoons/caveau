@@ -4,7 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Caveau — wijnkelder</title>
-<meta name="theme-color" content="#FAF6EF">
+<meta name="description" content="Caveau is je wijnkelder in je zak: scan een etiket, weet altijd welke fles nú open moet, en laat de sommelier in het restaurant de wijnkaart lezen.">
+<meta name="theme-color" content="#FAF6EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1F1216" media="(prefers-color-scheme: dark)">
+<!-- hoe de link eruitziet als iemand hem deelt in WhatsApp, iMessage of Slack -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Caveau">
+<meta property="og:title" content="Caveau — je wijnkelder in je zak">
+<meta property="og:description" content="Scan een etiket, weet altijd welke fles nú open moet, en laat de sommelier in het restaurant de wijnkaart lezen.">
+<meta property="og:url" content="https://mpoons.github.io/caveau/">
+<meta property="og:image" content="https://mpoons.github.io/caveau/icon-512.png">
+<meta property="og:locale" content="nl_NL">
+<meta name="twitter:card" content="summary">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -115,6 +126,8 @@ h1,h2,h3{text-wrap:balance}
 .search input{flex:1;border:0;background:none;outline:none;font-size:15px}
 .search input::placeholder{color:var(--ink3)}
 .search svg{flex:none;color:var(--ink3)}
+.search .sortbtn{flex:none;width:32px;height:32px;margin:-4px -6px -4px 0;border-radius:9px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
+.search .sortbtn:active{background:var(--card2)}
 .chiprow{display:flex;gap:7px;overflow-x:auto;padding:10px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chiprow::-webkit-scrollbar{display:none}
 .chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink2);white-space:nowrap}
@@ -136,7 +149,7 @@ h1,h2,h3{text-wrap:balance}
 .dbtn{width:36px;height:36px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);display:flex;align-items:center;justify-content:center}
 .dbtn:active{transform:scale(.92)}
 .qty{font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--ink);background:var(--card2);border-radius:8px;padding:3px 8px}
-.wloc{font-size:11px;color:var(--ink3);max-width:90px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wloc{font-size:11px;color:var(--ink3);max-width:104px;text-align:right;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .tdot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
 .tlabel{font-size:12px;color:var(--ink2)}
 .t-rood{background:var(--t-rood)} .t-wit{background:var(--t-wit)} .t-rose{background:var(--t-rose)}
@@ -197,7 +210,9 @@ h1,h2,h3{text-wrap:balance}
 .tl-track{position:relative;height:10px;border-radius:5px;background:var(--bar-track);overflow:visible}
 .tl-fill{position:absolute;top:0;bottom:0;border-radius:5px;background:linear-gradient(90deg,var(--t-mous),var(--ok) 30%,var(--warn) 78%,var(--bad))}
 .tl-now{position:absolute;top:-4px;width:2.5px;height:18px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 3px var(--sheet)}
-.tl-lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink3);margin-top:7px;font-variant-numeric:tabular-nums}
+.tl-lab{position:relative;height:15px;font-size:11.5px;color:var(--ink3);margin-top:7px;font-variant-numeric:tabular-nums}
+.tl-lab span{position:absolute;top:0;white-space:nowrap}
+.tl-lab span.now{color:var(--ink);font-weight:600}
 /* ---------- formulieren ---------- */
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
@@ -240,6 +255,8 @@ textarea.inp{resize:vertical;min-height:64px}
 .brow .l{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .brow .track{display:block;height:9px;border-radius:5px;background:var(--bar-track);overflow:hidden}
 .brow .fill{display:block;height:100%;border-radius:5px 4px 4px 5px;background:var(--bar);min-width:3px}
+.brow .fill.t-rood{background:var(--t-rood)} .brow .fill.t-wit{background:var(--t-wit)} .brow .fill.t-rose{background:var(--t-rose)}
+.brow .fill.t-mousserend{background:var(--t-mous)} .brow .fill.t-zoet{background:var(--t-zoet)} .brow .fill.t-versterkt{background:var(--t-vers)}
 .brow .v{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow)}
 .panel+.panel{margin-top:12px}
@@ -445,8 +462,12 @@ async function pDel(id){ photoCache.delete(id); const d = await idb(); if(!d) re
 async function pKeys(){ const d = await idb(); if(!d) return [];
   return new Promise(r=>{ const rq=d.transaction('p').objectStore('p').getAllKeys(); rq.onsuccess=()=>r(rq.result||[]); rq.onerror=()=>r([]); }); }
 async function fillPhotos(root){
-  const imgs = (root||document).querySelectorAll('img[data-photo]');
-  for(const img of imgs){ const src = await pGet(img.dataset.photo); if(src){ img.src = src; img.closest('.wthumb,.dphoto,.scanprev')?.querySelector('svg')?.remove(); } }
+  /* parallel: bij een grote kelder scheelt dat tientallen losse IndexedDB-rondjes */
+  const imgs = [...(root||document).querySelectorAll('img[data-photo]')];
+  await Promise.all(imgs.map(async img => {
+    const src = await pGet(img.dataset.photo);
+    if(src){ img.src = src; img.closest('.wthumb,.dphoto,.scanprev')?.querySelector('svg')?.remove(); }
+  }));
 }
 const bottleSvg = `<svg width="22" height="34" viewBox="0 0 22 34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 2h4v6.5c2.2 1.2 3.5 3 3.5 5.8V29a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3V14.3c0-2.8 1.3-4.6 3.5-5.8V2Z"/></svg>`;
 
@@ -734,7 +755,7 @@ function parseJsonLoose(s){
 async function aiScan(dataUrl){
   const b64 = dataUrl.split(',')[1];
   const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
-{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","alcohol":"13,5%" of null,"drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","confidence":0.0 tot 1.0}
+{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter"}
 drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte actuele winkelprijs per fles in euro's (Europese retail), met value_low/value_high als realistische bandbreedte. pairing in het Nederlands. ${styleNote()} Onleesbare of onbekende velden: null.`;
   const out = await callClaude([
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
@@ -947,7 +968,6 @@ function viewKelder(){
     `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">⏳ Over tijd</button>`,
     ...Object.keys(TYPES).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
-    `<button class="chip" data-act="chipSort">${SORTS[UI.sort]} ↕</button>`
   ].join('');
   const bc = bottleCount(), val = cellarValue();
   let body;
@@ -955,7 +975,8 @@ function viewKelder(){
     body = `<div class="empty"><div class="big">Je kelder is nog leeg</div>
       <p>Scan het etiket van een fles om te beginnen — of vul hem handmatig in.</p>
       <button class="btn" data-act="tab" data-tab="scan" style="max-width:260px">Scan je eerste fles</button>
-      <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div></div>`;
+      <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div>
+      <p class="small mt14" style="max-width:330px;margin-left:auto;margin-right:auto">Log in bij <button class="linkbtn" data-act="goAccount">Meer → Account</button> en je kelder synchroniseert tussen je apparaten; je krijgt dan ook ${FREE_CREDITS} gratis credits per maand om etiketten en wijnkaarten te laten lezen.</p></div>`;
   } else if(!list.length){
     body = `<div class="empty"><div class="big">Niets gevonden</div><p>Geen flessen die aan deze filters voldoen.</p></div>`;
   } else {
@@ -971,7 +992,8 @@ function viewKelder(){
   }
   return `${brandRow(`${bc} ${plur(bc,'fles','flessen')}${val?` · ${money(val)}`:''}`)}
     <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-      <input type="search" placeholder="Zoek op naam, druif, regio, locatie…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken"></div>
+      <input type="search" placeholder="Zoek op naam, druif, regio, locatie…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken">
+      <button class="sortbtn" data-act="chipSort" aria-label="Sorteren: ${esc(SORTS[UI.sort])}" title="Sorteren"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V5m0 0L4 8m3-3 3 3"/><path d="M17 4v15m0 0 3-3m-3 3-3-3"/></svg></button></div>
     <div class="chiprow">${chips}</div>${tonightBanner()}${locBanner}${body}`;
 }
 INP.q = el => { UI.q = el.value; refreshList(); };
@@ -1021,12 +1043,12 @@ function openDetail(id){
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
-    <button class="btn soft" data-act="wineDishes" data-id="${w.id}" style="margin-bottom:9px">Wat eet je hierbij?</button>
-    <button class="btn soft" data-act="askSomm" data-id="${w.id}" style="margin-bottom:9px">💬 Vraag de sommelier</button>
-    ${onTable(w.id)
-      ? `<button class="btn soft" data-act="tafelAf" data-id="${w.id}" style="margin-bottom:9px">✓ Staat op tafel — haal eraf</button>`
-      : `<button class="btn soft" data-act="tafelOp" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">🍷 Vanavond drinken (zet op tafel)</button>`}
+    <div class="btnrow mb8"><button class="btn soft" data-act="wineDishes" data-id="${w.id}">Wat past erbij?</button>
+      <button class="btn soft" data-act="askSomm" data-id="${w.id}">💬 Vraag</button></div>
     <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
+    ${onTable(w.id)
+      ? `<button class="btn plain" data-act="tafelAf" data-id="${w.id}" style="margin-bottom:9px">✓ Staat op tafel — haal eraf</button>`
+      : `<button class="btn plain" data-act="tafelOp" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">🍷 Zet op tafel voor vanavond</button>`}
     <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
     <button class="btn danger" data-act="wineDel" data-id="${w.id}">Verwijderen</button></div>`);
   fillPhotos(sh);
@@ -1036,15 +1058,23 @@ function timelineHtml(w){
   if(!f && !t) return '';
   const y = YR(), lo = Math.min(f||y, y) - 1, hi = Math.max(t||y, y) + 1, span = Math.max(1, hi-lo);
   const L = v => Math.min(100, Math.max(0, (v-lo)/span*100)).toFixed(1);
-  const labs = [];
-  if(f) labs.push([f, String(f)]);
-  labs.push([y, `nu · ${y}`]);
-  if(t && t !== f) labs.push([t, String(t)]);
+  /* valt "nu" samen met het begin of einde van het venster, dan één label i.p.v. twee
+     die over elkaar heen vallen; ligt het er vlak naast, dan wint de jaargrens */
+  let labs = [];
+  if(f) labs.push([f, f === y ? `nu · ${f}` : String(f), f === y ? 'now' : '']);
+  if(t && t !== f) labs.push([t, t === y ? `nu · ${t}` : String(t), t === y ? 'now' : '']);
+  if(y !== f && y !== t){
+    const near = labs.some(l => Math.abs(Number(L(l[0])) - Number(L(y))) < 7);
+    if(!near) labs.push([y, `nu · ${y}`, 'now']);
+  }
   labs.sort((a,b) => a[0] - b[0]);
+  /* elk label staat onder zijn eigen punt; aan de randen schuift het naar binnen */
+  const place = v => { const x = Number(L(v));
+    return `left:${x}%;transform:translateX(${x < 12 ? '0' : x > 88 ? '-100%' : '-50%'})`; };
   return `<div class="tl" role="img" aria-label="Drinkvenster ${f||'?'} tot ${t||'?'}"><div class="tl-track">
     ${(f&&t)?`<div class="tl-fill" style="left:${L(f)}%;right:${(100-Number(L(t))).toFixed(1)}%"></div>`:''}
     <div class="tl-now" style="left:${L(y)}%"></div></div>
-    <div class="tl-lab">${labs.map(l=>`<span>${l[1]}</span>`).join('')}</div></div>`;
+    <div class="tl-lab">${labs.map(l=>`<span class="${l[2]}" style="${place(l[0])}">${l[1]}</span>`).join('')}</div></div>`;
 }
 ACT.qtyPlus = el => { const w = findWine(el.dataset.id); if(!w) return; w.qty = (w.qty||0)+1; save();
   const q = document.getElementById('dQty'); if(q) q.textContent = w.qty; };
@@ -1981,9 +2011,13 @@ function menuGuideHtml(dish, primary){
 /* ================= OVERZICHT ================= */
 function barRows(pairs, dot){
   const mx = Math.max(1, ...pairs.map(p => p[1]));
-  return pairs.map(p => `<div class="brow"><span class="l">${dot?dotHtml(p[2]):''}${esc(p[0])}</span>
-    <span class="track"><span class="fill" style="width:${Math.max(4, p[1]/mx*100)}%"></span></span>
-    <span class="v tnum">${p[1]}</span></div>`).join('');
+  return pairs.map(p => {
+    /* bij een typeverdeling krijgt de staaf de kleur van het type, net als het bolletje */
+    const cls = (dot && TYPES[p[2]]) ? ' ' + TYPES[p[2]].c : '';
+    return `<div class="brow"><span class="l">${dot?dotHtml(p[2]):''}${esc(p[0])}</span>
+    <span class="track"><span class="fill${cls}" style="width:${Math.max(4, p[1]/mx*100)}%"></span></span>
+    <span class="v tnum">${p[1]}</span></div>`;
+  }).join('');
 }
 function viewOverzicht(){
   const bc = bottleCount(), val = cellarValue();
