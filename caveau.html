@@ -269,8 +269,23 @@ textarea.inp{resize:vertical;min-height:64px}
 .scanbig:active{transform:scale(.97)}
 .scanprev{border-radius:16px;overflow:hidden;max-height:300px;display:flex;align-items:center;justify-content:center;background:var(--card2);margin-bottom:14px}
 .scanprev img{object-fit:contain;max-height:300px}
-.spin{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--acc-soft);border-top-color:var(--acc);animation:spin .8s linear infinite;flex:none}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* laadbeeld terwijl de sommelier werkt: een glas dat volloopt */
+.pour{flex:none;width:22px;height:30px;display:block}
+.pour .wine{fill:var(--acc);animation:pourfill 2.1s cubic-bezier(.4,0,.5,1) infinite}
+.pour .glass{fill:none;stroke:var(--acc);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.55}
+@keyframes pourfill{
+  0%{transform:translateY(16px);opacity:1}
+  62%{transform:translateY(3.6px);opacity:1}
+  84%{transform:translateY(3.6px);opacity:1}
+  100%{transform:translateY(3.6px);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){.pour .wine{animation:none;transform:translateY(7px)}}
+/* schenkadvies */
+.serve{background:var(--card2);border-radius:12px;padding:10px 13px;margin-bottom:12px}
+.serve .srow{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:2px 0}
+.serve .k{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:600;flex:none}
+.serve .v{font-size:13.5px;color:var(--ink);text-align:right}
+.serve .stip{font-size:12.5px;color:var(--ink2);margin-top:7px;line-height:1.45}
 .pulse{animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 /* live-scanner (QR-gevoel) */
@@ -442,6 +457,13 @@ async function fillPhotos(root){
     if(src){ img.src = src; img.closest('.wthumb,.dphoto,.scanprev')?.querySelector('svg')?.remove(); }
   }));
 }
+/* glas dat volloopt — laadbeeld voor alles waar de sommelier op zit te denken */
+const pourSvg = `<svg class="pour" viewBox="0 0 22 30" aria-hidden="true">
+  <defs><clipPath id="pourc"><path d="M4.6 3h12.8l-1 8.2a5.9 5.9 0 0 1-10.8 0L4.6 3Z"/></clipPath></defs>
+  <g clip-path="url(#pourc)"><rect class="wine" x="3" y="0" width="16" height="16" rx="1"/></g>
+  <path class="glass" d="M4.6 3h12.8l-1 8.2a5.9 5.9 0 0 1-10.8 0L4.6 3Z"/>
+  <path class="glass" d="M11 17.3V25M7.4 26.4h7.2"/></svg>`;
+
 const bottleSvg = `<svg width="22" height="34" viewBox="0 0 22 34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 2h4v6.5c2.2 1.2 3.5 3 3.5 5.8V29a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3V14.3c0-2.8 1.3-4.6 3.5-5.8V2Z"/></svg>`;
 
 /* ================= sheets & toast ================= */
@@ -1014,7 +1036,8 @@ function openDetail(id){
       <div class="dcell"><div class="k">Geschatte waarde</div><div class="v tnum">${money(w.value ?? w.price)}</div>${(()=>{const b=Number(w.value ?? w.price); if(!b) return ''; const lo=Number(w.valueLow)||Math.round(b*0.8), hi=Number(w.valueHigh)||Math.round(b*1.2); return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>`;})()}</div>
     </div>
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
-    ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
+    <div class="eyebrow mb8">Schenken</div>${serveHtml(w)}
+    ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8 mt14">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
     <div class="btnrow mb8"><button class="btn soft" data-act="wineDishes" data-id="${w.id}">Wat past erbij?</button>
       <button class="btn soft" data-act="askSomm" data-id="${w.id}">💬 Vraag</button></div>
@@ -1235,7 +1258,79 @@ let recalcValueRange = null;
 let vensterAuto = true; /* venster is (nog) een schatting → mag automatisch herberekend worden */
 
 /* ---- "Op tafel": fles gekozen om vanavond te drinken, nog niet afgestreept ---- */
+/* Schenkadvies uit vaste sommelierregels: temperatuur, glas en karafferen.
+   Kost geen tegoed en werkt offline — de AI is er voor de rest ("Vraag"). */
+function serveAdvice(w){
+  const g = (w.grapes||[]).map(norm).join(' ') + ' ' + norm(w.name) + ' ' + norm(w.appellation||'') + ' ' + norm(w.region||'');
+  const has = list => list.some(x => g.includes(x));
+  const age = w.vintage ? YR() - w.vintage : null;
+  const st = windowStatus(w);
+  let temp = '14–16 °C', glass = 'een tulpvormig wijnglas', tips = [];
+
+  if(w.type === 'mousserend'){
+    temp = (age !== null && age > 8) ? '8–10 °C' : '6–8 °C';
+    glass = 'een fluit of liever een smal tulpglas — daar komt meer geur uit';
+    tips.push(age !== null && age > 8
+      ? 'Een gerijpte bubbel wil niet ijskoud; te koud smoort de complexiteit.'
+      : 'Drie uur in de koelkast koelt beter en rustiger dan een kwartier in de vriezer.');
+  } else if(w.type === 'wit'){
+    const rijk = has(['chardonnay','semillon','viognier','marsanne','roussanne','gruner']) || (age !== null && age > 5);
+    temp = rijk ? '10–12 °C' : '8–10 °C';
+    glass = rijk ? 'een ruimer wijnglas' : 'een tulpvormig wijnglas';
+    tips.push('Recht uit de koelkast is meestal te koud — zet hem twintig minuten van tevoren op tafel.');
+  } else if(w.type === 'rose'){
+    temp = '8–10 °C';
+  } else if(w.type === 'zoet'){
+    temp = '6–8 °C'; glass = 'een klein glas';
+    tips.push('Schenk kleine glazen: koel en zoet werkt het best in kleine hoeveelheden.');
+  } else if(w.type === 'versterkt'){
+    if(has(['fino','manzanilla','sherry'])){ temp = '7–9 °C'; tips.push('Fino en manzanilla drink je koud en jong — een geopende fles blijft maar een paar dagen goed.'); }
+    else { temp = '16–18 °C'; tips.push('Een geopende fles port of oloroso houdt zich weken; koel bewaren na openen.'); }
+  } else { /* rood */
+    const licht = has(G_LIGHT_RED), groot = has(G_BIG_RED);
+    temp = licht ? '12–14 °C' : groot ? '16–18 °C' : '14–16 °C';
+    glass = has(['pinot','nebbiolo']) ? 'een bourgogneglas (bolle kelk)' : groot ? 'een ruim bordeauxglas' : 'een tulpvormig wijnglas';
+    if(licht) tips.push('Kelderkoud is beter dan kamertemperatuur — een half uur in de koelkast doet wonderen.');
+    if(groot || licht === false){
+      if(age !== null && age >= 15) tips.push('Karafferen: voorzichtig overschenken om het bezinksel achter te laten, en kort — oude wijn kan snel omvallen.');
+      else if(age !== null && age <= 7) tips.push('Karafferen: een uur of twee. Jong en stevig, hij heeft lucht nodig.');
+      else if(age !== null) tips.push('Karafferen: een half uur is genoeg.');
+    }
+  }
+  if(st.k === 'jong') tips.push('Nog aan de jonge kant — extra tijd in de karaf helpt.');
+  if(st.k === 'over') tips.push('Over zijn venster: open hem voorzichtig en drink hem dezelfde avond op.');
+  return { temp, glass, tips: tips.slice(0,2) };
+}
+function serveHtml(w){
+  const a = serveAdvice(w);
+  return `<div class="serve">
+    <div class="srow"><span class="k">Schenken op</span><span class="v">${a.temp}</span></div>
+    <div class="srow"><span class="k">Glas</span><span class="v">${esc(a.glass)}</span></div>
+    ${a.tips.map(t => `<p class="stip">${esc(t)}</p>`).join('')}</div>`;
+}
+
 function onTable(id){ return (S.tonight||[]).some(t => t.wineId === id); }
+/* Alles wat je nog wilt doen met de fles die op tafel staat: schenkadvies,
+   een vraag stellen, de fles er weer bij pakken, of toch een andere kiezen. */
+function openServe(id){
+  const w = findWine(id); if(!w) return;
+  const st = windowStatus(w);
+  openSheet(`${sheetHead('Klaar om te schenken')}
+    <div class="wname" style="font-size:18px">${esc(w.name)}</div>
+    <div class="wsub" style="font-size:14px">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</div>
+    <div class="wmeta mb8" style="margin-top:8px">${typeHtml(w.type)}<span class="badge ${st.cls}">${st.label}</span></div>
+    ${serveHtml(w)}
+    ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8 mt14">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.slice(0,4).map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
+    <div class="btnrow mb8"><button class="btn soft" data-act="askSomm" data-id="${w.id}">💬 Vraag</button>
+      <button class="btn soft" data-act="detail" data-id="${w.id}">Bekijk fles</button></div>
+    <button class="btn" data-act="drinkOpen" data-id="${w.id}" style="margin-bottom:9px">Afstrepen — hij is open</button>
+    <div class="btnrow"><button class="btn plain" data-act="serveSwap" data-id="${w.id}">Andere fles</button>
+      <button class="btn plain" data-act="tafelAf" data-id="${w.id}">Van tafel halen</button></div>`);
+}
+ACT.serveOpen = el => openServe(el.dataset.id);
+ACT.serveSwap = el => { closeSheet(true); UI.tab = 'pairing'; UI.pairMode = 'dish'; render();
+  toast('Zoek een andere fles — de eerste blijft op tafel staan tot je hem eraf haalt'); };
+
 ACT.tafelOp = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   if(!S.tonight) S.tonight = [];
@@ -1245,15 +1340,18 @@ ACT.tafelOp = el => {
 };
 ACT.tafelAf = el => {
   S.tonight = (S.tonight||[]).filter(t => t.wineId !== el.dataset.id);
-  save(); render();
+  save(); closeSheet(true); render();
 };
 function tonightList(){ return (S.tonight||[]).map(t => ({t, w:findWine(t.wineId)})).filter(x => x.w); }
 function tonightBanner(){
   const items = tonightList(); if(!items.length) return '';
   return `<div class="panel" style="border-color:var(--warn);margin-bottom:10px;padding:10px 13px">
     <div class="eyebrow mb8">🍷 Op tafel</div>
-    ${items.map(({w}) => `<div class="rowline"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">gekozen om te drinken — nog niet afgestreept</div></span>
-      <span class="z" style="display:flex;gap:6px;align-items:center"><button class="btn sm" data-act="drinkOpen" data-id="${w.id}">Afstrepen</button><button class="btn sm plain" data-act="tafelAf" data-id="${w.id}" aria-label="Van tafel halen">✕</button></span></div>`).join('')}</div>`;
+    ${items.map(({w}) => { const a = serveAdvice(w);
+      return `<div class="rowline"><button class="a" style="text-align:left" data-act="serveOpen" data-id="${w.id}">
+        <div class="t">${esc(w.name)} ${w.vintage||''}</div>
+        <div class="u">${esc(a.temp)}${a.tips.length?' · tik voor schenkadvies':' · tik voor opties'}</div></button>
+      <span class="z" style="display:flex;gap:6px;align-items:center"><button class="btn sm" data-act="drinkOpen" data-id="${w.id}">Afstrepen</button><button class="btn sm plain" data-act="tafelAf" data-id="${w.id}" aria-label="Van tafel halen">✕</button></span></div>`; }).join('')}</div>`;
 }
 function updateBadge(){
   try{
@@ -1370,7 +1468,7 @@ async function runWineDishes(w, richting, force){
   }
   let dishes = null, src = 'Kelderregels';
   if(aiReady()){
-    out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier denkt na…</span></div>`;
+    out.innerHTML = `<div class="banner">${pourSvg}<span class="pulse">De sommelier denkt na…</span></div>`;
     try{
       const r = await aiWine(w, richting);
       dishes = (r.dishes||[]).map(d => ({dish:d.dish, reason:d.reason})).filter(d => d.dish);
@@ -1403,7 +1501,7 @@ ACT.recipeGo = async el => {
   const hit = (S.recipeCache||[]).find(r => r.key === key);
   if(hit){ showRecipe({...hit, cached:true}); return; }
   if(!aiReady()){ toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return; }
-  const sh = openSheet(`${sheetHead('Recept — ' + esc(dish))}<div class="banner"><span class="spin"></span><span class="pulse">Recept schrijven…</span></div>`);
+  const sh = openSheet(`${sheetHead('Recept — ' + esc(dish))}<div class="banner">${pourSvg}<span class="pulse">Recept schrijven…</span></div>`);
   try{
     const r = await aiRecipe(dish, p);
     const wijn = wid ? findWine(wid) : null;
@@ -1460,7 +1558,7 @@ ACT.askGo = async el => {
   if(!q){ toast('Typ eerst je vraag'); return; }
   const out = document.getElementById('askOut'); if(!out) return;
   const aid = 'ans' + Date.now();
-  out.insertAdjacentHTML('beforeend', `<div class="dishcard"><div class="d">${esc(q)}</div><div class="r" id="${aid}"><span class="spin"></span></div></div>`);
+  out.insertAdjacentHTML('beforeend', `<div class="dishcard"><div class="d">${esc(q)}</div><div class="r" id="${aid}">${pourSvg}</div></div>`);
   if(inp) inp.value = '';
   try{
     const ans = await aiAsk(w, el.dataset.dish||'', q);
@@ -1512,7 +1610,7 @@ function viewScan(){
       <button class="btn sm plain" data-act="scanNewPhoto">📷 Nieuwe foto</button>
     </div>
     <div class="scanprev">${bottleSvg}<img id="scanImg" alt="Gescand etiket"></div>
-    ${scan.busy ? `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier leest het etiket…</span></div>` : ''}
+    ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse">De sommelier leest het etiket…</span></div>` : ''}
     ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken" — de foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
     ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b> — het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
@@ -1766,7 +1864,7 @@ async function runPair(dish, force){
     }
   }
   if(!matches){
-    out.innerHTML = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier proeft in gedachten…</span></div>`;
+    out.innerHTML = `<div class="banner">${pourSvg}<span class="pulse">De sommelier proeft in gedachten…</span></div>`;
     if(aiReady()){
       try{
         const r = await aiDish(dish);
@@ -1892,7 +1990,7 @@ async function runMenu(){
   if(!aiReady()){ menuOut = menuGuideHtml(dish, true); out.innerHTML = menuOut; return; }
   if(!menu.shots.length){ toast('Maak eerst een foto van de wijnkaart'); return; }
   menu.busy = true; menu.err = null;
-  menuOut = `<div class="banner"><span class="spin"></span><span class="pulse">De sommelier leest de kaart…</span></div>`;
+  menuOut = `<div class="banner">${pourSvg}<span class="pulse">De sommelier leest de kaart…</span></div>`;
   out.innerHTML = menuOut;
   try{
     const d = await aiMenu(menu.shots, menu.food, dish, menu.budget||null, menu.glass);
