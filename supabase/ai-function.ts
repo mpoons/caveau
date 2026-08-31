@@ -26,17 +26,12 @@ function countImages(messages: unknown): number {
   return n
 }
 
-// Model per actiesoort. Sonnet 5 ($3/$15 per M tokens) is de standaard; Haiku 4.5
-// ($1/$5) is drie keer goedkoper maar merkbaar zwakker in wijnkennis — daarom
-// alleen voor acties waar het om schrijven gaat, niet om weten of kijken.
-// Een soort verplaatsen = één regel hieronder; daarna de functie opnieuw deployen.
+// Alles draait op Sonnet 5. Haiku 4.5 is drie keer goedkoper, maar de acties waar
+// dat mag (recept, gerechten bij een wijn) kosten nu al een fractie van een cent —
+// en bij de dure acties (etiket en wijnkaart lezen, prijzen inschatten) is Haiku
+// juist te zwak. Eén soort verplaatsen kan hieronder, bv. recept: 'claude-haiku-4-5'.
 const MODEL_DEFAULT = 'claude-sonnet-5'
-const MODEL_BY_KIND: Record<string, string> = {
-  recept: 'claude-haiku-4-5',      // kookrecept uitschrijven: geen wijnkennis nodig
-  gerechten: 'claude-haiku-4-5',   // gerechten bij een wijn: patroonwerk
-  // scan / wijnkaart (beeld), waardes / herbereken (prijs- en jaargangkennis),
-  // pairing en vraag (kwaliteit die de gebruiker direct merkt) blijven op Sonnet.
-}
+const MODEL_BY_KIND: Record<string, string> = {}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

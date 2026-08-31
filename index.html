@@ -376,6 +376,9 @@ function save(skipCloud){
   if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
 }
 
+/* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/ai-function.ts */
+const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
+
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -1472,7 +1475,7 @@ function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, 
 
 function aiBanner(){
   if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon — de ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
-  if(!aiReady()) return `<div class="banner"><span>ℹ️</span><span><b>Tip:</b> zet je Anthropic API-sleutel in <button class="linkbtn" data-act="goSettings">Instellingen</button> en Claude leest etiketten automatisch — naam, druiven, drinkvenster en pairing in één keer.</span></div>`;
+  if(!aiReady()) return `<div class="banner"><span>ℹ️</span><span><b>Log in en de sommelier leest je etiketten</b> — naam, druiven, drinkvenster en pairing in één foto. Je krijgt ${FREE_CREDITS} gratis credits per maand: <button class="linkbtn" data-act="goAccount">account aanmaken</button>. Zonder inloggen werkt alles behalve het automatisch lezen.</span></div>`;
   return '';
 }
 function viewScan(){
@@ -1834,14 +1837,12 @@ function shotStrip(list, prefix, delAct, addAct, max, label){
 }
 
 function viewMenu(){
-  const chips = ['Biefstuk','Wild','Witte vis','Schaaldieren','Sushi','Pasta met tomaat','Kaasplank','Vegetarisch','Thaise curry']
-    .map(c => `<button class="chip${norm(menu.dish)===norm(c)?' on':''}" data-act="menuQuick" data-d="${esc(c)}">${c}</button>`).join('');
   const budgets = BUDGETS.map(([v,l]) => `<button class="chip${menu.budget===v?' on':''}" data-act="menuBudget" data-b="${v}">${l}</button>`).join('')
     + `<button class="chip${menu.glass?' on':''}" data-act="menuGlass">🥂 ook per glas</button>`;
   if(!menuOut && S.menuLast && Date.now() - (S.menuLast.at||0) < 12*3600*1000) menuOut = menuResultHtml(S.menuLast);
   return `${brandRow('')}<div class="eyebrow">Uit eten</div><h2 class="h2">De wijnkaart lezen</h2>${pairToggle()}
     <p class="small mb8">Fotografeer de kaart, zeg wat je eet — de sommelier kiest de beste flessen ván die kaart, met een oordeel over de prijs.</p>
-    ${aiReady() ? '' : `<div class="banner"><span>ℹ️</span><span><b>Kaart lezen vraagt AI.</b> Log in bij <button class="linkbtn" data-act="goAccount">Meer → Account</button> of vul je eigen API-sleutel in bij <button class="linkbtn" data-act="goSettings">Instellingen</button>. Zonder AI krijg je hieronder wel de kaartgids: waar je bij dit gerecht op moet letten.</span></div>`}
+    ${aiReady() ? '' : `<div class="banner"><span>ℹ️</span><span><b>Hiervoor moet je ingelogd zijn</b> — het lezen van de kaart gebeurt op de Caveau-server. <button class="linkbtn" data-act="goAccount">Account aanmaken</button> geeft je ${FREE_CREDITS} gratis credits per maand. Zonder account krijg je hieronder de kaartgids: waar je bij dit gerecht op de kaart naar zoekt.</span></div>`}
     <div class="panel" style="margin-bottom:12px">
       <div class="eyebrow mb8">1 · De wijnkaart</div>
       ${shotStrip(menu.shots, 'ms', 'menuDel', 'menuCam', MENU_MAX, 'kaart')}
@@ -1853,8 +1854,8 @@ function viewMenu(){
       ${shotStrip(menu.food, 'mf', 'menuFoodDel', 'menuFoodCam', FOOD_MAX, 'menu')}
       <div class="btnrow"><button class="btn sm plain" data-act="menuFoodCam">📷 Menu fotograferen</button><button class="btn sm plain" data-act="menuFoodLib">Kies foto</button></div>
       <p class="small mt8 mb8">Proefmenu of dagmenu? Fotografeer de menukaart — de sommelier leest de gangen en kiest er één fles bij (of per gang een glas).</p>
-      <input class="inp" id="menuDish" data-in="menuDish" value="${esc(menu.dish)}" placeholder="of typ het: 'ik neem zeebaars, zij hertenbiefstuk'" aria-label="Gerecht">
-      <div class="chiprow">${chips}</div>
+      <input class="inp" id="menuDish" data-in="menuDish" value="${esc(menu.dish)}" placeholder="of typ het: 'gebraden parelhoen met knolselderij'" aria-label="Gerecht">
+      <p class="small mt8">Hoe preciezer, hoe beter het advies: saus, bereiding en bijgerecht sturen de keuze vaak meer dan het stuk vlees of vis zelf.</p>
       <div class="eyebrow mb8 mt8">3 · Budget</div>
       <div class="chiprow">${budgets}</div>
     </div>
@@ -1876,7 +1877,6 @@ ACT.menuFoodLib = () => { photoTarget = 'menu'; document.getElementById('fLib').
 ACT.menuFoodDel = el => { menu.food.splice(Number(el.dataset.i), 1); render(); };
 ACT.menuBudget = el => { menu.budget = Number(el.dataset.b); render(); };
 ACT.menuGlass = () => { menu.glass = !menu.glass; render(); };
-ACT.menuQuick = el => { menu.dish = el.dataset.d; render(); };
 ACT.menuGo = () => runMenu();
 ACT.menuClear = () => { menu = { shots:[], food:[], dish:'', budget:0, glass:false, busy:false, err:null }; menuOut = ''; S.menuLast = null; save(); render(); };
 ACT.goAccount = () => { UI.tab='meer'; UI.meerPage='account'; render(); if(typeof fetchQuota === 'function') fetchQuota(); };
@@ -2239,11 +2239,13 @@ ACT.recipeDel = el => { S.recipeCache = (S.recipeCache||[]).filter(r => r.key !=
 function viewSettings(){
   const ai = IN_SANDBOX
     ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat Claude etiketten automatisch leest? Host dan het app-bestand zelf (vraag Claude om de zelf-host-versie) en vul hieronder je sleutel in.</span></div>`
-    : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account). Een eigen sleutel hieronder is optioneel en gaat dan vóór (onbeperkt, op je eigen Anthropic-tegoed).':'<b>Tip:</b> log in via Meer → Account en AI werkt direct — zonder sleutelgedoe. Of vul hieronder een eigen sleutel in.'}</span></div>
+    : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account).':`<b>Log in via Meer → Account</b> en de sommelier werkt meteen — je krijgt ${FREE_CREDITS} gratis credits per maand.`}</span></div>
       <div class="field"><label>Antwoordstijl sommelier</label><div class="seg" id="styleSeg">${[['simpel','Simpel'],['kenner','Kenner'],['sommelier','Sommelier']].map(([k,l])=>`<button type="button" data-act="aiStyle" data-s="${k}" class="${(S.settings.aiStyle||'kenner')===k?'on':''}">${l}</button>`).join('')}</div>
        <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden — van jip-en-janneke tot sommeliers onder elkaar.</div></div>
-      <div class="field"><label>Eigen Anthropic API-sleutel (optioneel)</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
-       <div class="small mt8">De sleutel blijft alleen op dit apparaat en gaat nooit mee in een back-up of naar de cloud.</div></div>
+      <hr class="sep">
+      <div class="eyebrow mb8">Geavanceerd</div>
+      <div class="field"><label>Eigen Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
+       <div class="small mt8">Alleen nodig als je zelf een Anthropic-account hebt en op je eigen tegoed wilt draaien; die sleutel gaat dan vóór het Caveau-tegoed. De sleutel blijft op dit apparaat en gaat nooit mee in een back-up of naar de cloud.</div></div>
        <div class="field"><label>Model (bij eigen sleutel)</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>
        <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
        <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>`;
@@ -2643,7 +2645,6 @@ async function sbAI(content, maxTokens, kind){
   return (d.content||[]).filter(b => b.type === 'text').map(b => b.text).join('');
 }
 /* tegoed en abonnement, gevuld door fetchQuota() */
-const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
 let quota = null;
 function planBoxHtml(){
   if(!quota) return '';
