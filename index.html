@@ -551,22 +551,46 @@ document.addEventListener('click', e => {
   if(fn){ e.preventDefault(); fn(el, e); }
 });
 
-/* fuzzy match voor scan-herkenning */
+/* Ligt deze gescande fles al in de kelder?
+
+   Naam en producent worden apart gewogen. Ze eerst op één hoop gooien was de fout:
+   een domein maakt meestal meerdere cuvées, dus "Domaine des Baumard" alleen al
+   leverde genoeg overeenkomende woorden op om een Clos du Papillon voor een Quarts
+   de Chaume aan te zien. De naam moet nu kloppen; de producent is bevestiging, nooit
+   bewijs. Een fout hier is duur: twee verschillende wijnen samenvoegen richt meer
+   schade aan dan een dubbele regel, dus bij twijfel liever geen match. */
+/* Woorden die in vrijwel elke producentnaam staan en dus niets onderscheiden.
+   Zonder deze lijst lijken "Domaine Lefevre" en "Domaine Bernard" op elkaar. */
+const HUISWOORDEN = new Set(['domaine','domaines','chateau','weingut','bodega','bodegas',
+  'tenuta','azienda','agricola','cantina','cantine','quinta','maison','cave','caves','clos',
+  'estate','winery','vineyard','vineyards','fattoria','castello','marques','marchesi',
+  'famille','family','fils','freres','herdade','vinicola','wijngoed','wijnhuis',
+  'des','del','dela','della','delle','dei','der','den','van','von','the','and','los','las']);
 function matchWine(x){
-  const xn = norm((x.name||'')+' '+(x.producer||''));
-  if(!xn) return null;
-  const xw = new Set(xn.split(' ').filter(w=>w.length>2));
+  const woorden = t => new Set(norm(t||'').split(' ').filter(w => w.length > 2));
+  const huis = t => new Set([...woorden(t)].filter(w => !HUISWOORDEN.has(w)));
+  /* deelverzameling telt als treffer: "Talbot" hoort bij "Château Talbot" */
+  const overlap = (a, b) => {
+    if(!a.size || !b.size) return 0;
+    let hit = 0; for(const t of a) if(b.has(t)) hit++;
+    return hit / Math.min(a.size, b.size);
+  };
+  const xn = woorden(x.name), xp = huis(x.producer);
+  if(!xn.size && !xp.size) return null;
   let best = null, bestScore = 0;
   for(const w of S.wines){
-    const wn = norm((w.name||'')+' '+(w.producer||''));
-    const ww = wn.split(' ').filter(t=>t.length>2);
-    if(!ww.length) continue;
-    let hit = 0; for(const t of ww) if(xw.has(t)) hit++;
-    let score = hit / Math.max(3, Math.max(xw.size, ww.length));
-    if(x.vintage && w.vintage){ score += (String(x.vintage)===String(w.vintage)) ? 0.25 : -0.2; }
+    /* in een kelder is een andere jaargang gewoon een andere fles */
+    if(x.vintage && w.vintage && String(x.vintage) !== String(w.vintage)) continue;
+    const wn = woorden(w.name), wp = huis(w.producer);
+    const naam = overlap(xn, wn);
+    if(naam < 0.6) continue;
+    /* twee huizen die toevallig dezelfde cuvéenaam gebruiken zijn niet dezelfde wijn */
+    const prod = overlap(xp, wp);
+    if(xp.size && wp.size && prod === 0) continue;
+    const score = naam * 0.75 + prod * 0.25;
     if(score > bestScore){ bestScore = score; best = w; }
   }
-  return bestScore >= 0.5 ? best : null;
+  return bestScore >= 0.6 ? best : null;
 }
 </script>
 <script>
