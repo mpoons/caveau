@@ -398,6 +398,12 @@ const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
 /* Wie Caveau aanbiedt. Staat hier op één plek zodat het in één regel verandert
    zodra er een eenmanszaak of BV achter zit (dan hoort hier ook een KvK-nummer
    en een vestigingsadres bij). Deze gegevens staan op de openbare pagina's. */
+/* Staat Plus te koop? Zolang Stripe in testmodus draait moet dit uit: een
+   testafrekenpagina met een oranje TEST MODE-balk ziet er kapot uit. Familie en
+   vrienden geef je intussen tegoed met een regel SQL (bonus_credits of plan
+   'unlimited'), dan hoeft er geen nepbetaling aan te pas te komen.
+   Live met Stripe? Dan hier op true, versienummer omhoog, build en klaar. */
+const PLUS_TE_KOOP = false;
 const AANBIEDER = 'Max Ponsen';
 const CONTACT_MAIL = 'max.ponsen@gmail.com';
 const LEGAL_DATUM = '1 september 2026';
@@ -3124,6 +3130,10 @@ function planBoxHtml(){
       <button class="btn plain" data-act="acPortal">Abonnement beheren</button></div>`;
   }
   const over = Math.max(0, quota.limit - quota.used);
+  if(!PLUS_TE_KOOP) return `<div class="panel" style="margin-top:12px">
+    <div class="eyebrow mb8">Je tegoed</div>
+    <p style="font-size:14px;margin-bottom:8px">Je hebt nog <b>${over} van de ${quota.limit} credits</b> deze maand. Elke maand begint de teller opnieuw.</p>
+    <p class="small">Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Kom je tekort? Laat het even weten, dan zet ik je tegoed hoger.</p></div>`;
   return `<div class="panel" style="margin-top:12px">
     <div class="eyebrow mb8">Caveau Plus · ${PLUS_PRIJS}</div>
     <p style="font-size:14px;margin-bottom:8px">Je hebt nog <b>${over} van de ${quota.limit} gratis credits</b> deze maand. Met Plus krijg je er <b>${PLUS_CREDITS} per maand</b> — genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten.</p>
