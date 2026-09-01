@@ -391,6 +391,7 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
 <input type="file" id="fLib" accept="image/*" hidden>
 <input type="file" id="fLoc" accept="image/*" hidden>
 <input type="file" id="fImport" accept="application/json,.json" hidden>
+<input type="file" id="fBulk" accept="image/*" multiple hidden>
 
 <script>
 'use strict';
@@ -1204,7 +1205,8 @@ function viewKelder(){
     body = `<div class="empty"><div class="big">Je kelder is nog leeg</div>
       <p>Scan het etiket van een fles om te beginnen, of vul hem handmatig in.</p>
       <button class="btn" data-act="tab" data-tab="scan" style="max-width:260px">Scan je eerste fles</button>
-      <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div>
+      <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="goImport">Lijst of doos inlezen</button></div>
+      <div class="mt8"><button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div>
       <p class="small mt14" style="max-width:330px;margin-left:auto;margin-right:auto">Log in bij <button class="linkbtn" data-act="goAccount">Meer → Account</button> en je kelder synchroniseert tussen je apparaten; je krijgt dan ook ${FREE_CREDITS} gratis credits per maand om etiketten en wijnkaarten te laten lezen.</p></div>`;
   } else if(!list.length){
     body = `<div class="empty"><div class="big">Niets gevonden</div><p>Geen flessen die aan deze filters voldoen.</p></div>`;
@@ -1872,6 +1874,7 @@ function viewScan(){
       <button class="btn plain" data-act="scanAgain">Opnieuw</button>
     </div>`;
 }
+ACT.goImport = () => { UI.tab='meer'; UI.meerPage='import'; render(); };
 ACT.scanCam = () => openLiveScan();
 ACT.scanLib = () => { photoTarget = 'etiket'; document.getElementById('fLib').click(); };
 ACT.scanAgain = () => { scanReset(); render(); };
@@ -2441,6 +2444,7 @@ function viewMeer(){
   if(UI.meerPage==='account') return viewAccount();
   if(UI.meerPage==='locs') return viewLocs();
   if(UI.meerPage==='recipes') return viewRecipes();
+  if(UI.meerPage==='import') return viewImport();
   if(UI.meerPage==='privacy') return viewPrivacy();
   if(UI.meerPage==='voorwaarden') return viewVoorwaarden();
   const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -2450,6 +2454,7 @@ function viewMeer(){
       <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="locs">${ic('<path d="M4 20V9l8-5.5L20 9v11"/><path d="M4 14.5h16M9.5 20v-5.5M14.5 20v-5.5"/>')}<span class="grow">Locaties &amp; rekken</span><span class="cnt">${allLocations().length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="import">${ic('<path d="M4 7.5h11M4 12h11M4 16.5h7"/><path d="M18 9v7M14.5 12.5 18 16l3.5-3.5"/>')}<span class="grow">Meerdere flessen tegelijk</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="recipes">${ic('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5V5.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>')}<span class="grow">Recepten</span><span class="cnt">${(S.recipeCache||[]).length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
@@ -2783,6 +2788,115 @@ ACT.installNow = async () => {
   try{ await p.prompt(); }catch(e){}
 };
 
+/* ================= meerdere flessen tegelijk ================= */
+/* Wie al een kelder heeft gaat er geen tachtig etiketten voor scannen. Waar zulke
+   kelders wél in zitten: een lijst in een spreadsheet of notitie, een papieren
+   lijstje naast het rek, of een doos met flessen die rechtop staan. Liggende
+   flessen in een rek laten alleen de bodem zien, dus die vragen we niet. */
+const IMP_MAX = 4;
+let imp = { text:'', shots:[], found:null, busy:false, err:null };
+function impReset(){ imp = { text:'', shots:[], found:null, busy:false, err:null }; }
+
+async function aiImport(){
+  const prompt = `Je helpt iemand zijn bestaande wijnkelder overnemen in een app. Haal uit de foto's en/of de tekst hieronder alle flessen die je kunt herkennen.
+Antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
+{"wines":[{"name":"naam van de wijn","producer":"producent of null","vintage":2019 of null,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land of null","region":"regio of null","appellation":"appellation of null","qty":1}]}
+qty is het aantal flessen als dat uit de lijst of de foto blijkt, anders 1. Staat dezelfde wijn meerdere keren, voeg hem dan samen en tel qty op.
+Neem alleen flessen op die je echt leest of ziet. Verzin niets: een veld dat je niet kunt lezen wordt null. Zie je geen enkele fles, antwoord dan met {"wines":[]}.`;
+  const content = [];
+  for(const sh of imp.shots) content.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data: sh.split(',')[1]}});
+  const t = (imp.text||'').trim();
+  content.push({type:'text', text: prompt + (t ? `\n\nDe tekst:\n${t.slice(0, 6000)}` : '')});
+  const out = await callClaude(content, 4000, 'import');
+  const d = parseJsonLoose(out);
+  return Array.isArray(d.wines) ? d.wines : [];
+}
+
+function viewImport(){
+  if(imp.found) return viewImportReview();
+  const kosten = typeof creditCost === 'function' ? creditCost('import', imp.shots.length) : 1;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Meerdere tegelijk</div><h2 class="h2">Je bestaande kelder erin</h2>
+    <p class="small mb8">Heb je je flessen al ergens staan? Plak de lijst hieronder, of fotografeer hem. Ook een doos of plank met flessen die rechtop staan werkt, zolang de etiketten leesbaar zijn. Flessen die in een rek liggen laten alleen hun bodem zien, dus daar haalt hij niets uit.</p>
+    ${aiBanner()}
+    <div class="field"><label>Lijst plakken</label>
+      <textarea class="inp" id="impText" style="min-height:110px" placeholder="Bijvoorbeeld een kolom uit een spreadsheet, een notitie of de bevestiging van je wijnhandel. Eén fles per regel werkt het beste." data-in="impText">${esc(imp.text)}</textarea></div>
+    <div class="field"><label>Of een foto (${imp.shots.length}/${IMP_MAX})</label>
+      ${shotStrip(imp.shots, 'is', 'impDel', 'impPick', IMP_MAX, 'lijst of flessen')}</div>
+    ${imp.err ? `<div class="banner"><span>⚠️</span><span>${esc(imp.err)}</span></div>` : ''}
+    ${imp.busy ? `<div class="banner">${pourSvg}<span class="pulse">De sommelier leest je lijst…</span></div>`
+      : `<button class="btn" data-act="impRun" ${(!imp.text.trim() && !imp.shots.length) ? 'disabled' : ''}>Uitlezen${aiReady() && !ownKey() ? ` (${kosten} ${plur(kosten,'credit','credits')})` : ''}</button>`}
+    <p class="small mt8">Je ziet eerst wat hij gevonden heeft. Pas als jij aanvinkt gaat er iets je kelder in.</p>`;
+}
+
+function viewImportReview(){
+  const gekozen = imp.found.filter(f => f.pick);
+  const n = gekozen.length, flessen = gekozen.reduce((a,f) => a + f.qty, 0);
+  const rijen = imp.found.map((f, i) => `<div class="mitem" style="cursor:default;align-items:flex-start">
+      <input type="checkbox" data-act="impToggle" data-i="${i}" ${f.pick?'checked':''} style="width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--acc)">
+      <span class="grow">
+        <div style="font-family:var(--serif);font-size:15.5px">${esc(f.name||'Zonder naam')}</div>
+        <div class="small">${[f.producer, f.vintage||'NV', TYPES[f.type]?TYPES[f.type].l:f.type, [f.appellation,f.region,f.country].filter(Boolean)[0]].filter(Boolean).map(esc).join(' · ')}</div>
+        ${f.dubbel ? `<div class="small" style="color:var(--gold-ink)">Staat al in je kelder</div>` : ''}
+      </span>
+      <span style="display:flex;align-items:center;gap:7px;flex:none">
+        <button class="stepbtn" data-act="impQty" data-i="${i}" data-d="-1" aria-label="Minder">–</button>
+        <span class="qty">${f.qty}</span>
+        <button class="stepbtn" data-act="impQty" data-i="${i}" data-d="1" aria-label="Meer">+</button>
+      </span></div>`).join('');
+  return `${brandRow('')}${backRow}<div class="eyebrow">Gevonden</div><h2 class="h2">${imp.found.length} ${plur(imp.found.length,'wijn','wijnen')}</h2>
+    <p class="small mb8">Vink aan wat klopt en corrigeer het aantal. Wat je overslaat verdwijnt gewoon; bijschaven kan later per fles.</p>
+    <div class="menu">${rijen}</div>
+    <button class="btn mt14" data-act="impAdd" ${n?'':'disabled'}>${flessen} ${plur(flessen,'fles','flessen')} in de kelder leggen${n>1?` (${n} wijnen)`:''}</button>
+    <button class="btn plain mt8" data-act="impOpnieuw" style="margin-top:9px">Opnieuw beginnen</button>`;
+}
+
+INP.impText = el => { imp.text = el.value; };
+ACT.impPick = () => document.getElementById('fBulk').click();
+ACT.impDel = el => { imp.shots.splice(+el.dataset.i, 1); render(); };
+ACT.impOpnieuw = () => { impReset(); render(); };
+ACT.impToggle = el => { imp.found[+el.dataset.i].pick = el.checked; render(); };
+ACT.impQty = el => {
+  const f = imp.found[+el.dataset.i];
+  f.qty = Math.max(1, Math.min(99, f.qty + (+el.dataset.d)));
+  render();
+};
+ACT.impRun = async () => {
+  if(!aiReady()){ toast('Log eerst in bij Meer → Account'); return; }
+  imp.busy = true; imp.err = null; render();
+  try{
+    const lijst = await aiImport();
+    if(!lijst.length){ imp.err = 'Geen flessen gevonden. Staat er tekst in de foto, of is de lijst leeg?'; imp.busy = false; render(); return; }
+    imp.found = lijst.map(w => {
+      const dubbel = matchWine({name:w.name, producer:w.producer, vintage:w.vintage});
+      return { ...w, qty: Math.max(1, Math.min(99, parseInt(w.qty,10) || 1)),
+               dubbel: !!dubbel, pick: !dubbel };   /* dubbelen laten we uit staan */
+    });
+  }catch(e){ imp.err = String(e.message||e).slice(0,140); }
+  imp.busy = false; render();
+};
+ACT.impAdd = async () => {
+  const kies = imp.found.filter(f => f.pick);
+  if(!kies.length) return;
+  let n = 0;
+  for(const f of kies){
+    const w = { id:uid(), name:(f.name||'').trim(), producer:(f.producer||'').trim(),
+      vintage: (f.vintage && f.vintage >= 1900 && f.vintage <= 2100) ? f.vintage : null,
+      type: TYPES[f.type] ? f.type : 'rood',
+      grapes: Array.isArray(f.grapes) ? f.grapes.filter(Boolean) : [],
+      country:(f.country||'').trim(), region:(f.region||'').trim(), appellation:(f.appellation||'').trim(),
+      qty: f.qty, pairing:[], photo:false, addedAt:Date.now() };
+    ensureWindow(w);
+    /* estimateWindow rekent in drinkFrom/drinkTo, ensureWindow in drink_from/to */
+    if(w.drink_from != null){ w.drinkFrom = w.drink_from; delete w.drink_from; }
+    if(w.drink_to != null){ w.drinkTo = w.drink_to; delete w.drink_to; }
+    S.wines.unshift(w); n += 1;
+  }
+  save();
+  const flessen = kies.reduce((a,f) => a + f.qty, 0);
+  impReset(); UI.tab = 'kelder'; UI.meerPage = 'menu'; render();
+  toast(`${n} ${plur(n,'wijn','wijnen')} toegevoegd, samen ${flessen} ${plur(flessen,'fles','flessen')}`);
+};
+
 /* ================= privacy & voorwaarden ================= */
 function viewPrivacy(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Privacy</div><h2 class="h2">Wat Caveau van je bewaart</h2>
@@ -2961,6 +3075,7 @@ function render(keepFocus){
   fillPhotos(v);
   if(typeof updateBadge === 'function') updateBadge();
   if(UI.tab==='pairing' && UI.pairMode==='menu') menuFillShots();
+  if(UI.tab==='meer' && UI.meerPage==='import') imp.shots.forEach((sh,i) => { const im = document.getElementById('is'+i); if(im) im.src = sh; });
   if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); wireSeg('f_type'); }
   if(keepFocus){ const s = v.querySelector('input[type=search]'); if(s){ s.focus(); const n = s.value.length; try{ s.setSelectionRange(n,n); }catch(e){} } }
 }
@@ -2971,6 +3086,15 @@ function routePhoto(file){
 }
 document.getElementById('fCam').addEventListener('change', e => { routePhoto(e.target.files[0]); e.target.value=''; });
 document.getElementById('fLib').addEventListener('change', e => { routePhoto(e.target.files[0]); e.target.value=''; });
+document.getElementById('fBulk').addEventListener('change', async e => {
+  const files = [...(e.target.files||[])]; e.target.value = '';
+  for(const f of files){
+    if(imp.shots.length >= IMP_MAX){ toast(`Maximaal ${IMP_MAX} foto's`); break; }
+    /* een lijst heeft kleine letters, dus wat meer resolutie dan een etiket */
+    try{ imp.shots.push(await resizeImg(f, 1568, 0.82, {lift:true})); }catch(err){ toast('Foto kon niet worden gelezen'); }
+  }
+  render();
+});
 document.getElementById('fLoc').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = '';
   if(!f || !locPhotoTarget) return;
