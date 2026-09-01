@@ -392,7 +392,7 @@ const IN_SANDBOX = /claudeusercontent\.com$/i.test(location.hostname) || !!windo
 const DB_KEY = 'caveau_v1';
 
 const DEFAULTS = () => ({ v:1, wines:[], history:[], wishlist:[], locations:[], pairCache:[], recipeCache:[], tonight:[], menuLast:null,
-  settings:{ cellarName:'Mijn kelder', apiKey:'', model:'claude-sonnet-5' } });
+  settings:{ cellarName:'Mijn kelder', apiKey:'', model:'claude-sonnet-5', devMode:false } });
 
 function loadState(){
   try{
@@ -723,9 +723,18 @@ function dishesForWine(w){
 }
 
 /* ================= AI-laag (buiten de sandbox, met eigen API-sleutel) ================= */
+/* Een eigen Anthropic-sleutel is geen productfunctie meer: hij bestaat alleen nog
+   in de ontwikkelaarsstand (zeven tikken op de titel in Instellingen). Zonder die
+   stand wordt een opgeslagen sleutel genegeerd en loopt alles via de Caveau-server,
+   waar het tegoed geldt. Volledig dichttimmeren kan niet — dit is een app die in de
+   browser draait, dus wie zelf code aanpast kan altijd zijn eigen sleutel gebruiken.
+   Wat dit wél doet: het uit het product halen, zodat niemand het tegenkomt. */
+function ownKey(){
+  return S.settings.devMode ? (S.settings.apiKey||'').trim() : '';
+}
 function aiReady(){
   if(IN_SANDBOX) return false;
-  if((S.settings.apiKey||'').trim()) return true;
+  if(ownKey()) return true;
   return typeof loggedIn === 'function' && loggedIn(); /* ingelogd → AI via de Caveau-server */
 }
 
@@ -753,7 +762,7 @@ function creditCost(kind, images){
    onText (optioneel) maakt er een stroom van: die wordt bij elk stukje antwoord
    aangeroepen met alles wat er tot dan toe staat, zodat het scherm meeleest. */
 async function callClaude(content, maxTokens, kind, onText){
-  if((S.settings.apiKey||'').trim()) return callAnthropicDirect(content, maxTokens, onText);
+  if(ownKey()) return callAnthropicDirect(content, maxTokens, onText);
   if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind, onText);
   throw new Error('Log in (Meer → Account) of vul een API-sleutel in');
 }
@@ -798,7 +807,7 @@ async function callAnthropicDirect(content, maxTokens, onText){
   if(stream) body.stream = true;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
-    headers:{ 'content-type':'application/json', 'x-api-key':S.settings.apiKey.trim(),
+    headers:{ 'content-type':'application/json', 'x-api-key':ownKey(),
       'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
     body: JSON.stringify(body)
   });
@@ -2137,7 +2146,7 @@ function viewMenu(){
 }
 /* eerlijk vooraf: wat kost deze scan aan tegoed? (niet bij een eigen API-sleutel) */
 function creditNote(){
-  if((S.settings.apiKey||'').trim() || !aiReady() || typeof creditCost !== 'function') return '';
+  if(ownKey() || !aiReady() || typeof creditCost !== 'function') return '';
   const n = creditCost('wijnkaart', menu.shots.length + menu.food.length);
   return menu.shots.length ? ` · ${n} credits` : '';
 }
@@ -2512,20 +2521,37 @@ function viewRecipes(){
 }
 ACT.recipeDel = el => { S.recipeCache = (S.recipeCache||[]).filter(r => r.key !== el.dataset.k); save(); render(); toast('Recept verwijderd'); };
 
+/* Verborgen schakelaar: zeven keer op de titel van het instellingenscherm tikken.
+   Zo hoeft de eigen-sleutelroute niet helemaal weg (handig om te testen), maar komt
+   geen enkele gebruiker hem tegen. Uitzetten wist meteen de opgeslagen sleutel. */
+let devTaps = 0, devTapTimer = null;
+ACT.devTap = () => {
+  clearTimeout(devTapTimer);
+  devTapTimer = setTimeout(() => { devTaps = 0; }, 1500);
+  if(++devTaps < 7) return;
+  devTaps = 0;
+  S.settings.devMode = !S.settings.devMode;
+  const uit = !S.settings.devMode;
+  if(uit) S.settings.apiKey = '';
+  save(); render();
+  toast(uit ? 'Ontwikkelaarsstand uit — eigen sleutel gewist' : 'Ontwikkelaarsstand aan');
+};
 function viewSettings(){
   const ai = IN_SANDBOX
-    ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat Claude etiketten automatisch leest? Host dan het app-bestand zelf (vraag Claude om de zelf-host-versie) en vul hieronder je sleutel in.</span></div>`
+    ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat de sommelier etiketten leest? Gebruik Caveau dan via <b>mpoons.github.io/caveau</b>.</span></div>`
     : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account).':`<b>Log in via Meer → Account</b> en de sommelier werkt meteen — je krijgt ${FREE_CREDITS} gratis credits per maand.`}</span></div>
       <div class="field"><label>Antwoordstijl sommelier</label><div class="seg" id="styleSeg">${[['simpel','Simpel'],['kenner','Kenner'],['sommelier','Sommelier']].map(([k,l])=>`<button type="button" data-act="aiStyle" data-s="${k}" class="${(S.settings.aiStyle||'kenner')===k?'on':''}">${l}</button>`).join('')}</div>
        <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden — van jip-en-janneke tot sommeliers onder elkaar.</div></div>
       <hr class="sep">
       <div class="eyebrow mb8">Geavanceerd</div>
+      <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
+      <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>
+      ${S.settings.devMode ? `<hr class="sep">
+      <div class="eyebrow mb8">Ontwikkelaarsstand</div>
       <div class="field"><label>Eigen Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
-       <div class="small mt8">Alleen nodig als je zelf een Anthropic-account hebt en op je eigen tegoed wilt draaien; die sleutel gaat dan vóór het Caveau-tegoed. De sleutel blijft op dit apparaat en gaat nooit mee in een back-up of naar de cloud.</div></div>
-       <div class="field"><label>Model (bij eigen sleutel)</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>
-       <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
-       <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>`;
-  return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2">Instellingen & back-up</h2>
+       <div class="small mt8">Draait op je eigen Anthropic-tegoed en gaat vóór het Caveau-tegoed. Blijft op dit apparaat: nooit in een back-up, nooit naar de cloud. Zet je de ontwikkelaarsstand uit, dan wordt hij gewist.</div></div>
+      <div class="field"><label>Model (bij eigen sleutel)</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>` : ''}`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2" data-act="devTap">Instellingen & back-up</h2>
     <div class="field"><label>Naam van je kelder</label><input class="inp" value="${esc(S.settings.cellarName)}" data-in="setName"></div>
     <hr class="sep"><div class="eyebrow mb8">Sommelier-AI</div>${ai}
     <hr class="sep"><div class="eyebrow mb8">Back-up & overzetten</div>
@@ -3005,7 +3031,7 @@ async function fetchQuota(){
     let txt = quota.plan === 'unlimited' ? `AI: onbeperkt · ${quota.used} credits deze maand`
       : quota.plan === 'plus' ? `Caveau Plus · ${quota.used} van ${quota.limit} credits deze maand`
       : `Gratis tegoed: ${Math.max(0, quota.limit - quota.used)} van ${quota.limit} credits over deze maand`;
-    if((S.settings.apiKey||'').trim()) txt += ' · eigen sleutel actief (telt niet mee)';
+    if(ownKey()) txt += ' · eigen sleutel actief (telt niet mee)';
     el.textContent = txt;
     const box = document.getElementById('planBox');
     if(box) box.innerHTML = planBoxHtml();
