@@ -1,6 +1,6 @@
 /* Caveau service worker — netwerk eerst voor de app zelf (updates), cache als offline-vangnet.
    Verhoog het versienummer bij elke wijziging aan de app. */
-const CACHE = 'caveau-v29';
+const CACHE = 'caveau-v30';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
