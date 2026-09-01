@@ -1439,17 +1439,18 @@ ACT.fillLoc = el => {
   const f = document.getElementById('f_loc'); if(f) f.value = el.dataset.l;
   const q = document.getElementById('quickLoc'); if(q) q.value = el.dataset.l;
 };
-function wireSeg(id){
-  const seg = document.getElementById(id); if(!seg) return;
+function wireSeg(id, root){
+  const seg = (root || document).querySelector('#' + id); if(!seg) return;
   seg.querySelectorAll('button').forEach(b => b.onclick = () => {
     seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
     if(id === 'f_type') scanTouched.add('f_type'); });
 }
-function readForm(){
-  const g = v => (document.getElementById(v)||{}).value || '';
+function readForm(root){
+  const R = root || document;
+  const g = v => (R.querySelector('#' + v)||{}).value || '';
   const num = v => { const x = parseFloat(String(g(v)).replace(',','.')); return isNaN(x) ? null : x; };
   const yr  = v => { const x = parseInt(g(v),10); return (x>=1900 && x<=2100) ? x : null; };
-  const segEl = document.querySelector('#f_type button.on');
+  const segEl = R.querySelector('#f_type button.on');
   return {
     name:g('f_name').trim(), producer:g('f_producer').trim(), vintage:yr('f_vintage'),
     type:segEl ? segEl.dataset.val : 'rood',
@@ -2806,18 +2807,30 @@ function viewImportReview(){
   const n = gekozen.length, flessen = gekozen.reduce((a,f) => a + f.qty, 0);
   const rijen = imp.found.map((f, i) => `<div class="mitem" style="cursor:default;align-items:flex-start">
       <input type="checkbox" data-act="impToggle" data-i="${i}" ${f.pick?'checked':''} style="width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--acc)">
-      <span class="grow">
+      <button class="grow" data-act="impEdit" data-i="${i}" style="text-align:left;min-width:0">
         <div style="font-family:var(--serif);font-size:15.5px">${esc(f.name||'Zonder naam')}</div>
         <div class="small">${[f.producer, f.vintage||'NV', TYPES[f.type]?TYPES[f.type].l:f.type, [f.appellation,f.region,f.country].filter(Boolean)[0]].filter(Boolean).map(esc).join(' · ')}</div>
+        ${f.location ? `<div class="small" style="color:var(--acc-ink)">📍 ${esc(f.location)}</div>` : ''}
         ${f.dubbel ? `<div class="small" style="color:var(--gold-ink)">Staat al in je kelder</div>` : ''}
-      </span>
+        <div class="small" style="color:var(--ink3)">Tik om bij te werken</div>
+      </button>
       <span style="display:flex;align-items:center;gap:7px;flex:none">
         <button class="stepbtn" data-act="impQty" data-i="${i}" data-d="-1" aria-label="Minder">–</button>
         <span class="qty">${f.qty}</span>
         <button class="stepbtn" data-act="impQty" data-i="${i}" data-d="1" aria-label="Meer">+</button>
       </span></div>`).join('');
+  const plekken = locOptions();
   return `${brandRow('')}${backRow}<div class="eyebrow">Gevonden</div><h2 class="h2">${imp.found.length} ${plur(imp.found.length,'wijn','wijnen')}</h2>
-    <p class="small mb8">Vink aan wat klopt en corrigeer het aantal. Wat je overslaat verdwijnt gewoon; bijschaven kan later per fles.</p>
+    <p class="small mb8">Vink aan wat klopt en corrigeer het aantal. Tik op een wijn om jaargang, type of locatie bij te werken. Wat je overslaat verdwijnt gewoon.</p>
+    <div class="panel" style="padding:11px 13px;margin-bottom:12px">
+      <div class="eyebrow mb8">Locatie voor de aangevinkte</div>
+      <div style="display:flex;gap:8px">
+        <input class="inp" id="impLoc" list="locList" placeholder="bv. Vintec, zone boven" style="flex:1;min-width:0">
+        <button class="btn sm" data-act="impLocAll" style="flex:none">Zetten</button></div>
+      <datalist id="locList">${plekken.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
+      ${plekken.length ? `<div class="chiprow" style="padding:7px 0 0">${plekken.slice(0,8).map(l=>`<button type="button" class="chip" data-act="impLocChip" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div>` : ''}
+      <div class="small mt8">Komt alles van één factuur maar gaat het naar twee plekken? Zet hier de plek van de meeste, en pas de rest per wijn aan.</div>
+    </div>
     <div class="menu">${rijen}</div>
     <button class="btn mt14" data-act="impAdd" ${n?'':'disabled'}>${flessen} ${plur(flessen,'fles','flessen')} in de kelder leggen${n>1?` (${n} wijnen)`:''}</button>
     <button class="btn plain mt8" data-act="impOpnieuw" style="margin-top:9px">Opnieuw beginnen</button>`;
@@ -2828,6 +2841,36 @@ ACT.impPick = () => document.getElementById('fBulk').click();
 ACT.impDel = el => { imp.shots.splice(+el.dataset.i, 1); render(); };
 ACT.impOpnieuw = () => { impReset(); render(); };
 ACT.impToggle = el => { imp.found[+el.dataset.i].pick = el.checked; render(); };
+ACT.impLocChip = el => { const i = document.getElementById('impLoc'); if(i) i.value = el.dataset.l; };
+ACT.impLocAll = () => {
+  const v = ((document.getElementById('impLoc')||{}).value||'').trim();
+  const n = imp.found.filter(f => f.pick).length;
+  if(!n){ toast('Vink eerst wijnen aan'); return; }
+  imp.found.forEach(f => { if(f.pick) f.location = v; });
+  render();
+  toast(v ? `Locatie op ${n} ${plur(n,'wijn','wijnen')} gezet` : `Locatie leeggemaakt bij ${n} ${plur(n,'wijn','wijnen')}`);
+};
+/* Bijwerken met hetzelfde formulier als bij een gewone fles, zodat jaargang, type,
+   druiven, prijs en locatie allemaal kunnen. readForm() leest dezelfde velden. */
+ACT.impEdit = el => {
+  const i = +el.dataset.i, f = imp.found[i];
+  recalcPairing = null; recalcValueRange = null; vensterAuto = true;
+  const sh = openSheet(`${sheetHead('Bijwerken')}
+    ${formFields({ name:f.name, producer:f.producer, vintage:f.vintage, type:f.type, grapes:f.grapes,
+      country:f.country, region:f.region, appellation:f.appellation, location:f.location, note:f.note,
+      price:f.price, value:f.value })}
+    <button class="btn" data-act="impSave" data-i="${i}">Bewaren</button>`);
+  wireSeg('f_type', sh);
+};
+ACT.impSave = el => {
+  const i = +el.dataset.i, d = readForm(el.closest('.sheet'));
+  Object.assign(imp.found[i], { name:d.name, producer:d.producer, vintage:d.vintage, type:d.type,
+    grapes:d.grapes, country:d.country, region:d.region, appellation:d.appellation,
+    location:d.location, note:d.note, price:d.price, value:d.value });
+  /* naam of jaargang gewijzigd? dan kan het opeens wél of juist niet meer dubbel zijn */
+  imp.found[i].dubbel = !!matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
+  closeSheet(); render();
+};
 ACT.impQty = el => {
   const f = imp.found[+el.dataset.i];
   f.qty = Math.max(1, Math.min(99, f.qty + (+el.dataset.d)));
@@ -2857,7 +2900,10 @@ ACT.impAdd = async () => {
       type: TYPES[f.type] ? f.type : 'rood',
       grapes: Array.isArray(f.grapes) ? f.grapes.filter(Boolean) : [],
       country:(f.country||'').trim(), region:(f.region||'').trim(), appellation:(f.appellation||'').trim(),
+      location:(f.location||'').trim(), note:(f.note||'').trim(),
+      price: f.price ?? null, value: f.value ?? null,
       qty: f.qty, pairing:[], photo:false, addedAt:Date.now() };
+    if(w.location) S.settings.lastLocation = w.location;
     ensureWindow(w);
     /* estimateWindow rekent in drinkFrom/drinkTo, ensureWindow in drink_from/to */
     if(w.drink_from != null){ w.drinkFrom = w.drink_from; delete w.drink_from; }
