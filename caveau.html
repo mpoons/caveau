@@ -2647,16 +2647,19 @@ function isApple(){
   const ua = navigator.userAgent || '';
   return /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && (navigator.maxTouchPoints||0) > 1);
 }
-/* Alleen aanbieden als het ergens op slaat: nog niet geïnstalleerd, niet weggeklikt,
-   en pas als er iets in de kelder ligt — voor je eerste fles is het loos advies. */
+/* Meteen aanbieden, niet pas na de eerste fles. Wie hier binnenkomt heeft een link
+   van iemand gekregen en hoeft niet overtuigd te worden; sluit hij het tabblad, dan
+   is hij weg. En op de iPhone kan een app op het beginscherm een eigen opslag hebben:
+   eerst in Safari flessen toevoegen en daarna installeren kan een lege kelder opleveren.
+   Eerst zetten, dan vullen is dus ook veiliger. */
 function toonInstallTip(){
-  return !IN_SANDBOX && !isStandalone() && !S.settings.installWeg && S.wines.length >= 1;
+  return !IN_SANDBOX && !isStandalone() && !S.settings.installWeg;
 }
 function installBanner(){
   if(!toonInstallTip()) return '';
   return `<div class="banner" style="align-items:center">
     <span>📲</span>
-    <span style="flex:1"><b>Zet Caveau op je beginscherm</b> — dan opent hij als een app, zonder adresbalk, en werkt je kelder ook zonder internet.</span>
+    <span style="flex:1"><b>Zet Caveau eerst op je beginscherm</b> — dan heb je hem bij de hand in de winkel en het restaurant, opent hij als een app, en werkt je kelder ook zonder bereik.</span>
     <button class="btn sm" data-act="installSheet" style="flex:none">Hoe?</button>
     <button class="xbtn" data-act="installWeg" aria-label="Niet meer tonen">✕</button></div>`;
 }
@@ -2679,6 +2682,7 @@ ACT.installSheet = () => {
          </ol>`;
   openSheet(`${sheetHead('Caveau als app')}
     <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:12px">Caveau is een website die zich als app gedraagt. Zet je hem op je beginscherm, dan krijg je een eigen icoon, geen adresbalk, en blijft je kelder ook zonder bereik gewoon werken — handig in een kelder of een restaurant.</p>
+    <p class="small mb8">Doe dit bij voorkeur vóór je flessen toevoegt: op de iPhone bewaart de app op je beginscherm zijn gegevens soms apart van Safari. Log je in, dan maakt het niet uit — dan staat je kelder in de cloud.</p>
     ${uitleg}`);
 };
 ACT.installNow = async () => {
