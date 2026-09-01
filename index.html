@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Caveau — wijnkelder</title>
+<title>Caveau, je wijnkelder</title>
 <meta name="description" content="Caveau is je wijnkelder in je zak: scan een etiket, weet altijd welke fles nú open moet, en laat de sommelier in het restaurant de wijnkaart lezen.">
 <meta name="theme-color" content="#FAF6EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1F1216" media="(prefers-color-scheme: dark)">
 <!-- hoe de link eruitziet als iemand hem deelt in WhatsApp, iMessage of Slack -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Caveau">
-<meta property="og:title" content="Caveau — je wijnkelder in je zak">
+<meta property="og:title" content="Caveau, je wijnkelder in je zak">
 <meta property="og:description" content="Scan een etiket, weet altijd welke fles nú open moet, en laat de sommelier in het restaurant de wijnkaart lezen.">
 <meta property="og:url" content="https://mpoons.github.io/caveau/">
 <meta property="og:image" content="https://mpoons.github.io/caveau/icon-512.png">
@@ -415,7 +415,10 @@ function loadState(){
 let S = loadState();
 /* save(true) = technische schrijfactie (tokens, sync-adoptie): geen rev-bump, geen cloud-push */
 function save(skipCloud){
-  if(!skipCloud) S.rev = Date.now();
+  /* Een teller, geen klok. Met Date.now() wint het apparaat met de verst vooruit
+     lopende klok altijd, ook als het niets nieuws te melden heeft, en overschrijft
+     het stilletjes de echte wijzigingen van het andere apparaat. */
+  if(!skipCloud) S.rev = (S.rev||0) + 1;
   try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt. Is de opslag vol?'); }
   if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
 }
@@ -2970,7 +2973,21 @@ function applySession(s){
   sbAccess = s.access_token || sbAccess;
   const c = cloud();
   if(s.refresh_token) c.refresh = s.refresh_token;
-  if(s.user){ c.uid = s.user.id; c.email = s.user.email; }
+  if(s.user){
+    /* Logt er een ánder account in op dit apparaat, dan is de kelder die hier staat
+       van de vorige gebruiker. Die mag niet mee de nieuwe cloud in: dat overschrijft
+       de kelder van de nieuwe gebruiker en zet bovendien andermans wijnen in zijn
+       account. We bewaren hem als reservekopie en beginnen leeg; de sync haalt
+       daarna op wat van dít account is. */
+    if(c.uid && s.user.id !== c.uid && (S.wines.length || S.history.length)){
+      snapshotLocal('caveau_backup_prev', {vanEmail: c.email || ''});
+      S.wines = []; S.history = []; S.wishlist = []; S.locations = [];
+      S.pairCache = []; S.recipeCache = []; S.tonight = [];
+      S.rev = 0; S.syncedRev = 0;
+      toast('Andere gebruiker: de vorige kelder staat als reservekopie in Instellingen', null, null, 7000);
+    }
+    c.uid = s.user.id; c.email = s.user.email;
+  }
   save(true);
 }
 
@@ -2995,7 +3012,10 @@ async function sbRefresh(){
 }
 function sbLogout(){
   try{ if(sbAccess) sbFetch('/auth/v1/logout', {method:'POST'}).catch(()=>{}); }catch(e){}
-  sbAccess = null; const c = cloud(); c.refresh = null; c.uid = null; save(true);
+  /* uid blijft staan: dat is niet de sessie maar de vraag "van wie is de kelder die
+     hier op het apparaat ligt". Zonder dat kan applySession niet zien dat er straks
+     iemand ánders inlogt, en verhuist de kelder van de vorige gebruiker mee. */
+  sbAccess = null; const c = cloud(); c.refresh = null; save(true);
 }
 
 /* ---- document-sync (last-write-wins op S.rev) ---- */
@@ -3006,7 +3026,7 @@ function adoptDoc(d){
   S.locations = d.locations || []; S.pairCache = d.pairCache || []; S.recipeCache = d.recipeCache || [];
   S.tonight = d.tonight || [];
   if(d.cellarName) S.settings.cellarName = d.cellarName;
-  S.rev = d.rev || Date.now();
+  S.rev = d.rev || 0;
   save(true);
 }
 async function pushDoc(){
@@ -3037,27 +3057,35 @@ const shrinks = (van, naar) => van >= 5 && naar < Math.max(1, Math.ceil(van * 0.
 function askShrink(mode, remote, lc, rc){
   lastSyncNote = 'Wacht op jouw keuze, groot verschil tussen versies';
   if(UI.tab === 'meer' && UI.meerPage === 'account') render();
-  const done = async () => { const c = cloud(); c.lastSync = Date.now(); save(true); lastSyncNote = '';
+  const done = async () => { const c = cloud(); c.lastSync = Date.now(); S.syncedRev = S.rev||0; save(true); lastSyncNote = '';
     toast('Gesynchroniseerd ✓'); if(UI.tab === 'meer' && UI.meerPage === 'account') render(); };
+  const tekst = mode === 'adopt'
+    ? `De cloudversie bevat <b>${rc}</b> ${plur(rc,'wijn','wijnen')}, terwijl hier <b>${lc}</b> staan. Dat kan kloppen (bijvoorbeeld na "Alles wissen" op een ander apparaat), maar het kan ook een vergissing zijn. Daarom neem ik dit niet stilzwijgend over.`
+    : mode === 'push'
+    ? `Dit apparaat heeft <b>${lc}</b> ${plur(lc,'wijn','wijnen')}, de cloud <b>${rc}</b>. Doorzetten zou de cloudversie overschrijven.`
+    : `Er is op twee plekken iets gewijzigd sinds de laatste keer dat dit apparaat synchroniseerde. Hier staan <b>${lc}</b> ${plur(lc,'wijn','wijnen')}, in de cloud <b>${rc}</b>. Ik kan er maar één bewaren, dus kies jij.`;
+  const houd = mode === 'adopt' ? `Behoud mijn ${lc}` : mode === 'push' ? `Cloud (${rc}) overnemen` : `Deze telefoon (${lc}) bewaren`;
+  const ga = mode === 'adopt' ? `Cloud (${rc}) overnemen` : mode === 'push' ? `Toch pushen (${lc})` : `Cloud (${rc}) overnemen`;
   openSheet(`${sheetHead('Even opletten')}
-    <p style="font-size:14px;color:var(--ink2)">${mode === 'adopt'
-      ? `De cloudversie bevat <b>${rc}</b> ${plur(rc,'wijn','wijnen')}, terwijl hier <b>${lc}</b> staan. Dat kan kloppen (bijvoorbeeld na "Alles wissen" op een ander apparaat), maar het kan ook een vergissing zijn. Daarom neem ik dit niet stilzwijgend over.`
-      : `Dit apparaat heeft <b>${lc}</b> ${plur(lc,'wijn','wijnen')}, de cloud <b>${rc}</b>. Doorzetten zou de cloudversie overschrijven.`}</p>
+    <p style="font-size:14px;color:var(--ink2)">${tekst}</p>
     <div class="btnrow mt14">
-      <button class="btn ghost" id="shrinkKeep">${mode === 'adopt' ? `Behoud mijn ${lc}` : `Cloud (${rc}) overnemen`}</button>
-      <button class="btn danger" id="shrinkGo">${mode === 'adopt' ? `Cloud (${rc}) overnemen` : `Toch pushen (${lc})`}</button>
+      <button class="btn ghost" id="shrinkKeep">${houd}</button>
+      <button class="btn danger" id="shrinkGo">${ga}</button>
     </div>
     <p class="small mt8">Wat je ook kiest: je huidige stand wordt eerst als lokale reservekopie bewaard (Instellingen → Reservekopieën).</p>`);
   document.getElementById('shrinkGo').onclick = async () => { closeSheet();
     try{
-      if(mode === 'adopt'){ await applyRemote(remote); }
+      if(mode === 'adopt' || mode === 'botsing'){ await applyRemote(remote); }
       else { snapshotLocal('caveau_backup_prev'); await pushDoc(); await pushPhotos(); }
       await done();
     }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt: ' + lastSyncNote); }
   };
   document.getElementById('shrinkKeep').onclick = async () => { closeSheet();
     try{
-      if(mode === 'adopt'){ snapshotLocal('caveau_backup_prev'); S.rev = Date.now(); save(true); await pushDoc(); await pushPhotos(); }
+      if(mode === 'adopt' || mode === 'botsing'){ snapshotLocal('caveau_backup_prev');
+        /* deze stand moet winnen van wat er in de cloud staat */
+        S.rev = Math.max(S.rev||0, (remote && remote.rev)||0) + 1; save(true);
+        await pushDoc(); await pushPhotos(); }
       else { await applyRemote(remote); }
       await done();
     }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt: ' + lastSyncNote); }
@@ -3072,15 +3100,33 @@ async function syncNow(interactive){
     if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
     const remote = await pullDoc();
     const localRev = S.rev||0, remoteRev = (remote && remote.rev)||0;
+    /* Wat stond er bij de laatste geslaagde sync? Zonder dat getal kun je niet zien
+       of één kant iets veranderde (veilig overnemen) of allebei (dan gaat er werk
+       verloren, wat je ook kiest). Ontbreekt het, dan doen we alsof er lokaal niets
+       openstaat; vanaf de eerste sync klopt het vanzelf. */
+    const syncedRev = S.syncedRev;
+    /* Niet kijken welk revisienummer het hoogst is, maar wie er iets veranderde
+       sinds de laatste geslaagde sync. Een hoger nummer zegt namelijk niets over
+       wie gelijk heeft: een apparaat dat niets nieuws heeft kan best het hoogste
+       nummer dragen, en duwde dan zijn oude kopie over verse wijzigingen heen.
+       Bij de allereerste sync is er nog geen ijkpunt; dan vergelijken we de
+       nummers zoals vroeger. */
+    const eersteKeer = syncedRev == null;
+    const lokaalGewijzigd = eersteKeer ? (localRev > remoteRev) : (localRev !== syncedRev);
+    const cloudGewijzigd  = !remote ? false : (eersteKeer ? (remoteRev > localRev) : (remoteRev !== syncedRev));
     const lc = S.wines.length, rc = remote ? (remote.wines||[]).length : 0;
-    if(remoteRev > localRev){
+    if(!remote){
+      await pushDoc(); await pushPhotos();
+    } else if(lokaalGewijzigd && cloudGewijzigd){
+      syncBusy = false; askShrink('botsing', remote, lc, rc); return;
+    } else if(cloudGewijzigd){
       if(shrinks(lc, rc)){ syncBusy = false; askShrink('adopt', remote, lc, rc); return; }
       await applyRemote(remote);
-    } else if(localRev > remoteRev || !remote){
-      if(remote && shrinks(rc, lc)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
+    } else if(lokaalGewijzigd){
+      if(shrinks(rc, lc)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
       await pushDoc(); await pushPhotos();
     }
-    const c = cloud(); c.lastSync = Date.now(); save(true);
+    const c = cloud(); c.lastSync = Date.now(); S.syncedRev = S.rev||0; save(true);
     lastSyncNote = '';
     if(interactive) toast('Gesynchroniseerd ✓');
   }catch(e){
