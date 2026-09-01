@@ -29,7 +29,8 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 - API-sleutel en sessietokens nooit syncen/exporteren (zit zo in de code — zo houden).
 
 ## Status & vervolg
-- Fase 1 + 2 SQL zijn **gedraaid** (1 sep 2026): `profiles`, `ai_usage`, `cost_units`, `stripe_customer_id`, `plan_renews_at`, `plan_status` en `credits_used_this_month()` staan er. Nog te deployen: de Edge Functions `ai`, `billing`, `stripe-webhook` (alle drie nog 404).
+- Fase 1 + 2 SQL **gedraaid** en alle drie de Edge Functions **live** (1 sep 2026). Gecontroleerd: `ai` → 401, `billing` → 401 "Niet ingelogd", `stripe-webhook` → 400 "Ongeldige handtekening" (dus geen JWT ervoor, handtekeningcontrole werkt). Secrets staan onder de juiste namen. Project draait in `eu-west-1` (Ierland) — relevant voor de privacyverklaring.
+- ⚠️ **De Anthropic-serversleutel verloopt 31 december 2026.** Loopt hij af, dan valt etiket- en wijnkaartlezen stil voor álle gebruikers. Half december vervangen in de console en opnieuw zetten als `CAVEAU_ANTHROPIC_KEY`.
 - Stripe **testmodus** (account `acct_1UAm7oL0f2iIgWz0`, NL, onboarding nog niet af): product `prod_VB8SYtxqKYfPps`, prijs `price_1UAmBrL0f2iIgWz0Xc4PnL29` (€2,99/mnd, btw inbegrepen) = `STRIPE_PRICE_PLUS`. Klantportaal en webhook-endpoint moeten nog door Max in het dashboard.
 - AI-antwoorden **streamen**: `callClaude(content, maxTokens, kind, onText)`; `readSSE()` in de app, doorgeefluik met verbruiksboeking in `functions/ai/index.ts`. Zonder `onText` blijft alles werken zoals eerst.
 - Wijnkaart-scan (restaurant): Pairing → derde stand "Wijnkaart" (`viewMenu`/`runMenu`/`aiMenu`, kind `wijnkaart`, tot 4 foto's, alleen in het geheugen — nooit in IndexedDB of cloud). Laatste advies leeft in `S.menuLast` (12 uur zichtbaar). Zonder AI: `menuGuideHtml` (FOODS-regels) als kaartgids.
