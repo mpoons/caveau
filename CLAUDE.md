@@ -7,7 +7,11 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 - Artifact-formaat: geen doctype/html/head/body-tags in caveau.html; `head.html` + `build.sh` wikkelen hem naar `index.html`.
 - Data: localStorage (`caveau_v1`, object `S`) + IndexedDB voor foto's. Cloud-sync via Supabase (document-LWW op `S.rev`, foto's incrementeel). `save(true)` = technische write zonder rev-bump/cloud-push.
 - Supabase-project: `https://dbzgrkipcoebglacsqwe.supabase.co` (publishable key staat in de code — by design). Tabellen: `cellars`, `photos`, `profiles`, `ai_usage` (RLS per gebruiker). Auth: e-mail+wachtwoord ("Confirm email" staat uit).
-- AI-routering (`callClaude`): eigen API-sleutel in Instellingen → rechtstreeks Anthropic; anders ingelogd → Edge Function **`ai`** (`supabase/ai-function.ts`, secret `CAVEAU_ANTHROPIC_KEY`, telt acties in `ai_usage`; gratis 15/maand, plus 500, plan `unlimited` via dashboard → profiles). Sandbox (claude.ai-artifact) = AI uit, kelderregels (offline heuristiek) vangen alles op.
+- AI-routering (`callClaude`): eigen API-sleutel in Instellingen → rechtstreeks Anthropic; anders ingelogd → Edge Function **`ai`** (`supabase/functions/ai/index.ts`, secret `CAVEAU_ANTHROPIC_KEY`, telt acties in `ai_usage`; gratis 15/maand, plus 500, plan `unlimited` via dashboard → profiles). Sandbox (claude.ai-artifact) = AI uit, kelderregels (offline heuristiek) vangen alles op.
+
+## Edge Functions
+- Liggen in de CLI-indeling: `supabase/functions/<naam>/index.ts`, met `supabase/config.toml` voor de JWT-instelling per functie (`stripe-webhook` staat daar bewust op `verify_jwt = false`).
+- Uitrollen: `supabase functions deploy <naam> --project-ref dbzgrkipcoebglacsqwe` (na `supabase login`).
 
 ## Wijzigingen uitrollen
 1. Bewerk `caveau.html` rechtstreeks.
@@ -27,8 +31,8 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 ## Status & vervolg
 - Fase 1 + 2 SQL zijn **gedraaid** (1 sep 2026): `profiles`, `ai_usage`, `cost_units`, `stripe_customer_id`, `plan_renews_at`, `plan_status` en `credits_used_this_month()` staan er. Nog te deployen: de Edge Functions `ai`, `billing`, `stripe-webhook` (alle drie nog 404).
 - Stripe **testmodus** (account `acct_1UAm7oL0f2iIgWz0`, NL, onboarding nog niet af): product `prod_VB8SYtxqKYfPps`, prijs `price_1UAmBrL0f2iIgWz0Xc4PnL29` (€2,99/mnd, btw inbegrepen) = `STRIPE_PRICE_PLUS`. Klantportaal en webhook-endpoint moeten nog door Max in het dashboard.
-- AI-antwoorden **streamen**: `callClaude(content, maxTokens, kind, onText)`; `readSSE()` in de app, doorgeefluik met verbruiksboeking in `ai-function.ts`. Zonder `onText` blijft alles werken zoals eerst.
+- AI-antwoorden **streamen**: `callClaude(content, maxTokens, kind, onText)`; `readSSE()` in de app, doorgeefluik met verbruiksboeking in `functions/ai/index.ts`. Zonder `onText` blijft alles werken zoals eerst.
 - Wijnkaart-scan (restaurant): Pairing → derde stand "Wijnkaart" (`viewMenu`/`runMenu`/`aiMenu`, kind `wijnkaart`, tot 4 foto's, alleen in het geheugen — nooit in IndexedDB of cloud). Laatste advies leeft in `S.menuLast` (12 uur zichtbaar). Zonder AI: `menuGuideHtml` (FOODS-regels) als kaartgids.
-- Fase 2 (app-kant klaar, server nog niet): **gewogen credits** i.p.v. acties — `creditsFor()` in `ai-function.ts` en `creditCost()` in caveau.html moeten gelijk blijven (etiket/tekst = 1, wijnkaart = 2 per foto). Gratis 20 credits/mnd, Plus 300 voor €2,99. Stripe direct (btw regelt Max zelf later): `billing-function.ts` (Checkout + portaal, JWT aan) en `stripe-webhook.ts` (**JWT uit**, handtekening via `constructEventAsync`). SQL: `schema-fase2.sql`.
+- Fase 2 (app-kant klaar, server nog niet): **gewogen credits** i.p.v. acties — `creditsFor()` in `functions/ai/index.ts` en `creditCost()` in caveau.html moeten gelijk blijven (etiket/tekst = 1, wijnkaart = 2 per foto). Gratis 20 credits/mnd, Plus 300 voor €2,99. Stripe direct (btw regelt Max zelf later): `functions/billing/index.ts` (Checkout + portaal, JWT aan) en `functions/stripe-webhook/index.ts` (**JWT uit**, handtekening via `constructEventAsync`). SQL: `schema-fase2.sql`.
 - Nog te doen na fase 2: privacy/voorwaarden-pagina's, Supabase Pro bij echte gebruikers, daarna marketingplan.
 - Wens-backlog: échte pushmeldingen (vergt berichtenserver), meertalige versie, AI-sommelier-kwaliteit verder onder de loep.

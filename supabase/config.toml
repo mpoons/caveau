@@ -1,0 +1,13 @@
+# Zo weet de Supabase CLI wat er per functie moet gebeuren. Vooral die laatste regel
+# is belangrijk: Stripe roept de webhook aan zonder Supabase-token, dus daar mag geen
+# JWT-controle op. Staat dat hier, dan kan niemand het bij een volgende deploy vergeten.
+project_id = "caveau"
+
+[functions.ai]
+verify_jwt = true
+
+[functions.billing]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
