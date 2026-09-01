@@ -2760,11 +2760,14 @@ function planBoxHtml(){
   if(quota.plan === 'unlimited') return `<div class="banner"><span>∞</span><span>Onbeperkt tegoed op dit account.</span></div>`;
   if(quota.plan === 'plus'){
     const t = quota.renews ? new Date(quota.renews).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : null;
-    const op = quota.status && quota.status !== 'active';
+    /* 'canceling' = zelf opgezegd, loopt netjes uit; elke andere niet-actieve status
+       is een betaalprobleem. Die twee verschillen mogen niet door elkaar lopen. */
+    const stopt = quota.status === 'canceling';
+    const gedoe = quota.status && quota.status !== 'active' && !stopt;
     return `<div class="panel" style="margin-top:12px">
       <div class="eyebrow mb8">Caveau Plus</div>
-      <p style="font-size:14px;margin-bottom:8px">${quota.limit} credits per maand${t?` · ${op?'loopt af':'verlengt'} op ${esc(t)}`:''}.
-      ${op?`<br><b>Let op:</b> de betaling is niet gelukt (${esc(quota.status)}) — werk je betaalmethode bij om Plus te houden.`:''}</p>
+      <p style="font-size:14px;margin-bottom:8px">${quota.limit} credits per maand${t?` · ${stopt?'loopt af':'verlengt'} op ${esc(t)}`:''}.
+      ${gedoe?`<br><b>Let op:</b> de betaling is niet gelukt (${esc(quota.status)}) — werk je betaalmethode bij om Plus te houden.`:''}</p>
       <button class="btn plain" data-act="acPortal">Abonnement beheren</button></div>`;
   }
   const over = Math.max(0, quota.limit - quota.used);
@@ -2776,11 +2779,14 @@ function planBoxHtml(){
 }
 async function sbFn(name, body){
   if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
-  const res = await fetch(SB_URL + '/functions/v1/' + name, {
-    method:'POST',
-    headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
-    body: JSON.stringify(body||{})
-  });
+  let res;
+  try{
+    res = await fetch(SB_URL + '/functions/v1/' + name, {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+      body: JSON.stringify(body||{})
+    });
+  }catch(_){ throw new Error('Geen verbinding met de Caveau-server — probeer het zo nog eens'); }
   const d = await res.json().catch(() => ({}));
   if(!res.ok) throw new Error(d.error || (res.status === 404 ? 'De betaalfunctie is nog niet geplaatst' : 'Serverfout ' + res.status));
   return d;

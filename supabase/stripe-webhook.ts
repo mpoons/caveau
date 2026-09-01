@@ -18,6 +18,13 @@ import Stripe from 'npm:stripe@17'
 
 const ACTIVE = ['active', 'trialing']
 
+// Sinds Stripe-API 2025-03-31 staat current_period_end op de abonnementsregel en niet
+// meer op het abonnement zelf. Allebei lezen, dan klopt het onder elke API-versie.
+function periodEnd(sub: Stripe.Subscription): number | undefined {
+  const item = sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined
+  return item?.current_period_end ?? (sub as unknown as { current_period_end?: number }).current_period_end
+}
+
 Deno.serve(async (req) => {
   const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2025-10-29.clover' })
   const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
@@ -47,9 +54,17 @@ Deno.serve(async (req) => {
       const s = event.data.object as Stripe.Checkout.Session
       const userId = await findUserId(String(s.customer || ''), s.client_reference_id)
       if (userId) {
+        // Meteen de eerste verlengdatum ophalen, anders staat die pas na de eerste
+        // 'subscription.updated' in het profiel en ziet de eerste maand er kaal uit.
+        let ends: number | undefined
+        if (s.subscription) {
+          const sub = await stripe.subscriptions.retrieve(String(s.subscription))
+          ends = periodEnd(sub)
+        }
         await supa.from('profiles').update({
           plan: 'plus',
           plan_status: 'active',
+          plan_renews_at: ends ? new Date(ends * 1000).toISOString() : null,
           stripe_customer_id: String(s.customer || ''),
         }).eq('user_id', userId)
       }
@@ -61,11 +76,13 @@ Deno.serve(async (req) => {
       if (userId) {
         const live = event.type !== 'customer.subscription.deleted' && ACTIVE.includes(sub.status)
         // Bij opzeggen loopt het abonnement door tot het eind van de betaalde periode:
-        // Stripe stuurt dan pas bij het aflopen 'deleted'. Tot die tijd blijft plan 'plus'.
-        const ends = (sub as unknown as { current_period_end?: number }).current_period_end
+        // Stripe stuurt dan pas bij het aflopen 'deleted'. Tot die tijd blijft plan 'plus',
+        // maar de status wordt 'canceling' zodat de app "loopt af op" toont in plaats
+        // van "verlengt op" — en niet ten onrechte over een mislukte betaling klaagt.
+        const ends = periodEnd(sub)
         await supa.from('profiles').update({
           plan: live ? 'plus' : 'free',
-          plan_status: sub.status,
+          plan_status: live && sub.cancel_at_period_end ? 'canceling' : sub.status,
           plan_renews_at: ends ? new Date(ends * 1000).toISOString() : null,
         }).eq('user_id', userId)
       }
