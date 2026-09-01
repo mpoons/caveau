@@ -904,7 +904,36 @@ Alles in het Nederlands, hoeveelheden afgestemd op ${persons} personen, stappen 
 }
 
 /* foto verkleinen */
-function resizeImg(file, maxW, q){
+/* Een etiket bij kaarslicht komt er donker en vlak uit, en dan valt er voor de
+   sommelier weinig te lezen. Is de foto donker, dan leggen we zwart- en witpunt op
+   de werkelijke uitersten (op 1% aan elke kant na) en trekken we de donkere delen
+   met een lichte gamma omhoog. Bij een normaal belichte foto gebeurt er niets. */
+function liftDark(ctx, w, h){
+  let im; try{ im = ctx.getImageData(0, 0, w, h); }catch(e){ return false; }
+  const d = im.data, n = d.length / 4, hist = new Uint32Array(256);
+  let sum = 0;
+  for(let i = 0; i < d.length; i += 4){
+    const y = (d[i]*299 + d[i+1]*587 + d[i+2]*114) / 1000 | 0;
+    hist[y]++; sum += y;
+  }
+  if(sum / n > 105) return false;                  /* helder genoeg */
+  const cut = Math.max(1, Math.round(n * 0.01));
+  let lo = 0, hi = 255, acc = 0;
+  for(let v = 0; v < 256; v++){ acc += hist[v]; if(acc >= cut){ lo = v; break; } }
+  acc = 0;
+  for(let v = 255; v >= 0; v--){ acc += hist[v]; if(acc >= cut){ hi = v; break; } }
+  if(hi - lo < 24) return false;                   /* vlak beeld: uitrekken vergroot alleen de ruis */
+  const scale = 255 / (hi - lo), lut = new Uint8Array(256);
+  for(let v = 0; v < 256; v++){
+    const x = Math.min(1, Math.max(0, (v - lo) * scale / 255));
+    lut[v] = Math.round(Math.pow(x, 0.85) * 255);
+  }
+  for(let i = 0; i < d.length; i += 4){ d[i] = lut[d[i]]; d[i+1] = lut[d[i+1]]; d[i+2] = lut[d[i+2]]; }
+  ctx.putImageData(im, 0, 0);
+  return true;
+}
+function resizeImg(file, maxW, q, opts){
+  opts = opts || {};
   return new Promise((res, rej) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -913,8 +942,21 @@ function resizeImg(file, maxW, q){
       const c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(img.width*sc));
       c.height = Math.max(1, Math.round(img.height*sc));
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const ctx = c.getContext('2d', {willReadFrequently: !!opts.lift});
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      const lifted = opts.lift ? liftDark(ctx, c.width, c.height) : false;
       URL.revokeObjectURL(url);
+      /* Al klein genoeg én niets bijgetrokken? Dan houden we de originele bytes.
+         Een tweede JPEG-ronde kost juist het fijne detail dat bij weinig licht
+         het verschil maakt tussen lezen en gokken. Alleen voor echte JPEG's:
+         de rest moet hoe dan ook omgezet, want we sturen hem als image/jpeg. */
+      if(opts.keep && sc >= 1 && !lifted && file.type === 'image/jpeg'){
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = () => res(c.toDataURL('image/jpeg', q));
+        fr.readAsDataURL(file);
+        return;
+      }
       res(c.toDataURL('image/jpeg', q));
     };
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Foto kon niet worden gelezen')); };
@@ -1670,6 +1712,30 @@ ACT.scanNewPhoto = () => openLiveScan();
 
 /* ================= live-scanner: QR-gevoel met auto-vangst ================= */
 let liveStream = null, liveTimer = null, livePrev = null, liveStable = 0, liveEl = null, liveStartAt = 0;
+/* zaklamp: alleen Android/Chrome kan dit via getUserMedia — iOS Safari niet.
+   De knop verschijnt daarom pas als de camera zelf zegt dat hij het kan. */
+let liveTorch = false;
+async function liveTorchInit(){
+  liveTorch = false;
+  try{
+    const t = liveStream && liveStream.getVideoTracks()[0];
+    const caps = t && t.getCapabilities ? t.getCapabilities() : null;
+    if(caps && caps.torch){
+      const b = document.getElementById('liveTorchBtn');
+      if(b) b.style.display = 'block';
+    }
+  }catch(e){}
+}
+ACT.liveTorch = async el => {
+  const t = liveStream && liveStream.getVideoTracks()[0];
+  if(!t) return;
+  try{
+    liveTorch = !liveTorch;
+    await t.applyConstraints({ advanced:[{ torch: liveTorch }] });
+    el.textContent = liveTorch ? '🔦 aan' : 'zaklamp';
+    el.style.opacity = liveTorch ? '1' : '.75';
+  }catch(e){ liveTorch = false; toast('De zaklamp lukt niet op dit toestel'); }
+};
 /* 'etiket' = automatisch vangen bij stil+scherp beeld; 'kaart' = wijnkaart, zelf afdrukken */
 let liveMode = 'etiket';
 /* waar een gekozen/gemaakte foto heen gaat: 'etiket' (fles) of 'kaart' (wijnkaart) */
@@ -1690,10 +1756,12 @@ async function openLiveScan(mode){
       <button class="livex" data-act="liveClose" aria-label="Sluiten">✕</button>
       <button class="liveshut" data-act="liveSnap" aria-label="Maak foto"></button>
       <button class="livelib" data-act="liveLib">galerij</button>
+      <button class="livelib" id="liveTorchBtn" data-act="liveTorch" style="display:none;opacity:.75">zaklamp</button>
     </div>`;
   document.body.appendChild(div); liveEl = div;
   const v = div.querySelector('video'); v.srcObject = liveStream;
   liveStartAt = Date.now(); livePrev = null; liveStable = 0;
+  liveTorchInit();
   liveTimer = setInterval(() => liveCheck(v), 260);
 }
 function closeLiveScan(){
@@ -1716,17 +1784,28 @@ function liveCheck(v){
   try{ ctx.drawImage(v, 0, 0, 64, 64); }catch(e){ return; }
   const d = ctx.getImageData(0, 0, 64, 64).data;
   const g = new Float32Array(4096);
-  for(let i = 0; i < 4096; i++) g[i] = (d[i*4] + d[i*4+1] + d[i*4+2]) / 3;
+  let sum = 0;
+  for(let i = 0; i < 4096; i++){ const y = (d[i*4] + d[i*4+1] + d[i*4+2]) / 3; g[i] = y; sum += y; }
+  const mean = sum / 4096;
   let edge = 0;
   for(let y = 0; y < 64; y++) for(let x = 0; x < 63; x++) edge += Math.abs(g[y*64+x] - g[y*64+x+1]);
   edge /= 4032;
   let diff = 999;
   if(livePrev){ diff = 0; for(let i = 0; i < 4096; i += 4) diff += Math.abs(g[i] - livePrev[i]); diff /= 1024; }
   livePrev = g;
-  const stil = diff < 6, scherp = edge > 7;
-  liveStable = (stil && scherp) ? liveStable + 1 : 0;
+  /* Scherpte en beweging worden afgezet tegen de helderheid van het beeld zelf.
+     In een donker restaurant zakt het contrast van álles evenredig mee: met een
+     vaste drempel haalt een perfect scherp etiket het nooit en klikt de sluiter
+     dus nooit. Relatief gemeten gedraagt hij zich bij kaarslicht als bij daglicht. */
+  const ref = Math.max(mean, 26);
+  const edgeRel = edge / ref * 100, diffRel = diff / ref * 100;
+  const donker = mean < 26;
+  const stil = diffRel < 4.5, scherp = edgeRel > 5 && edge > 2;
+  liveStable = (stil && scherp && !donker) ? liveStable + 1 : 0;
   const hint = document.getElementById('liveHint');
-  if(hint) hint.textContent = !scherp ? 'Iets dichterbij, of meer licht…' : (!stil ? 'Houd stil…' : 'Vasthouden…');
+  if(hint) hint.textContent = donker ? (liveTorch ? 'Nog te donker — houd hem dichterbij' : 'Te donker — zet de zaklamp aan of zoek licht')
+    : !scherp ? 'Iets dichterbij, of even scherpstellen…'
+    : !stil ? 'Houd stil…' : 'Vasthouden…';
   if(liveStable >= 3 && Date.now() - liveStartAt > 1200) liveCapture();
 }
 function liveCapture(){
@@ -1737,7 +1816,7 @@ function liveCapture(){
   const fl = document.getElementById('liveFlash');
   if(fl){ fl.style.opacity = '0.75'; setTimeout(() => { if(fl) fl.style.opacity = '0'; }, 180); }
   /* een wijnkaart heeft meer resolutie nodig dan een etiket: kleine letters, veel regels */
-  const sc = Math.min(1, (kaart ? 1568 : 1280) / Math.max(v.videoWidth, v.videoHeight));
+  const sc = Math.min(1, (kaart ? 1568 : 1400) / Math.max(v.videoWidth, v.videoHeight));
   const c = document.createElement('canvas');
   c.width = Math.round(v.videoWidth * sc); c.height = Math.round(v.videoHeight * sc);
   c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
@@ -1750,7 +1829,7 @@ function liveCapture(){
     if(h) h.textContent = `Pagina ${n} vastgelegd — nog een pagina? Anders op ✕`;
     return;
   }
-  c.toBlob(b => { closeLiveScan(); if(b) handlePhoto(b); }, 'image/jpeg', 0.85);
+  c.toBlob(b => { closeLiveScan(); if(b) handlePhoto(b); }, 'image/jpeg', 0.88);
 }
 ACT.scanDrinkNow = () => {
   const d = readForm();
@@ -1785,7 +1864,7 @@ async function handlePhoto(file){
   if(!file) return;
   formQty = 1;
   try{
-    scan.photo = await resizeImg(file, 1100, 0.8);
+    scan.photo = await resizeImg(file, 1400, 0.85, {lift:true, keep:true});
     scan.thumb = await resizeImg(file, 380, 0.72);
   }catch(e){ toast('Foto kon niet worden gelezen'); return; }
   scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null;
