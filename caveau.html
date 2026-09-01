@@ -468,7 +468,7 @@ function idb(){
   });
 }
 const photoCache = new Map();
-async function pSet(id, data){ photoCache.set(id, data); const d = await idb(); if(!d) return;
+async function pSet(id, data){ photoCache.set(id, data); if(typeof fotoOpnieuw !== 'undefined') fotoOpnieuw.add(id); const d = await idb(); if(!d) return;
   await new Promise(r=>{ const tx=d.transaction('p','readwrite'); tx.objectStore('p').put(data,id); tx.oncomplete=r; tx.onerror=r; }); }
 async function pGet(id){ if(photoCache.has(id)) return photoCache.get(id); const d = await idb(); if(!d) return null;
   return new Promise(r=>{ const rq=d.transaction('p').objectStore('p').get(id); rq.onsuccess=()=>{ if(rq.result) photoCache.set(id,rq.result); r(rq.result||null); }; rq.onerror=()=>r(null); }); }
@@ -861,6 +861,56 @@ drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op
 /* Wat er al leesbaar in het halve antwoord staat. Een sleutel-waardepaar telt pas
    mee als het afsluitende aanhalingsteken binnen is, dus je ziet nooit een halve
    naam staan. Puur om mee te kijken; het echte invullen gebeurt aan het eind. */
+/* Alles wat er nu al compleet in het halve antwoord staat. Een waarde telt pas
+   mee als hij is afgesloten, dus je ziet nooit een halve naam of een half lijstje. */
+function scanPartial(txt){
+  const uit = {};
+  const tekst = k => {
+    const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+    if(!m) return undefined;
+    try{ return JSON.parse('"' + m[1] + '"'); }catch(e){ return undefined; }
+  };
+  const jaar = k => { const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*(\\d{4})')); return m ? +m[1] : undefined; };
+  for(const k of ['name','producer','type','country','region','appellation']){
+    const v = tekst(k); if(v !== undefined) uit[k] = v;
+  }
+  for(const k of ['vintage','drink_from','drink_to']){
+    const v = jaar(k); if(v !== undefined) uit[k] = v;
+  }
+  const g = txt.match(/"grapes"\s*:\s*\[([^\]]*)\]/);
+  if(g){ try{ uit.grapes = JSON.parse('[' + g[1] + ']'); }catch(e){} }
+  return uit;
+}
+/* Zet binnengekomen velden in het formulier, behalve waar de gebruiker al typte. */
+function vulFormLive(d){
+  const zet = (id, v) => {
+    if(v === undefined || v === null || v === '') return;
+    if(scanTouched.has(id)) return;
+    const el = document.getElementById(id);
+    if(el && el.value !== String(v)) el.value = v;
+  };
+  zet('f_name', d.name); zet('f_producer', d.producer); zet('f_vintage', d.vintage);
+  zet('f_country', d.country); zet('f_region', d.region); zet('f_app', d.appellation);
+  zet('f_from', d.drink_from); zet('f_to', d.drink_to);
+  if(d.grapes && d.grapes.length) zet('f_grapes', d.grapes.join(', '));
+  if(d.type && TYPES[d.type] && !scanTouched.has('f_type')){
+    const seg = document.getElementById('f_type');
+    if(seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === d.type));
+  }
+}
+/* Heeft de gebruiker tijdens het lezen zelf iets ingevuld, dan wint dat van het
+   antwoord. Zonder dit haalt de laatste render zijn correctie er weer af. */
+function behoudEigenInvoer(d){
+  if(!scanTouched.size) return;
+  const f = readForm();
+  const paar = [['f_name','name','name'], ['f_producer','producer','producer'],
+    ['f_vintage','vintage','vintage'], ['f_grapes','grapes','grapes'],
+    ['f_country','country','country'], ['f_region','region','region'],
+    ['f_app','appellation','appellation'], ['f_from','drink_from','drinkFrom'],
+    ['f_to','drink_to','drinkTo']];
+  for(const [id, inAntwoord, inFormulier] of paar) if(scanTouched.has(id)) d[inAntwoord] = f[inFormulier];
+  if(scanTouched.has('f_type')) d.type = f.type;
+}
 function scanPeek(txt){
   const tekst = k => {
     const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
@@ -1390,7 +1440,8 @@ ACT.fillLoc = el => {
 function wireSeg(id){
   const seg = document.getElementById(id); if(!seg) return;
   seg.querySelectorAll('button').forEach(b => b.onclick = () => {
-    seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); });
+    seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+    if(id === 'f_type') scanTouched.add('f_type'); });
 }
 function readForm(){
   const g = v => (document.getElementById(v)||{}).value || '';
@@ -1554,9 +1605,14 @@ async function doRecalc(el, silent){
 }
 ACT.recalc = el => doRecalc(el, false);
 
+/* Welke velden heeft de gebruiker zelf aangeraakt? Die laat het live invullen
+   met rust, en ze winnen ook als het antwoord binnen is. Anders typ je een naam
+   over terwijl de sommelier nog aan het lezen is, en verdwijnt hij weer. */
+let scanTouched = new Set();
 /* venster met de hand aangepast → niet meer automatisch overschrijven */
 document.addEventListener('input', e => {
   const t = e.target;
+  if(t && t.id && t.id.startsWith('f_')) scanTouched.add(t.id);
   if(t && (t.id === 'f_from' || t.id === 'f_to')) vensterAuto = false;
 });
 /* jaargang ingevuld of gewijzigd → venster automatisch bijrekenen zolang het een schatting is */
@@ -1776,7 +1832,7 @@ function viewScan(){
       <div style="display:flex;gap:8px"><select class="inp" id="quickLoc" data-in="quickLoc" style="flex:1;min-width:0" aria-label="Locatie">${locSelectOptions(pre.location)}</select>
       <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="scanTonight" style="width:18px;height:18px;accent-color:var(--acc)"> 🍷 Vanavond drinken, herinner me om af te strepen</label></div>`}
-    ${scan.busy ? '' : formFields(pre)}
+    ${formFields(pre)}
     <div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
       <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>
@@ -1932,15 +1988,15 @@ function ensureWindow(d){
 ACT.scanRetry = async () => {
   if(!scan.photo || scan.busy) return;
   if(!aiReady()){ toast('AI-scannen staat hier uit. Vul de velden in en gebruik Herbereken'); return; }
-  scan.err = null; scan.busy = true; vensterAuto = true; render(); showScanImg();
+  scan.err = null; scan.busy = true; vensterAuto = true; scanTouched = new Set(); render(); showScanImg();
   try{
     const d = await aiScan(scan.photo, txt => {
       const el = document.getElementById('scanLive');
-      if(!el) return;
-      const p = scanPeek(txt);
-      if(p){ el.textContent = p; el.classList.remove('pulse'); }
+      if(el){ const p = scanPeek(txt); if(p){ el.textContent = p; el.classList.remove('pulse'); } }
+      vulFormLive(scanPartial(txt));
     });
     ensureWindow(d);
+    behoudEigenInvoer(d);
     scan.data = d;
     scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
   }catch(e){ scan.err = String(e.message||e).slice(0,120); }
@@ -1956,18 +2012,18 @@ async function handlePhoto(file){
     scan.photo = await resizeImg(file, 1400, 0.85, {lift:true, keep:true});
     scan.thumb = await resizeImg(file, 380, 0.72);
   }catch(e){ toast('Foto kon niet worden gelezen'); return; }
-  scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null;
+  scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null; scanTouched = new Set();
   scan.busy = aiReady(); vensterAuto = true;
   UI.tab = 'scan'; render(); showScanImg();
   if(scan.busy){
     try{
       const d = await aiScan(scan.photo, txt => {
         const el = document.getElementById('scanLive');
-        if(!el) return;
-        const p = scanPeek(txt);
-        if(p){ el.textContent = p; el.classList.remove('pulse'); }
+        if(el){ const p = scanPeek(txt); if(p){ el.textContent = p; el.classList.remove('pulse'); } }
+        vulFormLive(scanPartial(txt));
       });
       ensureWindow(d);
+      behoudEigenInvoer(d);
       scan.data = d;
       scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
     }catch(e){ scan.err = String(e.message||e).slice(0,120); }
@@ -2591,6 +2647,7 @@ function viewSettings(){
     ${(()=>{ const rows=[];
       try{ const d=JSON.parse(localStorage.getItem('caveau_backup_daily')||'null'); if(d&&d.data) rows.push({k:'caveau_backup_daily', l:'Dagelijkse reservekopie', at:d.at, n:(d.data.wines||[]).length}); }catch(e){}
       try{ const p=JSON.parse(localStorage.getItem('caveau_backup_prev')||'null'); if(p&&p.data) rows.push({k:'caveau_backup_prev', l:'Vóór laatste sync-overname', at:p.at, n:(p.data.wines||[]).length}); }catch(e){}
+      try{ const q=JSON.parse(localStorage.getItem('caveau_backup_prev2')||'null'); if(q&&q.data) rows.push({k:'caveau_backup_prev2', l:'Die daarvóór', at:q.at, n:(q.data.wines||[]).length}); }catch(e){}
       if(!rows.length) return '';
       return `<hr class="sep"><div class="eyebrow mb8">Automatische reservekopieën (dit apparaat)</div>
         <div class="panel">${rows.map(r=>`<div class="rowline"><span class="a"><div class="t" style="font-family:var(--sans);font-size:13.5px">${r.l}</div><div class="u tnum">${r.n} wijnen · ${new Date(r.at).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></span><span class="z"><button class="btn sm plain" data-act="restoreBackup" data-k="${r.k}">Terugzetten</button></span></div>`).join('')}</div>`; })()}
@@ -2877,7 +2934,7 @@ function render(keepFocus){
   fillPhotos(v);
   if(typeof updateBadge === 'function') updateBadge();
   if(UI.tab==='pairing' && UI.pairMode==='menu') menuFillShots();
-  if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); if(!scan.busy) wireSeg('f_type'); }
+  if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); wireSeg('f_type'); }
   if(keepFocus){ const s = v.querySelector('input[type=search]'); if(s){ s.focus(); const n = s.value.length; try{ s.setSelectionRange(n,n); }catch(e){} } }
 }
 /* dezelfde twee bestandskiezers bedienen zowel het etiket als de wijnkaart */
@@ -3016,6 +3073,12 @@ async function pullDoc(){
 function snapshotLocal(key, extra){
   try{
     if(!(S.wines.length || S.history.length)) return;
+    /* De vorige reservekopie een plek opschuiven. Twee ongelukken achter elkaar
+       overschreven anders precies de kopie die je nodig had. */
+    if(key === 'caveau_backup_prev'){
+      const oud = localStorage.getItem(key);
+      if(oud) localStorage.setItem('caveau_backup_prev2', oud);
+    }
     localStorage.setItem(key, JSON.stringify({...(extra||{}), at:Date.now(),
       data:{wines:S.wines, history:S.history, wishlist:S.wishlist, locations:S.locations||[],
         pairCache:S.pairCache||[], recipeCache:S.recipeCache||[], cellarName:S.settings.cellarName}}));
@@ -3026,6 +3089,13 @@ async function applyRemote(remote){
   adoptDoc(remote); render(); await pullPhotos();
 }
 const shrinks = (van, naar) => van >= 5 && naar < Math.max(1, Math.ceil(van * 0.2)); /* >80% zou verdwijnen */
+/* Ook een historie of verlanglijst kan in één klap verdwijnen, en die zijn net zo
+   min terug te halen als de flessen zelf. Alle drie apart wegen. */
+function krimpErgens(hier, daar){
+  const tel = d => [ (d.wines||[]).length, (d.history||[]).length, (d.wishlist||[]).length ];
+  const a = tel(hier), b = tel(daar);
+  return a.some((n, i) => shrinks(n, b[i]));
+}
 
 function askShrink(mode, remote, lc, rc){
   lastSyncNote = 'Wacht op jouw keuze, groot verschil tussen versies';
@@ -3093,10 +3163,10 @@ async function syncNow(interactive){
     } else if(lokaalGewijzigd && cloudGewijzigd){
       syncBusy = false; askShrink('botsing', remote, lc, rc); return;
     } else if(cloudGewijzigd){
-      if(shrinks(lc, rc)){ syncBusy = false; askShrink('adopt', remote, lc, rc); return; }
+      if(krimpErgens(S, remote)){ syncBusy = false; askShrink('adopt', remote, lc, rc); return; }
       await applyRemote(remote);
     } else if(lokaalGewijzigd){
-      if(shrinks(rc, lc)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
+      if(krimpErgens(remote, S)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
       await pushDoc(); await pushPhotos();
     }
     const c = cloud(); c.lastSync = Date.now(); S.syncedRev = S.rev||0; save(true);
@@ -3112,19 +3182,31 @@ async function syncNow(interactive){
 }
 
 /* foto's incrementeel */
+/* Foto's die op dit apparaat opnieuw zijn gezet moeten ook opnieuw omhoog; de
+   cloud kent ze al onder hetzelfde id en zou anders de oude blijven bewaren. */
+let fotoOpnieuw = new Set();
 async function pushPhotos(){
+  let mislukt = 0;
   try{
-    const rows = await sbFetch('/rest/v1/photos?select=id', {method:'GET'});
+    const rows = await sbFetch('/rest/v1/photos?select=id&limit=5000', {method:'GET'});
     const have = new Set((rows||[]).map(r => r.id));
     for(const w of [...S.wines, ...S.wishlist, ...(S.locations||[])]){
-      if(w.photo && !have.has(w.id)){
+      if(!w.photo) continue;
+      if(have.has(w.id) && !fotoOpnieuw.has(w.id)) continue;
+      try{
         const p = await pGet(w.id);
-        if(p) await sbFetch('/rest/v1/photos?on_conflict=user_id,id', {method:'POST',
+        if(!p) continue;
+        await sbFetch('/rest/v1/photos?on_conflict=user_id,id', {method:'POST',
           headers:{'prefer':'resolution=merge-duplicates,return=minimal'},
           body: JSON.stringify([{user_id: cloud().uid, id: w.id, data: p}])});
-      }
+        fotoOpnieuw.delete(w.id);
+      }catch(e){ mislukt++; }   /* volgende sync probeert het opnieuw */
     }
-  }catch(e){}
+  }catch(e){ mislukt++; }
+  /* Stil laten mislukken betekent dat iemand pas op een nieuw apparaat merkt dat
+     zijn etiketten er niet zijn. Liever nu een regel in het accountscherm. */
+  if(mislukt) lastSyncNote = mislukt + ' ' + plur(mislukt,'foto','foto\'s') + ' nog niet in de cloud';
+  return mislukt;
 }
 async function pullPhotos(){
   try{
