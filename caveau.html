@@ -722,19 +722,53 @@ function creditCost(kind, images){
 }
 
 /* Routering: eigen sleutel gaat vóór (rechtstreeks naar Anthropic, onbeperkt);
-   anders via de Caveau-serverfunctie met het account-tegoed. */
-async function callClaude(content, maxTokens, kind){
-  if((S.settings.apiKey||'').trim()) return callAnthropicDirect(content, maxTokens);
-  if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind);
+   anders via de Caveau-serverfunctie met het account-tegoed.
+   onText (optioneel) maakt er een stroom van: die wordt bij elk stukje antwoord
+   aangeroepen met alles wat er tot dan toe staat, zodat het scherm meeleest. */
+async function callClaude(content, maxTokens, kind, onText){
+  if((S.settings.apiKey||'').trim()) return callAnthropicDirect(content, maxTokens, onText);
+  if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind, onText);
   throw new Error('Log in (Meer → Account) of vul een API-sleutel in');
 }
-async function callAnthropicDirect(content, maxTokens){
+/* Kan deze browser een antwoord stuk voor stuk lezen? Zo niet, dan wachten we
+   gewoon op het hele antwoord zoals vroeger — alles blijft werken. */
+const CAN_STREAM = typeof ReadableStream !== 'undefined' && typeof TextDecoder !== 'undefined'
+  && typeof Response !== 'undefined' && 'body' in Response.prototype;
+
+/* Anthropic stuurt server-sent events: regels 'data: {…}'. We plukken de tekst
+   eruit en geven na elk stukje door wat er nu staat. */
+async function readSSE(res, onText){
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = '', out = '';
+  for(;;){
+    const {done, value} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, {stream:true});
+    let i;
+    while((i = buf.indexOf('\n')) >= 0){
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i+1);
+      if(!line.startsWith('data:')) continue;
+      const raw = line.slice(5).trim();
+      if(!raw || raw === '[DONE]') continue;
+      let ev; try{ ev = JSON.parse(raw); }catch(e){ continue; }
+      if(ev.type === 'error') throw new Error((ev.error && ev.error.message) || 'Fout tijdens het lezen');
+      if(ev.type === 'content_block_delta' && ev.delta && typeof ev.delta.text === 'string'){
+        out += ev.delta.text;
+        if(onText) try{ onText(out); }catch(e){}
+      }
+    }
+  }
+  return out;
+}
+async function callAnthropicDirect(content, maxTokens, onText){
   const model = (S.settings.model||'claude-sonnet-5').trim();
   const body = { model, max_tokens:maxTokens||2000, messages:[{role:'user', content}] };
   /* Sonnet 5 / Opus 5 denken standaard mee in het antwoordbudget — voor JSON-extractie
      zetten we dat uit (sneller, goedkoper, geen afgekapte JSON). Fable/Mythos en Haiku
      accepteren dit veld niet op dezelfde manier: daar weglaten. */
   if(/sonnet-[45]|opus-[45]/.test(model)) body.thinking = {type:'disabled'};
+  const stream = !!onText && CAN_STREAM;
+  if(stream) body.stream = true;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{ 'content-type':'application/json', 'x-api-key':S.settings.apiKey.trim(),
@@ -742,6 +776,7 @@ async function callAnthropicDirect(content, maxTokens){
     body: JSON.stringify(body)
   });
   if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('API '+res.status+' — '+t.slice(0,200)); }
+  if(stream && res.body) return readSSE(res, onText);
   const d = await res.json();
   return (d.content||[]).filter(b => b.type==='text').map(b => b.text).join('');
 }
@@ -751,7 +786,7 @@ function parseJsonLoose(s){
   return JSON.parse(s.slice(a, b+1));
 }
 
-async function aiScan(dataUrl){
+async function aiScan(dataUrl, onPartial){
   const b64 = dataUrl.split(',')[1];
   const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
 {"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter"}
@@ -759,8 +794,24 @@ drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op
   const out = await callClaude([
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
     {type:'text', text:prompt}
-  ], 2500, 'scan');
+  ], 2500, 'scan', onPartial);
   return parseJsonLoose(out);
+}
+
+/* Wat er al leesbaar in het halve antwoord staat. Een sleutel-waardepaar telt pas
+   mee als het afsluitende aanhalingsteken binnen is, dus je ziet nooit een halve
+   naam staan. Puur om mee te kijken — het echte invullen gebeurt aan het eind. */
+function scanPeek(txt){
+  const tekst = k => {
+    const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+    if(!m) return '';
+    try{ return JSON.parse('"' + m[1] + '"'); }catch(e){ return ''; }
+  };
+  const jaar = () => { const m = txt.match(/"vintage"\s*:\s*(\d{4})/); return m ? m[1] : ''; };
+  const naam = tekst('name'), prod = tekst('producer');
+  /* bij een château is de naam vaak ook de producent — die niet twee keer tonen */
+  return [naam, prod === naam ? '' : prod, jaar(), tekst('appellation') || tekst('region') || tekst('country')]
+    .filter(Boolean).join(' · ');
 }
 
 async function aiRecalc(d){
@@ -1656,7 +1707,7 @@ function viewScan(){
       <button class="btn sm plain" data-act="scanNewPhoto">📷 Nieuwe foto</button>
     </div>
     <div class="scanprev">${bottleSvg}<img id="scanImg" alt="Gescand etiket"></div>
-    ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse">De sommelier leest het etiket…</span></div>` : ''}
+    ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse" id="scanLive">De sommelier leest het etiket…</span></div>` : ''}
     ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken" — de foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
     ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b> — het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
@@ -1823,7 +1874,12 @@ ACT.scanRetry = async () => {
   if(!aiReady()){ toast('AI-scannen staat hier uit — vul de velden in en gebruik Herbereken'); return; }
   scan.err = null; scan.busy = true; vensterAuto = true; render(); showScanImg();
   try{
-    const d = await aiScan(scan.photo);
+    const d = await aiScan(scan.photo, txt => {
+      const el = document.getElementById('scanLive');
+      if(!el) return;
+      const p = scanPeek(txt);
+      if(p){ el.textContent = p; el.classList.remove('pulse'); }
+    });
     ensureWindow(d);
     scan.data = d;
     scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
@@ -1845,7 +1901,12 @@ async function handlePhoto(file){
   UI.tab = 'scan'; render(); showScanImg();
   if(scan.busy){
     try{
-      const d = await aiScan(scan.photo);
+      const d = await aiScan(scan.photo, txt => {
+        const el = document.getElementById('scanLive');
+        if(!el) return;
+        const p = scanPeek(txt);
+        if(p){ el.textContent = p; el.classList.remove('pulse'); }
+      });
       ensureWindow(d);
       scan.data = d;
       scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
@@ -2815,13 +2876,19 @@ function cloudDeletePhoto(id){
 }
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
-async function sbAI(content, maxTokens, kind){
+async function sbAI(content, maxTokens, kind, onText){
   if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in bij Meer → Account'); }
-  const res = await fetch(SB_URL + '/functions/v1/ai', {
-    method:'POST',
-    headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
-    body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, messages:[{role:'user', content}] })
-  });
+  const stream = !!onText && CAN_STREAM;
+  let res;
+  try{
+    res = await fetch(SB_URL + '/functions/v1/ai', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+      body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}] })
+    });
+  }catch(_){ throw new Error('Geen verbinding met de Caveau-server — probeer het zo nog eens'); }
+  if(res.ok && stream && res.body && (res.headers.get('content-type')||'').includes('event-stream'))
+    return readSSE(res, onText);
   const d = await res.json().catch(() => ({}));
   if(!res.ok){
     const e = new Error(res.status === 402 ? 'Je AI-tegoed voor deze maand is op — kijk bij Meer → Account'

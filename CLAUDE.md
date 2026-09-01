@@ -25,7 +25,9 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 - API-sleutel en sessietokens nooit syncen/exporteren (zit zo in de code — zo houden).
 
 ## Status & vervolg
-- Fase 1 (AI-proxy) app-kant staat live; Max' serverstappen: SQL (`supabase/schema-fase1.sql`) plakken, secret zetten, functie `ai` deployen via dashboard.
+- Fase 1 + 2 SQL zijn **gedraaid** (1 sep 2026): `profiles`, `ai_usage`, `cost_units`, `stripe_customer_id`, `plan_renews_at`, `plan_status` en `credits_used_this_month()` staan er. Nog te deployen: de Edge Functions `ai`, `billing`, `stripe-webhook` (alle drie nog 404).
+- Stripe **testmodus** (account `acct_1UAm7oL0f2iIgWz0`, NL, onboarding nog niet af): product `prod_VB8SYtxqKYfPps`, prijs `price_1UAmBrL0f2iIgWz0Xc4PnL29` (€2,99/mnd, btw inbegrepen) = `STRIPE_PRICE_PLUS`. Klantportaal en webhook-endpoint moeten nog door Max in het dashboard.
+- AI-antwoorden **streamen**: `callClaude(content, maxTokens, kind, onText)`; `readSSE()` in de app, doorgeefluik met verbruiksboeking in `ai-function.ts`. Zonder `onText` blijft alles werken zoals eerst.
 - Wijnkaart-scan (restaurant): Pairing → derde stand "Wijnkaart" (`viewMenu`/`runMenu`/`aiMenu`, kind `wijnkaart`, tot 4 foto's, alleen in het geheugen — nooit in IndexedDB of cloud). Laatste advies leeft in `S.menuLast` (12 uur zichtbaar). Zonder AI: `menuGuideHtml` (FOODS-regels) als kaartgids.
 - Fase 2 (app-kant klaar, server nog niet): **gewogen credits** i.p.v. acties — `creditsFor()` in `ai-function.ts` en `creditCost()` in caveau.html moeten gelijk blijven (etiket/tekst = 1, wijnkaart = 2 per foto). Gratis 20 credits/mnd, Plus 300 voor €2,99. Stripe direct (btw regelt Max zelf later): `billing-function.ts` (Checkout + portaal, JWT aan) en `stripe-webhook.ts` (**JWT uit**, handtekening via `constructEventAsync`). SQL: `schema-fase2.sql`.
 - Nog te doen na fase 2: privacy/voorwaarden-pagina's, Supabase Pro bij echte gebruikers, daarna marketingplan.

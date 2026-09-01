@@ -83,11 +83,13 @@ Deno.serve(async (req) => {
     }
 
     // verzoek doorsturen — de server bepaalt model en instellingen
+    const wantStream = body.stream === true
     const payload = {
       model: MODEL_BY_KIND[kind] || MODEL_DEFAULT,
       max_tokens: Math.min(Number(body.max_tokens) || 2000, 4000),
       thinking: { type: 'disabled' },
       messages: body.messages,
+      ...(wantStream ? { stream: true } : {}),
     }
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -98,6 +100,43 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify(payload),
     })
+
+    // Streamen: de app vult het etiket in terwijl het antwoord binnenkomt. We laten
+    // de gebeurtenissen ongewijzigd door en kijken alleen mee voor het verbruik —
+    // dat boeken we pas als er echt tekst gelezen is, zodat een stream die meteen
+    // afbreekt geen credit kost.
+    if (wantStream) {
+      if (!r.ok || !r.body) return json(await r.json().catch(() => ({ error: 'Fout bij de AI' })), r.status)
+      const dec = new TextDecoder()
+      let inTok = 0, outTok = 0, gotText = false, tail = ''
+      const spy = new TransformStream({
+        transform(chunk, ctrl) {
+          ctrl.enqueue(chunk)
+          tail += dec.decode(chunk, { stream: true })
+          let i: number
+          while ((i = tail.indexOf('\n')) >= 0) {
+            const line = tail.slice(0, i).trim(); tail = tail.slice(i + 1)
+            if (!line.startsWith('data:')) continue
+            try {
+              const ev = JSON.parse(line.slice(5).trim())
+              if (ev.type === 'content_block_delta' && ev.delta?.text) gotText = true
+              if (ev.type === 'message_start') inTok = ev.message?.usage?.input_tokens || 0
+              if (ev.type === 'message_delta') outTok = ev.usage?.output_tokens || outTok
+            } catch (_) { /* halve regel: die maakt de volgende ronde af */ }
+          }
+        },
+        async flush() {
+          if (!gotText) return
+          await supa.from('ai_usage').insert({
+            user_id: user.id, kind, cost_units: units, tokens_in: inTok, tokens_out: outTok,
+          })
+        },
+      })
+      return new Response(r.body.pipeThrough(spy), {
+        status: 200,
+        headers: { ...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
+      })
+    }
     const data = await r.json()
     if (r.ok) {
       await supa.from('ai_usage').insert({
