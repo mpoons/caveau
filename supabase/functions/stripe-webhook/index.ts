@@ -79,10 +79,15 @@ Deno.serve(async (req) => {
         // Stripe stuurt dan pas bij het aflopen 'deleted'. Tot die tijd blijft plan 'plus',
         // maar de status wordt 'canceling' zodat de app "loopt af op" toont in plaats
         // van "verlengt op" — en niet ten onrechte over een mislukte betaling klaagt.
-        const ends = periodEnd(sub)
+        //
+        // Stripe drukt "stopt aan het eind van de periode" op meer dan één manier uit:
+        // als cancel_at_period_end, en in nieuwere API-versies als een cancel_at-datum.
+        // Allebei aannemen, dan maakt het niet uit welke weg het klantportaal koos.
+        const stopt = sub.cancel_at_period_end === true || !!sub.cancel_at
+        const ends = sub.cancel_at || periodEnd(sub)
         await supa.from('profiles').update({
           plan: live ? 'plus' : 'free',
-          plan_status: live && sub.cancel_at_period_end ? 'canceling' : sub.status,
+          plan_status: live && stopt ? 'canceling' : sub.status,
           plan_renews_at: ends ? new Date(ends * 1000).toISOString() : null,
         }).eq('user_id', userId)
       }
