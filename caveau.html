@@ -1,8 +1,8 @@
-<title>Caveau — wijnkelder</title>
+<title>Caveau, je wijnkelder</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FAF6EF">
 <style>
-/* ============ Caveau — crème & bordeaux ============ */
+/* ============ Caveau, crème & bordeaux ============ */
 :root{
   --bg:#FAF6EF; --card:#FFFFFF; --card2:#F4EDE0; --sheet:#FFFDF8;
   --ink:#2B2126; --ink2:#6E5F66; --ink3:#9A8A91;
@@ -194,7 +194,7 @@ h1,h2,h3{text-wrap:balance}
 .inp:focus{border-color:var(--acc)}
 textarea.inp{resize:vertical;min-height:64px}
 /* iOS zoomt vanzelf in zodra je een tekstveld kleiner dan 16px aantikt, en zoomt daarna
-   niet terug — op een aanraakscherm dus 16px, zodat de app niet scheef ingezoomd blijft staan. */
+   niet terug, dus op een aanraakscherm 16px, zodat de app niet scheef ingezoomd blijft staan. */
 @media (pointer:coarse){ .inp, .search input, input, select, textarea { font-size:16px } }
 .frow{display:flex;gap:9px}
 .frow>.field{flex:1;min-width:0}
@@ -389,7 +389,7 @@ let S = loadState();
 /* save(true) = technische schrijfactie (tokens, sync-adoptie): geen rev-bump, geen cloud-push */
 function save(skipCloud){
   if(!skipCloud) S.rev = Date.now();
-  try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt — opslag vol?'); }
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt. Is de opslag vol?'); }
   if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
 }
 
@@ -481,7 +481,7 @@ async function fillPhotos(root){
     if(src){ img.src = src; img.closest('.wthumb,.dphoto,.scanprev')?.querySelector('svg')?.remove(); }
   }));
 }
-/* glas dat volloopt — laadbeeld voor alles waar de sommelier op zit te denken */
+/* glas dat volloopt: laadbeeld voor alles waar de sommelier op zit te denken */
 const pourSvg = `<svg class="pour" viewBox="0 0 22 30" aria-hidden="true">
   <defs><clipPath id="pourc"><path d="M4.6 3h12.8l-1 8.2a5.9 5.9 0 0 1-10.8 0L4.6 3Z"/></clipPath></defs>
   <g clip-path="url(#pourc)"><rect class="wine" x="3" y="0" width="16" height="16" rx="1"/></g>
@@ -619,7 +619,7 @@ function estimateWindow(w){
   }
 }
 
-/* ================= spijs & wijn — regeltabel ================= */
+/* ================= spijs & wijn, regeltabel ================= */
 const FOODS = [
   {id:'rund', label:'Rundvlees & steak', kw:['rund','biefstuk','steak','entrecote','tournedos','ribeye','ossenhaas','sucade','hachee','burger','tartaar','stoofvlees','stoof'],
    w:{rood:4}, g:G_BIG_RED, rW:'stevig rood met rijpe tannines draagt rood vlees moeiteloos',
@@ -634,7 +634,7 @@ const FOODS = [
    w:{rood:3, wit:2, rose:1}, g:['pinot','gamay','chardonnay','tempranillo','barbera'], rW:'soepel rood of rijk wit past bij het zachte vet van varken',
    dishes:['Langzaam gegaarde procureur','Porchetta'], buy:'een soepele Pinot Noir of Barbera'},
   {id:'kip', label:'Kip & gevogelte', kw:['kip','gevogelte','kalkoen','parelhoender','poussin','piri'],
-   w:{wit:3, rood:2, mousserend:1, rose:1}, g:['chardonnay','pinot','viognier','chenin'], rW:'rijk wit — of licht rood — omarmt gebraden gevogelte',
+   w:{wit:3, rood:2, mousserend:1, rose:1}, g:['chardonnay','pinot','viognier','chenin'], rW:'rijk wit, of licht rood, omarmt gebraden gevogelte',
    dishes:['Hele kip uit de oven','Coq au vin (dan rood)'], buy:'een Bourgogne blanc of soepele Pinot Noir'},
   {id:'eend', label:'Eend', kw:['eend','confit','canard'],
    w:{rood:4, wit:1}, g:['pinot','grenache','tannat','merlot'], rW:'zijdig rood met wat rijpheid is heerlijk bij eend',
@@ -676,10 +676,10 @@ const FOODS = [
    w:{rood:4, rose:2}, g:['syrah','zinfandel','malbec','grenache','primitivo'], rW:'rokerig en royaal fruit tegen rook en karamelisatie',
    dishes:['Spareribs','Brisket low & slow'], buy:'een Zinfandel, Malbec of zuidelijke Rhône'},
   {id:'vega', label:'Groenten & salades', kw:['salade','groente','vegetarisch','vegan','asperge','courgette','aubergine','bloemkool','pompoen','linzen','falafel','burrata'],
-   w:{wit:4, rose:3, rood:1, mousserend:1}, g:['sauvignon','vermentino','gruner','pinot grigio','grenache'], rW:'groen en fris — de wijn moet lucht en zuren meebrengen',
+   w:{wit:4, rose:3, rood:1, mousserend:1}, g:['sauvignon','vermentino','gruner','pinot grigio','grenache'], rW:'groen en fris, de wijn moet lucht en zuren meebrengen',
    dishes:['Gegrilde groenten met burrata','Salade niçoise'], buy:'een Grüner Veltliner of Provence-rosé'},
   {id:'chocolade', label:'Chocolade', kw:['chocolade','chocola','brownie','moelleux','fondant'],
-   w:{versterkt:4, zoet:3}, g:['grenache'], rW:'donkere chocolade vraagt zoet met kracht — denk Banyuls of Port',
+   w:{versterkt:4, zoet:3}, g:['grenache'], rW:'donkere chocolade vraagt zoet met kracht, denk aan Banyuls of Port',
    dishes:['Chocoladefondant','Brownie'], buy:'een Banyuls, Maury of Ruby Port'},
   {id:'dessert', label:'Zoete desserts', kw:['dessert','taart','appeltaart','creme brulee','panna cotta','tiramisu','cheesecake','ijs','pavlova','fruit'],
    w:{zoet:4, mousserend:2}, g:['riesling','semillon','chenin','muscat'], rW:'de wijn moet minstens zo zoet zijn als het dessert',
@@ -719,7 +719,7 @@ function winesForDish(text){
   scored.forEach(x => {
     x.score = Math.max(4, Math.min(10, Math.round(x.sc / mx * 10)));
     let r = x.reason ? x.reason.charAt(0).toUpperCase()+x.reason.slice(1) : 'Veelzijdige keuze uit je kelder';
-    if(x.grapeHit && x.w.grapes && x.w.grapes.length) r += ` — de ${esc(x.w.grapes[0])} doet hier precies wat nodig is`;
+    if(x.grapeHit && x.w.grapes && x.w.grapes.length) r += `, want de ${esc(x.w.grapes[0])} doet hier precies wat nodig is`;
     x.rHtml = r + '.';
   });
   return {cats, list:scored};
@@ -743,7 +743,7 @@ function dishesForWine(w){
 /* Een eigen Anthropic-sleutel is geen productfunctie meer: hij bestaat alleen nog
    in de ontwikkelaarsstand (zeven tikken op de titel in Instellingen). Zonder die
    stand wordt een opgeslagen sleutel genegeerd en loopt alles via de Caveau-server,
-   waar het tegoed geldt. Volledig dichttimmeren kan niet — dit is een app die in de
+   waar het tegoed geldt. Volledig dichttimmeren kan niet: dit is een app die in de
    browser draait, dus wie zelf code aanpast kan altijd zijn eigen sleutel gebruiken.
    Wat dit wél doet: het uit het product halen, zodat niemand het tegenkomt. */
 function ownKey(){
@@ -755,14 +755,18 @@ function aiReady(){
   return typeof loggedIn === 'function' && loggedIn(); /* ingelogd → AI via de Caveau-server */
 }
 
-/* Antwoordstijl (instelbaar in Instellingen) — bepaalt de toon van alle AI-teksten */
+/* Antwoordstijl (instelbaar in Instellingen): bepaalt de toon van alle AI-teksten */
+/* Geldt voor elke tekst die de sommelier schrijft. Zonder deze regel komen de
+   gedachtestreepjes via de AI gewoon weer binnen en is het opruimen hierboven
+   voor niets geweest. */
+const STIJLREGELS = ' Schrijf in gewone zinnen met komma\'s en punten. Gebruik geen gedachtestreepjes (\u2014) en vermijd de constructie "niet X, maar Y".';
 function styleNote(){
   const s = S.settings.aiStyle || 'kenner';
-  return s === 'simpel'
+  return (s === 'simpel'
     ? 'Schrijf alle uitlegteksten in eenvoudige taal zonder wijnjargon, kort en praktisch, alsof je het aan een beginner uitlegt.'
     : s === 'sommelier'
     ? 'Schrijf als sommeliers onder elkaar: vaktermen zijn welkom (tannine, zuurgraad, terroir, structuur), wees precies over stijl en waarom iets werkt.'
-    : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.';
+    : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.') + STIJLREGELS;
 }
 
 /* Wat een AI-actie kost aan tegoed. Moet gelijk blijven aan creditsFor() in
@@ -784,7 +788,7 @@ async function callClaude(content, maxTokens, kind, onText){
   throw new Error('Log in (Meer → Account) of vul een API-sleutel in');
 }
 /* Kan deze browser een antwoord stuk voor stuk lezen? Zo niet, dan wachten we
-   gewoon op het hele antwoord zoals vroeger — alles blijft werken. */
+   gewoon op het hele antwoord zoals vroeger; alles blijft werken. */
 const CAN_STREAM = typeof ReadableStream !== 'undefined' && typeof TextDecoder !== 'undefined'
   && typeof Response !== 'undefined' && 'body' in Response.prototype;
 
@@ -816,7 +820,7 @@ async function readSSE(res, onText){
 async function callAnthropicDirect(content, maxTokens, onText){
   const model = (S.settings.model||'claude-sonnet-5').trim();
   const body = { model, max_tokens:maxTokens||2000, messages:[{role:'user', content}] };
-  /* Sonnet 5 / Opus 5 denken standaard mee in het antwoordbudget — voor JSON-extractie
+  /* Sonnet 5 / Opus 5 denken standaard mee in het antwoordbudget, en voor JSON-extractie
      zetten we dat uit (sneller, goedkoper, geen afgekapte JSON). Fable/Mythos en Haiku
      accepteren dit veld niet op dezelfde manier: daar weglaten. */
   if(/sonnet-[45]|opus-[45]/.test(model)) body.thinking = {type:'disabled'};
@@ -828,7 +832,7 @@ async function callAnthropicDirect(content, maxTokens, onText){
       'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
     body: JSON.stringify(body)
   });
-  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('API '+res.status+' — '+t.slice(0,200)); }
+  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('API '+res.status+': '+t.slice(0,200)); }
   if(stream && res.body) return readSSE(res, onText);
   const d = await res.json();
   return (d.content||[]).filter(b => b.type==='text').map(b => b.text).join('');
@@ -853,7 +857,7 @@ drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op
 
 /* Wat er al leesbaar in het halve antwoord staat. Een sleutel-waardepaar telt pas
    mee als het afsluitende aanhalingsteken binnen is, dus je ziet nooit een halve
-   naam staan. Puur om mee te kijken — het echte invullen gebeurt aan het eind. */
+   naam staan. Puur om mee te kijken; het echte invullen gebeurt aan het eind. */
 function scanPeek(txt){
   const tekst = k => {
     const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
@@ -862,7 +866,7 @@ function scanPeek(txt){
   };
   const jaar = () => { const m = txt.match(/"vintage"\s*:\s*(\d{4})/); return m ? m[1] : ''; };
   const naam = tekst('name'), prod = tekst('producer');
-  /* bij een château is de naam vaak ook de producent — die niet twee keer tonen */
+  /* bij een château is de naam vaak ook de producent, die niet twee keer tonen */
   return [naam, prod === naam ? '' : prod, jaar(), tekst('appellation') || tekst('region') || tekst('country')]
     .filter(Boolean).join(' · ');
 }
@@ -904,20 +908,20 @@ async function aiDish(dish){
   const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
 ${cellarLines(dish)}
 
-Ik ga dit eten: "${dish}". Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang — die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
+Ik ga dit eten: "${dish}". Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
 {"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
   return parseJsonLoose(out);
 }
 
-/* smaakprofiel: waar de gebruiker eerder hoge cijfers aan gaf — helpt bij een vreemde kaart */
+/* smaakprofiel: waar de gebruiker eerder hoge cijfers aan gaf; helpt bij een vreemde kaart */
 function tasteLines(){
   const seen = new Set(), out = [];
   for(const h of (S.history||[])){
     if((h.rating||0) < 4 || !h.name) continue;
     const k = norm(h.name); if(seen.has(k)) continue; seen.add(k);
-    out.push(`${h.name}${h.vintage?' '+h.vintage:''} (${TYPES[h.type]?TYPES[h.type].l:h.type})${h.rating>=4.5?' — top':''}`);
+    out.push(`${h.name}${h.vintage?' '+h.vintage:''} (${TYPES[h.type]?TYPES[h.type].l:h.type})${h.rating>=4.5?', top':''}`);
     if(out.length >= 8) break;
   }
   return out.join('; ');
@@ -928,16 +932,16 @@ const imgBlock = s => ({type:'image', source:{type:'base64', media_type:'image/j
 async function aiMenu(shots, food, dish, budget, glass){
   /* tekstblokken tussen de foto's vertellen het model welke foto wat is */
   const content = [{type:'text', text:`Foto's van de WIJNKAART (${shots.length} ${plur(shots.length,'pagina',"pagina's")}):`}, ...shots.map(imgBlock)];
-  if(food.length) content.push({type:'text', text:`Foto's van het MENU — dit is wat er gegeten wordt (${food.length} ${plur(food.length,'pagina',"pagina's")}):`}, ...food.map(imgBlock));
+  if(food.length) content.push({type:'text', text:`Foto's van het MENU. Dit is wat er gegeten wordt (${food.length} ${plur(food.length,'pagina',"pagina's")}):`}, ...food.map(imgBlock));
   const taste = tasteLines();
   content.push({type:'text', text:`Je bent mijn sommelier en zit met me mee aan tafel in een restaurant.
 ${food.length?`Lees eerst het menu van de foto's: welke gangen en gerechten staan erop? Is het een vast menu of proefmenu, ga er dan van uit dat ik álle gangen eet.`:''}${dish?`
 ${food.length?'Daarnaast heb ik zelf gezegd':'Ik ga dit eten'}: "${dish}".`:''}${budget?`
-Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één fles er net boven écht veel beter is — zeg dat dan expliciet.`:''}${glass?`
+Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één fles er net boven écht veel beter is. Zeg dat dan expliciet.`:''}${glass?`
 Ik drink liever per glas: geef voorrang aan wijnen die per glas op de kaart staan.`:''}${taste?`
 Wijnen die ik eerder hoog beoordeelde (mijn smaak): ${taste}`:''}
 
-Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 of 4 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten — verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
+Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 of 4 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten. Verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
 Bij meerdere gangen of gerechten: kies bij voorkeur één fles die het hele menu draagt, en geef daarnaast alleen dáár een tweede fles of een glas-advies waar dat écht beter is. Zet bij elke wijn voor welke gang of welk gerecht hij bedoeld is.
 
 Antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
@@ -948,16 +952,16 @@ price = het bedrag op de wijnkaart in hele euro's als getal, zonder valutateken.
 
 async function aiWine(w, richting){
   const prompt = `Je bent mijn sommelier. Welke gerechten passen bij deze wijn?
-${w.name} — ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.${richting?`
-Voorkeur van de gebruiker: "${richting}" — laat álle suggesties bij die richting aansluiten.`:''}
-Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]} — 5 gerechten, mix van klassiek en verrassend, elke reden één zin. De redenen in deze stijl: ${styleNote()}`;
+${w.name}, ${w.producer||''}, ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}.${richting?`
+Voorkeur van de gebruiker: "${richting}". Laat álle suggesties bij die richting aansluiten.`:''}
+Antwoord UITSLUITEND met geldig JSON: {"dishes":[{"dish":"gerecht in het Nederlands","reason":"1 zin waarom"}]}. Geef 5 gerechten, een mix van klassiek en verrassend, elke reden één zin. De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 2000, 'gerechten');
   return parseJsonLoose(out);
 }
 
 async function aiAsk(w, dish, question){
   const prompt = `Je bent mijn sommelier. Context:
-Wijn: ${w.name} — ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
+Wijn: ${w.name}, ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
 Gerecht waar het om gaat: ${dish}.`:''}
 Vraag: ${question}
 Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON. ${styleNote()}`;
@@ -968,7 +972,7 @@ async function aiValues(list){
   const lines = list.map(w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
   const prompt = `Schat per wijn de actuele winkelwaarde per fles in euro's (Europese retail). De lijst (id | naam | producent | jaargang | herkomst):
 ${lines}
-Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]} — value = beste schatting, low/high = realistische bandbreedte. Wijnen die je niet kunt inschatten sla je over.`;
+Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]}. value = beste schatting, low/high = realistische bandbreedte. Wijnen die je niet kunt inschatten sla je over.`;
   return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000, 'waardes'));
 }
 
@@ -1118,7 +1122,7 @@ function viewKelder(){
   let body;
   if(!S.wines.length){
     body = `<div class="empty"><div class="big">Je kelder is nog leeg</div>
-      <p>Scan het etiket van een fles om te beginnen — of vul hem handmatig in.</p>
+      <p>Scan het etiket van een fles om te beginnen, of vul hem handmatig in.</p>
       <button class="btn" data-act="tab" data-tab="scan" style="max-width:260px">Scan je eerste fles</button>
       <div class="mt14"><button class="linkbtn" data-act="wineNew">Handmatig toevoegen</button> &nbsp;·&nbsp; <button class="linkbtn" data-act="demoLoad">Bekijk met voorbeeldflessen</button></div>
       <p class="small mt14" style="max-width:330px;margin-left:auto;margin-right:auto">Log in bij <button class="linkbtn" data-act="goAccount">Meer → Account</button> en je kelder synchroniseert tussen je apparaten; je krijgt dan ook ${FREE_CREDITS} gratis credits per maand om etiketten en wijnkaarten te laten lezen.</p></div>`;
@@ -1193,7 +1197,7 @@ function openDetail(id){
       <button class="btn soft" data-act="askSomm" data-id="${w.id}">💬 Vraag</button></div>
     <button class="btn" data-act="drinkOpen" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">Drink een fles</button>
     ${onTable(w.id)
-      ? `<button class="btn plain" data-act="tafelAf" data-id="${w.id}" style="margin-bottom:9px">✓ Staat op tafel — haal eraf</button>`
+      ? `<button class="btn plain" data-act="tafelAf" data-id="${w.id}" style="margin-bottom:9px">✓ Staat op tafel, haal eraf</button>`
       : `<button class="btn plain" data-act="tafelOp" data-id="${w.id}" ${!w.qty?'disabled':''} style="margin-bottom:9px">🍷 Zet op tafel voor vanavond</button>`}
     <div class="btnrow"><button class="btn ghost" data-act="wineEdit" data-id="${w.id}">Bewerken</button>
     <button class="btn danger" data-act="wineDel" data-id="${w.id}">Verwijderen</button></div>`);
@@ -1248,7 +1252,7 @@ function openDrink(id){
     <div class="small center" id="starLbl" style="margin:-2px 0 10px">Tik een ster (nogmaals dezelfde = 0 sterren)</div>
     <div class="field"><label>Datum</label><input type="date" class="inp" id="drDate" value="${today}"></div>
     <div class="field"><label>Proefnotitie (optioneel)</label><textarea class="inp" id="drNote" placeholder="Hoe smaakte hij? Bij welk gerecht?"></textarea></div>
-    <button class="btn" data-act="drinkSave" data-id="${w.id}">Proost — leg vast</button>`);
+    <button class="btn" data-act="drinkSave" data-id="${w.id}">Proost, leg vast</button>`);
   wireStars();
 }
 function wireStars(){
@@ -1259,8 +1263,8 @@ function wireStars(){
       x.classList.toggle('half', drinkRating != null && drinkRating === n - 0.5);
     });
     const l = document.getElementById('starLbl');
-    if(l) l.textContent = drinkRating == null ? 'Tik een ster — linkerhelft = halve ster, nogmaals dezelfde = 0'
-      : drinkRating === 0 ? '0 van 5 — die was niks' : `${String(drinkRating).replace('.',',')} van 5`;
+    if(l) l.textContent = drinkRating == null ? 'Tik een ster. Linkerhelft is een halve ster, nogmaals dezelfde maakt er nul van'
+      : drinkRating === 0 ? '0 van 5, die was niks' : `${String(drinkRating).replace('.',',')} van 5`;
   };
   document.querySelectorAll('#drinkStars button').forEach(b => b.onclick = ev => {
     const n = Number(b.dataset.star);
@@ -1277,7 +1281,7 @@ let drinkExternThumb = null;
 function openDrinkExtern(pre, thumb){
   drinkRating = null; drinkExternThumb = thumb || null;
   const today = new Date().toISOString().slice(0,10);
-  openSheet(`${sheetHead('Proefnotitie — buiten de kelder')}
+  openSheet(`${sheetHead('Proefnotitie buiten de kelder')}
     <div class="field"><label>Wijn *</label><input class="inp" id="dx_name" value="${esc(pre.name||'')}" placeholder="naam van de wijn"></div>
     <div class="frow"><div class="field"><label>Producent</label><input class="inp" id="dx_prod" value="${esc(pre.producer||'')}"></div>
     <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="dx_vint" inputmode="numeric" value="${pre.vintage||''}" placeholder="NV"></div></div>
@@ -1302,14 +1306,14 @@ ACT.drinkExternSave = async el => {
   S.history.unshift(entry);
   if((document.getElementById('dx_wish')||{}).checked){
     const it = { id:uid(), name, producer:entry.producer, vintage:entry.vintage, type:entry.type,
-      price:null, note:['Geproefd', entry.place].filter(Boolean).join(' — '), photo:!!drinkExternThumb, addedAt:Date.now() };
+      price:null, note:['Geproefd', entry.place].filter(Boolean).join(', '), photo:!!drinkExternThumb, addedAt:Date.now() };
     S.wishlist.unshift(it);
     if(drinkExternThumb) await pSet(it.id, drinkExternThumb);
   }
   save(); drinkExternThumb = null;
   if(scan.stage === 'confirm') scanReset();
   closeSheet(true); render();
-  toast('Proefnotitie vastgelegd — santé!');
+  toast('Proefnotitie vastgelegd. Santé!');
 };
 ACT.drinkSave = el => {
   const w = findWine(el.dataset.id); if(!w) return;
@@ -1320,7 +1324,7 @@ ACT.drinkSave = el => {
   w.qty = Math.max(0, prevQty - 1);
   S.tonight = (S.tonight||[]).filter(t => t.wineId !== w.id);
   S.history.unshift(entry); save(); closeSheet(true); render();
-  toast('Genoteerd — santé!', 'Ongedaan', () => { w.qty = prevQty; S.history = S.history.filter(h => h.id !== entry.id); save(); render(); });
+  toast('Genoteerd. Santé!', 'Ongedaan', () => { w.qty = prevQty; S.history = S.history.filter(h => h.id !== entry.id); save(); render(); });
 };
 
 /* ================= WIJNFORMULIER ================= */
@@ -1350,7 +1354,7 @@ function formFields(w){
     <div class="field"><label>Aankoopprijs €</label><input class="inp tnum" id="f_price" inputmode="decimal" value="${w.price??''}"></div>
     <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${w.value??''}" placeholder="= prijs"></div>
   </div>
-  <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec — zone boven">
+  <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec, zone boven">
     <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
     <div class="chiprow" style="padding:7px 0 0">${locOptions().slice(0,8).map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
   <div class="field"><label>Notitie</label><textarea class="inp" id="f_note" placeholder="karakter, advies, herinnering…">${esc(w.note||'')}</textarea></div>`;
@@ -1369,11 +1373,11 @@ function allLocations(){
 }
 function locOptions(){
   const set = new Set([...(S.locations||[]).map(l => l.name), ...S.wines.map(w => w.location).filter(Boolean)]);
-  ['Vintec — zone boven','Vintec — zone onder','Wijnrek','Kelder','Doos'].forEach(d => set.add(d));
+  ['Vintec, zone boven','Vintec, zone onder','Wijnrek','Kelder','Doos'].forEach(d => set.add(d));
   return [...set];
 }
 function locSelectOptions(sel){
-  return `<option value=""${!sel?' selected':''}>— locatie —</option>` +
+  return `<option value=""${!sel?' selected':''}>geen locatie</option>` +
     locOptions().map(l => `<option value="${esc(l)}"${l===sel?' selected':''}>${esc(l)}</option>`).join('');
 }
 ACT.fillLoc = el => {
@@ -1409,7 +1413,7 @@ let vensterAuto = true; /* venster is (nog) een schatting → mag automatisch he
 
 /* ---- "Op tafel": fles gekozen om vanavond te drinken, nog niet afgestreept ---- */
 /* Schenkadvies uit vaste sommelierregels: temperatuur, glas en karafferen.
-   Kost geen tegoed en werkt offline — de AI is er voor de rest ("Vraag"). */
+   Kost geen tegoed en werkt offline; de AI is er voor de rest ("Vraag"). */
 function serveAdvice(w){
   const g = (w.grapes||[]).map(norm).join(' ') + ' ' + norm(w.name) + ' ' + norm(w.appellation||'') + ' ' + norm(w.region||'');
   const has = list => list.some(x => g.includes(x));
@@ -1419,7 +1423,7 @@ function serveAdvice(w){
 
   if(w.type === 'mousserend'){
     temp = (age !== null && age > 8) ? '8–10 °C' : '6–8 °C';
-    glass = 'een fluit of liever een smal tulpglas — daar komt meer geur uit';
+    glass = 'een fluit, of liever een smal tulpglas, want daar komt meer geur uit';
     tips.push(age !== null && age > 8
       ? 'Een gerijpte bubbel wil niet ijskoud; te koud smoort de complexiteit.'
       : 'Drie uur in de koelkast koelt beter en rustiger dan een kwartier in de vriezer.');
@@ -1427,27 +1431,27 @@ function serveAdvice(w){
     const rijk = has(['chardonnay','semillon','viognier','marsanne','roussanne','gruner']) || (age !== null && age > 5);
     temp = rijk ? '10–12 °C' : '8–10 °C';
     glass = rijk ? 'een ruimer wijnglas' : 'een tulpvormig wijnglas';
-    tips.push('Recht uit de koelkast is meestal te koud — zet hem twintig minuten van tevoren op tafel.');
+    tips.push('Recht uit de koelkast is meestal te koud. Zet hem twintig minuten van tevoren op tafel.');
   } else if(w.type === 'rose'){
     temp = '8–10 °C';
   } else if(w.type === 'zoet'){
     temp = '6–8 °C'; glass = 'een klein glas';
     tips.push('Schenk kleine glazen: koel en zoet werkt het best in kleine hoeveelheden.');
   } else if(w.type === 'versterkt'){
-    if(has(['fino','manzanilla','sherry'])){ temp = '7–9 °C'; tips.push('Fino en manzanilla drink je koud en jong — een geopende fles blijft maar een paar dagen goed.'); }
+    if(has(['fino','manzanilla','sherry'])){ temp = '7–9 °C'; tips.push('Fino en manzanilla drink je koud en jong. Een geopende fles blijft maar een paar dagen goed.'); }
     else { temp = '16–18 °C'; tips.push('Een geopende fles port of oloroso houdt zich weken; koel bewaren na openen.'); }
   } else { /* rood */
     const licht = has(G_LIGHT_RED), groot = has(G_BIG_RED);
     temp = licht ? '12–14 °C' : groot ? '16–18 °C' : '14–16 °C';
     glass = has(['pinot','nebbiolo']) ? 'een bourgogneglas (bolle kelk)' : groot ? 'een ruim bordeauxglas' : 'een tulpvormig wijnglas';
-    if(licht) tips.push('Kelderkoud is beter dan kamertemperatuur — een half uur in de koelkast doet wonderen.');
+    if(licht) tips.push('Kelderkoud is beter dan kamertemperatuur. Een half uur in de koelkast doet wonderen.');
     if(groot || licht === false){
-      if(age !== null && age >= 15) tips.push('Karafferen: voorzichtig overschenken om het bezinksel achter te laten, en kort — oude wijn kan snel omvallen.');
+      if(age !== null && age >= 15) tips.push('Karafferen: voorzichtig overschenken om het bezinksel achter te laten, en kort, want oude wijn kan snel omvallen.');
       else if(age !== null && age <= 7) tips.push('Karafferen: een uur of twee. Jong en stevig, hij heeft lucht nodig.');
       else if(age !== null) tips.push('Karafferen: een half uur is genoeg.');
     }
   }
-  if(st.k === 'jong') tips.push('Nog aan de jonge kant — extra tijd in de karaf helpt.');
+  if(st.k === 'jong') tips.push('Nog aan de jonge kant. Extra tijd in de karaf helpt.');
   if(st.k === 'over') tips.push('Over zijn venster: open hem voorzichtig en drink hem dezelfde avond op.');
   return { temp, glass, tips: tips.slice(0,2) };
 }
@@ -1473,20 +1477,20 @@ function openServe(id){
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8 mt14">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.slice(0,4).map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     <div class="btnrow mb8"><button class="btn soft" data-act="askSomm" data-id="${w.id}">💬 Vraag</button>
       <button class="btn soft" data-act="detail" data-id="${w.id}">Bekijk fles</button></div>
-    <button class="btn" data-act="drinkOpen" data-id="${w.id}" style="margin-bottom:9px">Afstrepen — hij is open</button>
+    <button class="btn" data-act="drinkOpen" data-id="${w.id}" style="margin-bottom:9px">Afstrepen, hij is open</button>
     <div class="btnrow"><button class="btn plain" data-act="serveSwap" data-id="${w.id}">Andere fles</button>
       <button class="btn plain" data-act="tafelAf" data-id="${w.id}">Van tafel halen</button></div>`);
 }
 ACT.serveOpen = el => openServe(el.dataset.id);
 ACT.serveSwap = el => { closeSheet(true); UI.tab = 'pairing'; UI.pairMode = 'dish'; render();
-  toast('Zoek een andere fles — de eerste blijft op tafel staan tot je hem eraf haalt'); };
+  toast('Zoek een andere fles. De eerste blijft op tafel staan tot je hem eraf haalt'); };
 
 ACT.tafelOp = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   if(!S.tonight) S.tonight = [];
   if(!onTable(w.id)) S.tonight.push({wineId:w.id, at:Date.now()});
   save(); closeSheet(true); render();
-  toast(`🍷 "${w.name}" staat op tafel — je ziet hem bovenaan tot je hem afstreept`);
+  toast(`🍷 "${w.name}" staat op tafel. Je ziet hem bovenaan tot je hem afstreept`);
 };
 ACT.tafelAf = el => {
   S.tonight = (S.tonight||[]).filter(t => t.wineId !== el.dataset.id);
@@ -1592,7 +1596,7 @@ ACT.wineSave = el => {
   }
 };
 
-/* Gerechten bij een wijn (detail & pairing) — met richting-voorkeur en cache */
+/* Gerechten bij een wijn (detail & pairing), met richting-voorkeur en cache */
 ACT.wineDishes = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   openSheet(`${sheetHead('Lekker bij ' + esc(w.name))}
@@ -1626,7 +1630,7 @@ async function runWineDishes(w, richting, force){
     }catch(e){ dishes = null; }
   }
   if(!dishes || !dishes.length){ dishes = dishesForWine(w); src = 'Kelderregels'; }
-  if(!dishes.length){ out.innerHTML = '<p class="small">Geen suggesties gevonden — vul type of druiven aan.</p>'; return; }
+  if(!dishes.length){ out.innerHTML = '<p class="small">Geen suggesties gevonden. Vul type of druiven aan.</p>'; return; }
   renderDishes(out, w, richting, dishes, src, false);
 }
 function renderDishes(out, w, richting, list, srcLabel, cached){
@@ -1640,7 +1644,7 @@ ACT.recipeAsk = el => {
     toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return;
   }
   const dish = el.dataset.dish, wid = el.dataset.wid || '';
-  openSheet(`${sheetHead('Recept — ' + esc(dish))}
+  openSheet(`${sheetHead('Recept: ' + esc(dish))}
     <p class="small mb8">Voor hoeveel personen?</p>
     <div class="btnrow">${[2,4,6,8].map(n => `<button class="btn soft" data-act="recipeGo" data-dish="${esc(dish)}" data-wid="${wid}" data-p="${n}">${n}</button>`).join('')}</div>`);
 };
@@ -1651,7 +1655,7 @@ ACT.recipeGo = async el => {
   const hit = (S.recipeCache||[]).find(r => r.key === key);
   if(hit){ showRecipe({...hit, cached:true}); return; }
   if(!aiReady()){ toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return; }
-  const sh = openSheet(`${sheetHead('Recept — ' + esc(dish))}<div class="banner">${pourSvg}<span class="pulse">Recept schrijven…</span></div>`);
+  const sh = openSheet(`${sheetHead('Recept: ' + esc(dish))}<div class="banner">${pourSvg}<span class="pulse">Recept schrijven…</span></div>`);
   try{
     const r = await aiRecipe(dish, p);
     const wijn = wid ? findWine(wid) : null;
@@ -1714,7 +1718,7 @@ ACT.askGo = async el => {
     const ans = await aiAsk(w, el.dataset.dish||'', q);
     const t = document.getElementById(aid); if(t) t.textContent = String(ans||'').trim();
   }catch(e){
-    const t = document.getElementById(aid); if(t) t.textContent = 'Lukte niet — ' + String(e.message||e).slice(0,80);
+    const t = document.getElementById(aid); if(t) t.textContent = 'Lukte niet: ' + String(e.message||e).slice(0,80);
   }
 };
 </script>
@@ -1725,8 +1729,8 @@ let scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:nu
 function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; recalcPairing = null; recalcValueRange = null; }
 
 function aiBanner(){
-  if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon — de ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
-  if(!aiReady()) return `<div class="banner"><span>ℹ️</span><span><b>Log in en de sommelier leest je etiketten</b> — naam, druiven, drinkvenster en pairing in één foto. Je krijgt ${FREE_CREDITS} gratis credits per maand: <button class="linkbtn" data-act="goAccount">account aanmaken</button>. Zonder inloggen werkt alles behalve het automatisch lezen.</span></div>`;
+  if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon. De ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
+  if(!aiReady()) return `<div class="banner"><span>ℹ️</span><span><b>Log in en de sommelier leest je etiketten</b>: naam, druiven, drinkvenster en pairing in één foto. Je krijgt ${FREE_CREDITS} gratis credits per maand: <button class="linkbtn" data-act="goAccount">account aanmaken</button>. Zonder inloggen werkt alles behalve het automatisch lezen.</span></div>`;
   return '';
 }
 function viewScan(){
@@ -1738,7 +1742,7 @@ function viewScan(){
         <button class="scanbig" data-act="scanCam" aria-label="Open camera">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1l1.4-2h6.2L16.5 6h1A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-7Z"/><circle cx="12" cy="12" r="3.4"/></svg>
           <span>Scan etiket</span></button>
-        <p class="small" style="max-width:300px;margin:0 auto">Herkennen, toevoegen, info bekijken of afboeken — de foto is genoeg.</p>
+        <p class="small" style="max-width:300px;margin:0 auto">Herkennen, toevoegen, info bekijken of afboeken: de foto is genoeg.</p>
         <div class="btnrow mt14" style="max-width:340px;margin-left:auto;margin-right:auto">
           <button class="btn plain" data-act="scanLib">Kies een foto</button>
           <button class="btn plain" data-act="wineNew">Handmatig</button>
@@ -1761,14 +1765,14 @@ function viewScan(){
     </div>
     <div class="scanprev">${bottleSvg}<img id="scanImg" alt="Gescand etiket"></div>
     ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse" id="scanLive">De sommelier leest het etiket…</span></div>` : ''}
-    ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken" — de foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
+    ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken". De foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
-    ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b> — het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
+    ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b>. Het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
     ${scan.busy ? '' : `<div class="panel" style="padding:11px 13px;margin-bottom:12px"><div class="eyebrow mb8">Snel wegleggen</div>
       <div style="display:flex;gap:8px"><select class="inp" id="quickLoc" data-in="quickLoc" style="flex:1;min-width:0" aria-label="Locatie">${locSelectOptions(pre.location)}</select>
       <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="scanTonight" style="width:18px;height:18px;accent-color:var(--acc)"> 🍷 Vanavond drinken — herinner me om af te strepen</label></div>`}
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="scanTonight" style="width:18px;height:18px;accent-color:var(--acc)"> 🍷 Vanavond drinken, herinner me om af te strepen</label></div>`}
     ${scan.busy ? '' : formFields(pre)}
     <div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
@@ -1776,7 +1780,7 @@ function viewScan(){
     ${scan.match ? `<button class="btn" data-act="scanMerge" style="margin-bottom:9px">+<span id="mq">${formQty}</span> bijboeken bij bestaande</button>
       <button class="btn ghost" data-act="scanRemove" style="margin-bottom:9px">Drink / haal er één uit de kelder</button>` :
       `<button class="btn" data-act="scanAdd" style="margin-bottom:9px" ${scan.busy?'disabled':''}>In de kelder leggen</button>`}
-    <button class="btn ghost" data-act="scanDrinkNow" style="margin-bottom:9px" ${scan.busy?'disabled':''}>🥂 Drink nu — niet uit de kelder</button>
+    <button class="btn ghost" data-act="scanDrinkNow" style="margin-bottom:9px" ${scan.busy?'disabled':''}>🥂 Drink nu, buiten de kelder om</button>
     <div class="btnrow">
       ${scan.match?`<button class="btn soft" data-act="scanAdd">Als nieuwe bewaren</button>`:`<button class="btn soft" data-act="scanWish" ${scan.busy?'disabled':''}>Op verlanglijst</button>`}
       <button class="btn plain" data-act="scanAgain">Opnieuw</button>
@@ -1789,7 +1793,7 @@ ACT.scanNewPhoto = () => openLiveScan();
 
 /* ================= live-scanner: QR-gevoel met auto-vangst ================= */
 let liveStream = null, liveTimer = null, livePrev = null, liveStable = 0, liveEl = null, liveStartAt = 0;
-/* zaklamp: alleen Android/Chrome kan dit via getUserMedia — iOS Safari niet.
+/* zaklamp: alleen Android/Chrome kan dit via getUserMedia; iOS Safari niet.
    De knop verschijnt daarom pas als de camera zelf zegt dat hij het kan. */
 let liveTorch = false;
 async function liveTorchInit(){
@@ -1827,7 +1831,7 @@ async function openLiveScan(mode){
   const div = document.createElement('div'); div.className = 'livewrap'; div.id = 'liveScan';
   div.innerHTML = `<video autoplay playsinline muted></video>
     <div class="liveframe${kaart?' page':''}">${kaart?'':'<div class="livescanline"></div>'}</div>
-    <div class="livehint" id="liveHint">${kaart?'Hele pagina in beeld — tik op de knop':'Houd het etiket in het kader — hij vangt vanzelf'}</div>
+    <div class="livehint" id="liveHint">${kaart?'Hele pagina in beeld, tik op de knop':'Houd het etiket in het kader, hij vangt vanzelf'}</div>
     <div class="liveflash" id="liveFlash"></div>
     <div class="livebar">
       <button class="livex" data-act="liveClose" aria-label="Sluiten">✕</button>
@@ -1853,7 +1857,7 @@ function liveCheck(v){
   if(!v || !v.videoWidth) return;
   if(liveMode !== 'etiket'){ /* kaart of menu: geen auto-vangst, de gast kadreert zelf */
     const h = document.getElementById('liveHint');
-    if(h) h.textContent = 'Hele pagina in beeld — tik op de knop';
+    if(h) h.textContent = 'Hele pagina in beeld, tik op de knop';
     return;
   }
   const c = document.createElement('canvas'); c.width = 64; c.height = 64;
@@ -1880,7 +1884,7 @@ function liveCheck(v){
   const stil = diffRel < 4.5, scherp = edgeRel > 5 && edge > 2;
   liveStable = (stil && scherp && !donker) ? liveStable + 1 : 0;
   const hint = document.getElementById('liveHint');
-  if(hint) hint.textContent = donker ? (liveTorch ? 'Nog te donker — houd hem dichterbij' : 'Te donker — zet de zaklamp aan of zoek licht')
+  if(hint) hint.textContent = donker ? (liveTorch ? 'Nog te donker, houd hem dichterbij' : 'Te donker, zet de zaklamp aan of zoek licht')
     : !scherp ? 'Iets dichterbij, of even scherpstellen…'
     : !stil ? 'Houd stil…' : 'Vasthouden…';
   if(liveStable >= 3 && Date.now() - liveStartAt > 1200) liveCapture();
@@ -1903,7 +1907,7 @@ function liveCapture(){
     const n = shotList(liveMode).length;
     const h = document.getElementById('liveHint');
     if(n >= shotMax(liveMode)){ closeLiveScan(); render(); return; }
-    if(h) h.textContent = `Pagina ${n} vastgelegd — nog een pagina? Anders op ✕`;
+    if(h) h.textContent = `Pagina ${n} vastgelegd. Nog een pagina? Anders op ✕`;
     return;
   }
   c.toBlob(b => { closeLiveScan(); if(b) handlePhoto(b); }, 'image/jpeg', 0.88);
@@ -1924,7 +1928,7 @@ function ensureWindow(d){
 }
 ACT.scanRetry = async () => {
   if(!scan.photo || scan.busy) return;
-  if(!aiReady()){ toast('AI-scannen staat hier uit — vul de velden in en gebruik Herbereken'); return; }
+  if(!aiReady()){ toast('AI-scannen staat hier uit. Vul de velden in en gebruik Herbereken'); return; }
   scan.err = null; scan.busy = true; vensterAuto = true; render(); showScanImg();
   try{
     const d = await aiScan(scan.photo, txt => {
@@ -1994,7 +1998,7 @@ ACT.scanMerge = async () => {
   if((document.getElementById('scanTonight')||{}).checked && !onTable(m.id)){ if(!S.tonight) S.tonight = []; S.tonight.push({wineId:m.id, at:Date.now()}); }
   if(!m.photo && scan.thumb){ await pSet(m.id, scan.thumb); m.photo = true; }
   save(); const n = formQty, id = m.id; scanReset(); UI.tab = 'kelder'; render();
-  toast(`+${n} bijgeboekt — nu ×${findWine(id).qty}`);
+  toast(`+${n} bijgeboekt, nu ×${findWine(id).qty}`);
 };
 ACT.scanRemove = () => { const id = scan.match && scan.match.id; if(!id) return; scanReset(); UI.tab='kelder'; render(); openDrink(id); };
 ACT.scanWish = async () => {
@@ -2026,7 +2030,7 @@ function viewPairing(){
     const chips = ['Biefstuk','Wild','Witte vis','Schaaldieren','Sushi','Pasta met tomaat','Risotto','Kip uit de oven','Kaasplank','Thaise curry','BBQ','Chocolade']
       .map(c => `<button class="chip" data-act="pairQuick" data-d="${esc(c)}">${c}</button>`).join('');
     return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je (ongeveer) eten?</h2>${toggle}
-      <p class="small mb8">Vaag mag — "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
+      <p class="small mb8">Vaag mag: "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
       <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
         <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="" aria-label="Gerecht"></div>
       <div class="chiprow">${chips}</div>
@@ -2085,8 +2089,8 @@ async function runPair(dish, force){
     const meta = src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src;
     html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
-      const urg = st.k === 'nu' ? 'Moet toch binnenkort op — vanavond is een mooi excuus.'
-                : st.k === 'over' ? 'Over z\'n venster heen — juist nú opdrinken, niet langer bewaren.' : '';
+      const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
+                : st.k === 'over' ? 'Over z\'n venster heen. Juist nú opdrinken, niet langer bewaren.' : '';
       return `<div class="match"><div class="match-top"><div style="min-width:0">
         <div class="wname" style="font-size:16px">${esc(m.w.name)}</div>
         <div class="wsub">${esc([m.w.producer, m.w.vintage||'NV'].filter(Boolean).join(' · '))} · ×${m.w.qty}</div>
@@ -2120,7 +2124,7 @@ async function handleMenuFile(file, target){
   catch(e){ toast('Foto kon niet worden gelezen'); return; }
   UI.tab = 'pairing'; UI.pairMode = 'menu'; render();
 }
-/* foto's van de kaart blijven in het geheugen — ze horen niet in je kelder of in de cloud */
+/* foto's van de kaart blijven in het geheugen; ze horen niet in je kelder of in de cloud */
 function menuFillShots(){
   menu.shots.forEach((s,i) => { const im = document.getElementById('ms'+i); if(im) im.src = s; });
   menu.food.forEach((s,i) => { const im = document.getElementById('mf'+i); if(im) im.src = s; });
@@ -2139,19 +2143,19 @@ function viewMenu(){
     + `<button class="chip${menu.glass?' on':''}" data-act="menuGlass">🥂 ook per glas</button>`;
   if(!menuOut && S.menuLast && Date.now() - (S.menuLast.at||0) < 12*3600*1000) menuOut = menuResultHtml(S.menuLast);
   return `${brandRow('')}<div class="eyebrow">Uit eten</div><h2 class="h2">De wijnkaart lezen</h2>${pairToggle()}
-    <p class="small mb8">Fotografeer de kaart, zeg wat je eet — de sommelier kiest de beste flessen ván die kaart, met een oordeel over de prijs.</p>
-    ${aiReady() ? '' : `<div class="banner"><span>ℹ️</span><span><b>Hiervoor moet je ingelogd zijn</b> — het lezen van de kaart gebeurt op de Caveau-server. <button class="linkbtn" data-act="goAccount">Account aanmaken</button> geeft je ${FREE_CREDITS} gratis credits per maand. Zonder account krijg je hieronder de kaartgids: waar je bij dit gerecht op de kaart naar zoekt.</span></div>`}
+    <p class="small mb8">Fotografeer de kaart, zeg wat je eet. De sommelier kiest de beste flessen ván die kaart, met een oordeel over de prijs.</p>
+    ${aiReady() ? '' : `<div class="banner"><span>ℹ️</span><span><b>Hiervoor moet je ingelogd zijn</b>. Het lezen van de kaart gebeurt op de Caveau-server. <button class="linkbtn" data-act="goAccount">Account aanmaken</button> geeft je ${FREE_CREDITS} gratis credits per maand. Zonder account krijg je hieronder de kaartgids: waar je bij dit gerecht op de kaart naar zoekt.</span></div>`}
     <div class="panel" style="margin-bottom:12px">
       <div class="eyebrow mb8">1 · De wijnkaart</div>
       ${shotStrip(menu.shots, 'ms', 'menuDel', 'menuCam', MENU_MAX, 'kaart')}
       <div class="btnrow"><button class="btn sm plain" data-act="menuCam">📷 Fotografeer</button><button class="btn sm plain" data-act="menuLib">Kies foto</button></div>
-      <p class="small mt8">Lange kaart? Fotografeer tot ${MENU_MAX} pagina's — of alleen het stuk dat je aanspreekt.</p>
+      <p class="small mt8">Lange kaart? Fotografeer tot ${MENU_MAX} pagina's, of alleen het stuk dat je aanspreekt.</p>
     </div>
     <div class="panel" style="margin-bottom:12px">
       <div class="eyebrow mb8">2 · Wat ga je eten?</div>
       ${shotStrip(menu.food, 'mf', 'menuFoodDel', 'menuFoodCam', FOOD_MAX, 'menu')}
       <div class="btnrow"><button class="btn sm plain" data-act="menuFoodCam">📷 Menu fotograferen</button><button class="btn sm plain" data-act="menuFoodLib">Kies foto</button></div>
-      <p class="small mt8 mb8">Proefmenu of dagmenu? Fotografeer de menukaart — de sommelier leest de gangen en kiest er één fles bij (of per gang een glas).</p>
+      <p class="small mt8 mb8">Proefmenu of dagmenu? Fotografeer de menukaart. De sommelier leest de gangen en kiest er één fles bij (of per gang een glas).</p>
       <input class="inp" id="menuDish" data-in="menuDish" value="${esc(menu.dish)}" placeholder="of typ het: 'gebraden parelhoen met knolselderij'" aria-label="Gerecht">
       <p class="small mt8">Hoe preciezer, hoe beter het advies: saus, bereiding en bijgerecht sturen de keuze vaak meer dan het stuk vlees of vis zelf.</p>
       <div class="eyebrow mb8 mt8">3 · Budget</div>
@@ -2238,7 +2242,7 @@ function menuResultHtml(m){
   if(m.glassAdvice) html += `<div class="banner"><span>🥂</span><span><b>Per glas:</b> ${esc(m.glassAdvice)}</span></div>`;
   if(m.skip) html += `<div class="banner"><span>🚫</span><span><b>Laat staan:</b> ${esc(m.skip)}</span></div>`;
   if(m.note) html += `<div class="banner"><span>💡</span><span>${esc(m.note)}</span></div>`;
-  html += `<p class="small mt8">Prijzen en namen komen van de foto — controleer ze even bij de bediening.</p>`;
+  html += `<p class="small mt8">Prijzen en namen komen van de foto. Controleer ze even bij de bediening.</p>`;
   return html;
 }
 ACT.menuPick = el => {
@@ -2249,20 +2253,20 @@ ACT.menuPick = el => {
 };
 ACT.menuWish = el => {
   const m = S.menuLast || {}; const p = (m.picks||[])[Number(el.dataset.i)]; if(!p) return;
-  /* een glasprijs zegt niets over de flesprijs — die laten we dan leeg */
+  /* een glasprijs zegt niets over de flesprijs, dus die laten we leeg */
   const it = { id:uid(), name:p.name, producer:p.producer, vintage:p.vintage, type:p.type, region:p.region,
     country:'', price:(p.unit==='fles'?p.price:null),
-    note:['Van de wijnkaart', m.restaurant].filter(Boolean).join(' — '), photo:false, addedAt:Date.now() };
+    note:['Van de wijnkaart', m.restaurant].filter(Boolean).join(', '), photo:false, addedAt:Date.now() };
   S.wishlist.unshift(it); save();
   toast('Op je verlanglijst gezet', 'Bekijk', () => { UI.tab='meer'; UI.meerPage='wishlist'; render(); });
 };
 
-/* zonder AI (of als vangnet): waar je bij dit gerecht op de kaart naar zoekt — de kelderregels omgedraaid */
+/* zonder AI (of als vangnet): waar je bij dit gerecht op de kaart naar zoekt: de kelderregels omgedraaid */
 function menuGuideHtml(dish, primary){
   const t = norm(dish);
   const cats = FOODS.filter(f => f.kw.some(k => t.includes(norm(k))));
   if(!cats.length){
-    return primary ? `<div class="banner"><span>🤔</span><span>Dit gerecht kan ik zonder AI niet plaatsen. Omschrijf het wat gewoner ("iets met kip", "witte vis") — of log in, dan leest de sommelier de kaart écht.</span></div>` : '';
+    return primary ? `<div class="banner"><span>🤔</span><span>Dit gerecht kan ik zonder AI niet plaatsen. Omschrijf het wat gewoner ("iets met kip", "witte vis"), of log in, dan leest de sommelier de kaart écht.</span></div>` : '';
   }
   const wsum = {};
   cats.forEach(c => Object.keys(c.w).forEach(k => { wsum[k] = (wsum[k]||0) + c.w[k]; }));
@@ -2374,7 +2378,7 @@ ACT.meerBack = () => { UI.meerPage='menu'; render(); };
 
 function viewWishlist(){
   const body = !S.wishlist.length
-    ? `<div class="empty"><div class="big">Nog niets op je lijstje</div><p>Zet hier wijnen op die je wilt kopen — ook via de scanner in de winkel.</p></div>`
+    ? `<div class="empty"><div class="big">Nog niets op je lijstje</div><p>Zet hier wijnen op die je wilt kopen, ook via de scanner in de winkel.</p></div>`
     : `<div class="wlist">${S.wishlist.map(it => `<div class="wcard" style="cursor:default">
         <span class="wthumb">${bottleSvg}${it.photo?`<img data-photo="${it.id}" alt="">`:''}</span>
         <span class="wmain"><span class="wname">${esc(it.name)}</span>
@@ -2437,7 +2441,7 @@ ACT.wishNewGo = () => {
 
 function viewHistory(){
   if(!S.history.length) return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Nog niets gedronken</h2>
-    <div class="empty"><p>Boek je eerste fles af via een fles in je kelder — of leg een proefnotitie vast van een wijn buiten de deur.</p>
+    <div class="empty"><p>Boek je eerste fles af via een fles in je kelder, of leg een proefnotitie vast van een wijn buiten de deur.</p>
     <button class="btn ghost" data-act="histAdd" style="max-width:280px">+ Proefnotitie (buiten de kelder)</button></div>`;
   const groups = {};
   for(const h of S.history){ const k = (h.date||'').slice(0,7) || '????'; (groups[k] = groups[k]||[]).push(h); }
@@ -2462,7 +2466,7 @@ ACT.histOpen = el => {
     <div class="wmeta">${typeHtml(h.type||'rood')}${h.extern?`<span class="badge b-onb">🍽️ ${esc(h.place||'buiten de kelder')}</span>`:''}</div>
     <div class="small mt8">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
     <div class="stars" style="pointer-events:none;margin-top:10px">${[1,2,3,4,5].map(n=>`<button class="${h.rating!=null&&h.rating>=n?'on':(h.rating===n-0.5?'half':'')}">★</button>`).join('')}</div>
-    <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5 — die was niks':`${String(h.rating).replace('.',',')} van 5`}</div>
+    <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5, die was niks':`${String(h.rating).replace('.',',')} van 5`}</div>
     ${h.note?`<div class="panel" style="margin:10px 0"><p style="font-size:14.5px;font-style:italic;line-height:1.6">"${esc(h.note)}"</p></div>`:''}
     ${w?`<div class="eyebrow mb8" style="margin-top:6px">Deze fles</div>
       ${(w.pairing&&w.pairing.length)?`<div class="grapes" style="margin-bottom:10px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
@@ -2478,7 +2482,7 @@ function viewLocs(){
   const counts = {};
   S.wines.forEach(w => { if(w.location) counts[w.location] = (counts[w.location]||0) + (w.qty||0); });
   const body = !locs.length
-    ? `<div class="empty"><div class="big">Nog geen locaties</div><p>Geef flessen een locatie bij het toevoegen of bewerken — dan verschijnen je rekken en plekken hier.</p></div>`
+    ? `<div class="empty"><div class="big">Nog geen locaties</div><p>Geef flessen een locatie bij het toevoegen of bewerken. Dan verschijnen je rekken en plekken hier.</p></div>`
     : `<div class="menu">${locs.map(n => { const e = locEntry(n); const heeft = e && e.photo;
         return `<div class="mitem" style="cursor:default">
           ${heeft?`<img data-photo="${e.id}" style="width:42px;height:42px;border-radius:9px;object-fit:cover;flex:none" alt="Foto van ${esc(n)}">`
@@ -2491,7 +2495,7 @@ function viewLocs(){
           ${heeft?`<button class="btn sm plain" data-act="locPhotoDel" data-n="${esc(n)}" aria-label="Foto verwijderen" style="flex:none">✕</button>`:''}
           <button class="btn sm plain" data-act="locDel" data-n="${esc(n)}" aria-label="Locatie verwijderen" style="flex:none">🗑</button>
         </div>`; }).join('')}</div>
-      <p class="small mt8">Een foto per locatie is optioneel — handig om te zien welk rek of welke kast bedoeld wordt. De foto duikt ook op als je in de kelder op locatie filtert.</p>`;
+      <p class="small mt8">Een foto per locatie is optioneel, handig om te zien welk rek of welke kast bedoeld wordt. De foto duikt ook op als je in de kelder op locatie filtert.</p>`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Locaties</div><h2 class="h2">Rekken &amp; plekken</h2>${body}`;
 }
 let locPhotoTarget = null;
@@ -2506,9 +2510,9 @@ ACT.locDel = el => {
   const flessen = wijnen.reduce((n,w) => n + (w.qty||0), 0);
   const others = allLocations().filter(l => l !== name);
   openSheet(`${sheetHead('Locatie verwijderen')}
-    <p style="font-size:14px;color:var(--ink2)">Locatie <b>${esc(name)}</b> verwijderen${wijnen.length?` — er ${wijnen.length===1?'ligt':'liggen'} nog <b>${wijnen.length}</b> ${plur(wijnen.length,'wijn','wijnen')} (${flessen} ${plur(flessen,'fles','flessen')}). Waar moeten die heen?`:'. Er liggen geen flessen op deze plek.'}</p>
+    <p style="font-size:14px;color:var(--ink2)">Locatie <b>${esc(name)}</b> verwijderen${wijnen.length?`. Er ${wijnen.length===1?'ligt':'liggen'} nog <b>${wijnen.length}</b> ${plur(wijnen.length,'wijn','wijnen')} (${flessen} ${plur(flessen,'fles','flessen')}). Waar moeten die heen?`:'. Er liggen geen flessen op deze plek.'}</p>
     ${wijnen.length?`<div class="field" style="margin-top:12px"><label>Verplaats de flessen naar</label>
-      <select class="inp" id="locMoveTo"><option value="">— geen locatie —</option>${others.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('')}</select></div>`:''}
+      <select class="inp" id="locMoveTo"><option value="">geen locatie</option>${others.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('')}</select></div>`:''}
     <div class="btnrow mt8"><button class="btn plain" data-act="closeSheet">Annuleer</button>
     <button class="btn danger" data-act="locDelGo" data-n="${esc(name)}">Verwijder locatie</button></div>`);
 };
@@ -2524,13 +2528,13 @@ ACT.locDelGo = el => {
   if(S.settings.lastLocation === name) S.settings.lastLocation = to || '';
   if(UI.floc === name) UI.floc = to || null;
   save(); closeSheet(true); render();
-  toast(to ? `Locatie verwijderd — flessen verplaatst naar "${to}"` : 'Locatie verwijderd');
+  toast(to ? `Locatie verwijderd, flessen verplaatst naar "${to}"` : 'Locatie verwijderd');
 };
 
 function viewRecipes(){
   const recs = S.recipeCache || [];
   const body = !recs.length
-    ? `<div class="empty"><div class="big">Nog geen recepten</div><p>Vraag bij een fles "Wat eet je hierbij?" en tik bij een gerecht op 📖 Recept tonen — hier bouw je vanzelf je receptenboek op.</p></div>`
+    ? `<div class="empty"><div class="big">Nog geen recepten</div><p>Vraag bij een fles "Wat eet je hierbij?" en tik bij een gerecht op 📖 Recept tonen. Hier bouw je vanzelf je receptenboek op.</p></div>`
     : `<div class="menu">${recs.map(r => `<div class="mitem" style="cursor:default">
         <button class="grow" style="text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}">
           <div style="font-weight:600">📖 ${esc(r.recipe.title||r.dish)}</div>
@@ -2556,14 +2560,14 @@ ACT.devTap = () => {
   const uit = !S.settings.devMode;
   if(uit) S.settings.apiKey = '';
   save(); render();
-  toast(uit ? 'Ontwikkelaarsstand uit — eigen sleutel gewist' : 'Ontwikkelaarsstand aan');
+  toast(uit ? 'Ontwikkelaarsstand uit, eigen sleutel gewist' : 'Ontwikkelaarsstand aan');
 };
 function viewSettings(){
   const ai = IN_SANDBOX
-    ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt — foto's, voorraad, regels voor venster & pairing. Wil je dat de sommelier etiketten leest? Gebruik Caveau dan via <b>mpoons.github.io/caveau</b>.</span></div>`
-    : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account).':`<b>Log in via Meer → Account</b> en de sommelier werkt meteen — je krijgt ${FREE_CREDITS} gratis credits per maand.`}</span></div>
+    ? `<div class="banner"><span>🔒</span><span><b>AI-scannen in deze omgeving:</b> de app draait hier in een beveiligde sandbox zonder externe verbindingen. Alles werkt: foto's, voorraad, regels voor venster & pairing. Wil je dat de sommelier etiketten leest? Gebruik Caveau dan via <b>mpoons.github.io/caveau</b>.</span></div>`
+    : `<div class="banner"><span>☁️</span><span>${(typeof loggedIn==='function'&&loggedIn())?'<b>Ingelogd:</b> AI werkt automatisch via de Caveau-server, met je maandtegoed (zie Meer → Account).':`<b>Log in via Meer → Account</b> en de sommelier werkt meteen. Je krijgt ${FREE_CREDITS} gratis credits per maand.`}</span></div>
       <div class="field"><label>Antwoordstijl sommelier</label><div class="seg" id="styleSeg">${[['simpel','Simpel'],['kenner','Kenner'],['sommelier','Sommelier']].map(([k,l])=>`<button type="button" data-act="aiStyle" data-s="${k}" class="${(S.settings.aiStyle||'kenner')===k?'on':''}">${l}</button>`).join('')}</div>
-       <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden — van jip-en-janneke tot sommeliers onder elkaar.</div></div>
+       <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden, van jip-en-janneke tot sommeliers onder elkaar.</div></div>
       <hr class="sep">
       <div class="eyebrow mb8">Geavanceerd</div>
       <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
@@ -2611,7 +2615,7 @@ ACT.estValues = async el => {
     save(); render();
     toast(n ? `${n} ${plur(n,'waarde','waardes')} ingeschat${targets.length>120?' (eerste 120)':''}` : 'Geen waardes kunnen inschatten');
   }catch(e){
-    toast('Inschatten mislukte — ' + String(e.message||e).slice(0,90), null, null, 6000);
+    toast('Inschatten mislukte: ' + String(e.message||e).slice(0,90), null, null, 6000);
     el.textContent = orig; el.style.pointerEvents = '';
   }
 };
@@ -2634,7 +2638,7 @@ INP.setModel = el => { S.settings.model = el.value; save(); };
 
 /* ================= Caveau op je beginscherm ================= */
 /* Chrome en Edge bieden zelf een installatieknop aan; die vangen we op zodat we
-   hem op ons eigen moment kunnen tonen. Safari op de iPhone kent dat niet — daar
+   hem op ons eigen moment kunnen tonen. Safari op de iPhone kent dat niet, dus daar
    kan het alleen met de hand, dus daar leggen we het uit in plaats van te knoppen. */
 let installPrompt = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
@@ -2659,7 +2663,7 @@ function installBanner(){
   if(!toonInstallTip()) return '';
   return `<div class="banner" style="align-items:center">
     <span>📲</span>
-    <span style="flex:1"><b>Zet Caveau eerst op je beginscherm</b> — dan heb je hem bij de hand in de winkel en het restaurant, opent hij als een app, en werkt je kelder ook zonder bereik.</span>
+    <span style="flex:1"><b>Zet Caveau eerst op je beginscherm</b>. Dan heb je hem bij de hand in de winkel en het restaurant, opent hij als een app, en werkt je kelder ook zonder bereik.</span>
     <button class="btn sm" data-act="installSheet" style="flex:none">Hoe?</button>
     <button class="xbtn" data-act="installWeg" aria-label="Niet meer tonen">✕</button></div>`;
 }
@@ -2670,19 +2674,19 @@ ACT.installSheet = () => {
        <button class="btn" data-act="installNow">Op mijn beginscherm zetten</button>`
     : isApple()
       ? `<ol style="font-size:14px;color:var(--ink2);line-height:1.7;margin-left:18px">
-           <li>Tik onderin Safari op het <b>deel-icoon</b> — het vierkantje met het pijltje omhoog.</li>
+           <li>Tik onderin Safari op het <b>deel-icoon</b>, het vierkantje met het pijltje omhoog.</li>
            <li>Scroll in dat menu naar <b>"Zet op beginscherm"</b>.</li>
            <li>Tik rechtsboven op <b>Voeg toe</b>.</li>
          </ol>
-         <p class="small mt14">Lukt het niet? Dan sta je waarschijnlijk in een andere browser dan Safari — op de iPhone kan alleen Safari dit. Open ${esc(location.host)} in Safari en probeer het daar.</p>`
+         <p class="small mt14">Lukt het niet? Dan sta je waarschijnlijk in een andere browser dan Safari. Op de iPhone kan alleen Safari dit. Open ${esc(location.host)} in Safari en probeer het daar.</p>`
       : `<ol style="font-size:14px;color:var(--ink2);line-height:1.7;margin-left:18px">
            <li>Open het menu van je browser (de drie puntjes).</li>
            <li>Kies <b>"App installeren"</b> of <b>"Toevoegen aan startscherm"</b>.</li>
            <li>Bevestigen.</li>
          </ol>`;
   openSheet(`${sheetHead('Caveau als app')}
-    <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:12px">Caveau is een website die zich als app gedraagt. Zet je hem op je beginscherm, dan krijg je een eigen icoon, geen adresbalk, en blijft je kelder ook zonder bereik gewoon werken — handig in een kelder of een restaurant.</p>
-    <p class="small mb8">Doe dit bij voorkeur vóór je flessen toevoegt: op de iPhone bewaart de app op je beginscherm zijn gegevens soms apart van Safari. Log je in, dan maakt het niet uit — dan staat je kelder in de cloud.</p>
+    <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:12px">Caveau is een website die zich als app gedraagt. Zet je hem op je beginscherm, dan krijg je een eigen icoon, geen adresbalk, en blijft je kelder ook zonder bereik gewoon werken, handig in een kelder of een restaurant.</p>
+    <p class="small mb8">Doe dit bij voorkeur vóór je flessen toevoegt: op de iPhone bewaart de app op je beginscherm zijn gegevens soms apart van Safari. Log je in, dan maakt het niet uit, want dan staat je kelder in de cloud.</p>
     ${uitleg}`);
 };
 ACT.installNow = async () => {
@@ -2699,7 +2703,7 @@ function viewPrivacy(){
     <p>Caveau wordt aangeboden door ${esc(AANBIEDER)}. Vragen of een verzoek over je gegevens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>.</p>
 
     <h3>Zonder account gaat er niets weg</h3>
-    <p>Gebruik je Caveau zonder in te loggen, dan staat je hele kelder — flessen, notities, foto's — alleen op dit apparaat, in de opslag van je browser. Er gaat niets naar een server. Wis je de app-gegevens of je browser, dan is het weg; maak dus af en toe een back-up via Instellingen.</p>
+    <p>Gebruik je Caveau zonder in te loggen, dan staat je hele kelder (flessen, notities, foto's) alleen op dit apparaat, in de opslag van je browser. Er gaat niets naar een server. Wis je de app-gegevens of je browser, dan is het weg; maak dus af en toe een back-up via Instellingen.</p>
 
     <h3>Met een account</h3>
     <p>Log je in, dan bewaren we bij onze hostingpartij <b>Supabase</b>, op servers in <b>Ierland</b>:</p>
@@ -2707,13 +2711,13 @@ function viewPrivacy(){
       <li>je e-mailadres en een versleutelde versie van je wachtwoord;</li>
       <li>je kelder: flessen, voorraad, locaties, notities, verlanglijst en drinkhistorie;</li>
       <li>de foto's die je bij flessen bewaart;</li>
-      <li>hoeveel credits je per maand gebruikt — het aantal, niet wat je vroeg of kreeg.</li>
+      <li>hoeveel credits je per maand gebruikt. De inhoud van je vragen en antwoorden bewaren we daar niet bij.</li>
     </ul>
     <p>Alleen jij kunt bij je eigen kelder; dat is op databaseniveau afgedwongen.</p>
 
     <h3>Wat de sommelier te zien krijgt</h3>
     <p>Laat je een etiket of wijnkaart lezen, of vraag je om een pairing, dan gaat die foto of vraag naar <b>Anthropic</b> in de Verenigde Staten, die het antwoord maakt. Anthropic gebruikt wat er via deze weg binnenkomt niet om modellen mee te trainen. Caveau bewaart het antwoord in jouw kelder en verder alleen de telling van je verbruik.</p>
-    <p>Foto's van een <b>wijnkaart in een restaurant</b> zijn een uitzondering: die blijven in het geheugen van je telefoon zolang je ernaar kijkt en worden nooit opgeslagen — niet op je apparaat en niet in de cloud.</p>
+    <p>Foto's van een <b>wijnkaart in een restaurant</b> zijn een uitzondering: die blijven in het geheugen van je telefoon zolang je ernaar kijkt en worden nooit opgeslagen, op je apparaat niet en in de cloud niet.</p>
 
     <h3>Betalen</h3>
     <p>Betalingen lopen via <b>Stripe</b>. Je kaartgegevens gaan rechtstreeks naar Stripe; Caveau ziet ze niet en bewaart ze niet. Wat wij wél bewaren is een klantnummer van Stripe en de status van je abonnement, zodat we weten hoeveel tegoed je hebt.</p>
@@ -2736,7 +2740,7 @@ function viewVoorwaarden(){
 
     <h3>Gratis, en Plus</h3>
     <p>Het bijhouden van je kelder is gratis en blijft dat: flessen, voorraad, locaties, foto's, back-ups, en de ingebouwde regels voor drinkvenster en pairing werken zonder account en zonder te betalen.</p>
-    <p>Wat de sommelier doet — etiketten lezen, wijnkaarten lezen, pairing en recepten — kost credits. Ingelogd krijg je er <b>${FREE_CREDITS} per maand gratis</b>. Met <b>Caveau Plus</b> (${esc(PLUS_PRIJS)}) worden dat er <b>${PLUS_CREDITS}</b>.</p>
+    <p>Wat de sommelier doet (etiketten lezen, wijnkaarten lezen, pairing en recepten) kost credits. Ingelogd krijg je er <b>${FREE_CREDITS} per maand gratis</b>. Met <b>Caveau Plus</b> (${esc(PLUS_PRIJS)}) worden dat er <b>${PLUS_CREDITS}</b>.</p>
 
     <h3>Wat credits kosten</h3>
     <ul>
@@ -2752,10 +2756,10 @@ function viewVoorwaarden(){
     <p>Je hebt veertien dagen bedenktijd. Omdat Plus meteen ingaat, vraag je bij het afrekenen uitdrukkelijk om die directe levering. In de praktijk houd ik het simpel: <b>heb je binnen veertien dagen nog geen credits gebruikt en wil je ervanaf, dan krijg je je geld terug.</b> Mail me even. Heb je al credits gebruikt, dan verrekenen we naar rato van wat je hebt verbruikt.</p>
 
     <h3>De sommelier is een adviseur, geen orakel</h3>
-    <p>Drinkvensters, waarde-inschattingen en pairings zijn schattingen — gemaakt door een AI, en soms door vaste regels als de AI er niet bij kan. Ze zijn bedoeld om je te helpen kiezen, niet om op te vertrouwen bij verzekeren, verkopen of investeren. Een waarde in Caveau is geen taxatie. Wat je met een fles doet, blijft jouw beslissing.</p>
+    <p>Drinkvensters, waarde-inschattingen en pairings zijn schattingen, gemaakt door een AI en soms door vaste regels als de AI er niet bij kan. Ze zijn bedoeld om je te helpen kiezen, niet om op te vertrouwen bij verzekeren, verkopen of investeren. Een waarde in Caveau is geen taxatie. Wat je met een fles doet, blijft jouw beslissing.</p>
 
     <h3>Beschikbaarheid</h3>
-    <p>Ik doe mijn best om Caveau te laten draaien, maar ik kan geen ononderbroken beschikbaarheid beloven. Valt de server uit, dan blijft je kelder op je eigen apparaat gewoon werken — alleen synchroniseren en de sommelier liggen er dan uit. Duurt een storing lang en heb je Plus, mail me dan; dan zoeken we het samen op.</p>
+    <p>Ik doe mijn best om Caveau te laten draaien, maar ik kan geen ononderbroken beschikbaarheid beloven. Valt de server uit, dan blijft je kelder op je eigen apparaat gewoon werken. Alleen synchroniseren en de sommelier liggen er dan uit. Duurt een storing lang en heb je Plus, mail me dan; dan zoeken we het samen op.</p>
 
     <h3>Je gegevens blijven van jou</h3>
     <p>Je kelder is van jou. Je kunt hem op elk moment volledig exporteren en meenemen, ook als je stopt met Plus of je account opheft. Hoe we met je gegevens omgaan staat in de <button class="linkbtn" data-act="meerGo" data-p="privacy">privacyverklaring</button>.</p>
@@ -2767,15 +2771,15 @@ function viewVoorwaarden(){
     <p>Verandert de prijs of het aantal credits, dan hoor je dat vooraf en kun je opzeggen voordat het ingaat. Wijzigingen in deze voorwaarden zet ik op deze pagina, met de datum eronder.</p>
 
     <h3>Verder</h3>
-    <p>Caveau gaat over wijn en is bedoeld voor volwassenen. Op deze voorwaarden is Nederlands recht van toepassing. Iets onduidelijk of oneens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a> — dat werkt bijna altijd sneller dan de formele weg.</p>
+    <p>Caveau gaat over wijn en is bedoeld voor volwassenen. Op deze voorwaarden is Nederlands recht van toepassing. Iets onduidelijk of oneens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>. Dat werkt bijna altijd sneller dan de formele weg.</p>
 
     <p class="upd">Laatst bijgewerkt op ${esc(LEGAL_DATUM)}.</p>
   </div>`;
 }
 
 ACT.overSheet = () => openSheet(`${sheetHead('Over Caveau')}
-  <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen — of andersom. Je gegevens blijven op je eigen apparaat; deel de link gerust, iedereen krijgt z'n eigen kelder.</p>
-  <p class="small mt14">Drinkvensters en pairing zijn schattingen — jouw smaak wint altijd. Santé!</p>`);
+  <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen, of andersom. Je gegevens blijven op je eigen apparaat; deel de link gerust, iedereen krijgt z'n eigen kelder.</p>
+  <p class="small mt14">Drinkvensters en pairing zijn schattingen. Jouw smaak wint altijd. Santé!</p>`);
 
 /* export / import / wissen */
 async function buildExport(withPhotos){
@@ -2793,8 +2797,8 @@ async function saveFile(name, text){
     try{ await window.claude.downloads.save({filename:name, data:text}); toast('Back-up opgeslagen'); }
     catch(e){
       if(e && e.code === 'declined') return;
-      if(e && e.code === 'rate_limited'){ toast('Er staat nog een download open — probeer zo weer'); return; }
-      try{ await navigator.clipboard.writeText(text); toast('Downloaden lukte niet — back-up staat op je klembord'); }
+      if(e && e.code === 'rate_limited'){ toast('Er staat nog een download open. Probeer het zo weer'); return; }
+      try{ await navigator.clipboard.writeText(text); toast('Downloaden lukte niet. De back-up staat op je klembord'); }
       catch(e2){ toast('Back-up maken lukte niet'); }
     }
     return;
@@ -2836,7 +2840,7 @@ async function doImport(text){
   document.getElementById('impReplace').onclick = () => apply(true);
   document.getElementById('impMerge').onclick = () => apply(false);
 }
-ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s worden gewist — en als cloud-sync aanstaat, ook in de cloud. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
+ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s worden gewist, en als cloud-sync aanstaat ook in de cloud. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
   const ids = await pKeys(); for(const id of ids) await pDel(id);
   S = DEFAULTS(); save(); scanReset(); render(); toast('Alles gewist');
 }, true);
@@ -2845,17 +2849,17 @@ ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlan
 ACT.demoLoad = () => {
   const y = Date.now();
   const demo = [
-    {name:'Château Léoville Barton', producer:'Saint-Julien, Grand Cru Classé', vintage:2016, type:'rood', grapes:['cabernet sauvignon','merlot'], country:'Frankrijk', region:'Bordeaux', appellation:'Saint-Julien', qty:6, location:'Vintec — zone onder', price:95, value:130, drinkFrom:2026, drinkTo:2045, pairing:['Entrecôte','Lamsrack','Harde kazen'], note:'Klassiek, gestructureerd — geduld wordt beloond.'},
-    {name:'Sancerre Les Romains', producer:'Domaine Vacheron', vintage:2023, type:'wit', grapes:['sauvignon blanc'], country:'Frankrijk', region:'Loire', appellation:'Sancerre', qty:4, location:'Vintec — zone boven', price:38, value:38, drinkFrom:2024, drinkTo:2028, pairing:['Geitenkaas','Witte vis','Oesters'], note:'Strak, mineraal, kruisbes.'},
-    {name:'Meursault', producer:'Olivier Leflaive', vintage:2020, type:'wit', grapes:['chardonnay'], country:'Frankrijk', region:'Bourgogne', appellation:'Meursault', qty:2, location:'Vintec — zone boven', price:58, value:70, drinkFrom:2023, drinkTo:2030, pairing:['Kreeft','Gebraden kip','Romige risotto'], note:'Boterig én fris, mooie spanning.'},
+    {name:'Château Léoville Barton', producer:'Saint-Julien, Grand Cru Classé', vintage:2016, type:'rood', grapes:['cabernet sauvignon','merlot'], country:'Frankrijk', region:'Bordeaux', appellation:'Saint-Julien', qty:6, location:'Vintec, zone onder', price:95, value:130, drinkFrom:2026, drinkTo:2045, pairing:['Entrecôte','Lamsrack','Harde kazen'], note:'Klassiek en gestructureerd, geduld wordt beloond.'},
+    {name:'Sancerre Les Romains', producer:'Domaine Vacheron', vintage:2023, type:'wit', grapes:['sauvignon blanc'], country:'Frankrijk', region:'Loire', appellation:'Sancerre', qty:4, location:'Vintec, zone boven', price:38, value:38, drinkFrom:2024, drinkTo:2028, pairing:['Geitenkaas','Witte vis','Oesters'], note:'Strak, mineraal, kruisbes.'},
+    {name:'Meursault', producer:'Olivier Leflaive', vintage:2020, type:'wit', grapes:['chardonnay'], country:'Frankrijk', region:'Bourgogne', appellation:'Meursault', qty:2, location:'Vintec, zone boven', price:58, value:70, drinkFrom:2023, drinkTo:2030, pairing:['Kreeft','Gebraden kip','Romige risotto'], note:'Boterig én fris, mooie spanning.'},
     {name:'Brut Réserve', producer:'Billecart-Salmon', vintage:null, type:'mousserend', grapes:['pinot noir','chardonnay','meunier'], country:'Frankrijk', region:'Champagne', appellation:'Champagne', qty:3, location:'Wijnrek', price:55, value:55, drinkFrom:2025, drinkTo:2027, pairing:['Aperitief','Sushi','Oesters'], note:'Fijne mousse, brioche, altijd goed.'},
-    {name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', grapes:['tempranillo','garnacha'], country:'Spanje', region:'Rioja', qty:5, location:'Kelder', price:35, value:42, drinkFrom:2023, drinkTo:2032, appellation:'Rioja DOCa', pairing:['Lam','Paella','Manchego'], note:'Zijdeglad, vanille en kers — nu prachtig.'},
-    {name:'Maury Grenat', producer:'Mas Amiel', vintage:2019, type:'versterkt', grapes:['grenache noir'], country:'Frankrijk', region:'Roussillon', appellation:'Maury', qty:1, location:'Kelder', price:26, value:26, drinkFrom:2021, drinkTo:2040, pairing:['Chocoladefondant','Blauwe kaas'], note:'Zoet, donker fruit — dessert in een glas.'}
+    {name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', grapes:['tempranillo','garnacha'], country:'Spanje', region:'Rioja', qty:5, location:'Kelder', price:35, value:42, drinkFrom:2023, drinkTo:2032, appellation:'Rioja DOCa', pairing:['Lam','Paella','Manchego'], note:'Zijdeglad, met vanille en kers. Nu prachtig.'},
+    {name:'Maury Grenat', producer:'Mas Amiel', vintage:2019, type:'versterkt', grapes:['grenache noir'], country:'Frankrijk', region:'Roussillon', appellation:'Maury', qty:1, location:'Kelder', price:26, value:26, drinkFrom:2021, drinkTo:2040, pairing:['Chocoladefondant','Blauwe kaas'], note:'Zoet en donker fruit, een dessert in een glas.'}
   ].map((w,i) => ({id:uid(), photo:false, note:'', appellation:'', ...w, addedAt:y-i*1000}));
   S.wines.push(...demo);
-  S.history.unshift({id:uid(), wineId:demo[4].id, date:new Date(y-86400000*12).toISOString().slice(0,10), name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', rating:5, note:'Bij lamsbout — groots.'});
+  S.history.unshift({id:uid(), wineId:demo[4].id, date:new Date(y-86400000*12).toISOString().slice(0,10), name:'Viña Ardanza Reserva', producer:'La Rioja Alta', vintage:2016, type:'rood', rating:5, note:'Bij lamsbout. Groots.'});
   S.wishlist.unshift({id:uid(), name:'Barolo Bussia', producer:'Giacomo Fenocchio', vintage:2019, type:'rood', price:55, note:'Getipt door Wijnhandel', photo:false, addedAt:y});
-  save(); render(); toast('6 voorbeeldflessen geladen — wissen kan via Instellingen');
+  save(); render(); toast('6 voorbeeldflessen geladen. Wissen kan via Instellingen');
 };
 
 /* ================= render & init ================= */
@@ -2902,7 +2906,7 @@ render();
 setTimeout(() => {
   const oud = (S.tonight||[]).find(t => Date.now() - t.at > 12*3600*1000);
   if(oud){ const w = findWine(oud.wineId);
-    if(w) toast(`🍷 "${w.name}" staat nog op tafel — vergeet niet af te strepen`, 'Bekijk', () => { UI.tab='kelder'; render(); }, 9000); }
+    if(w) toast(`🍷 "${w.name}" staat nog op tafel. Vergeet niet af te strepen`, 'Bekijk', () => { UI.tab='kelder'; render(); }, 9000); }
 }, 900);
 </script>
 <script>
@@ -3004,13 +3008,13 @@ async function applyRemote(remote){
 const shrinks = (van, naar) => van >= 5 && naar < Math.max(1, Math.ceil(van * 0.2)); /* >80% zou verdwijnen */
 
 function askShrink(mode, remote, lc, rc){
-  lastSyncNote = 'Wacht op jouw keuze — groot verschil tussen versies';
+  lastSyncNote = 'Wacht op jouw keuze, groot verschil tussen versies';
   if(UI.tab === 'meer' && UI.meerPage === 'account') render();
   const done = async () => { const c = cloud(); c.lastSync = Date.now(); save(true); lastSyncNote = '';
     toast('Gesynchroniseerd ✓'); if(UI.tab === 'meer' && UI.meerPage === 'account') render(); };
   openSheet(`${sheetHead('Even opletten')}
     <p style="font-size:14px;color:var(--ink2)">${mode === 'adopt'
-      ? `De cloudversie bevat <b>${rc}</b> ${plur(rc,'wijn','wijnen')}, terwijl hier <b>${lc}</b> staan. Dat kan kloppen (bijvoorbeeld na "Alles wissen" op een ander apparaat), maar het kan ook een vergissing zijn — daarom neem ik dit niet stilzwijgend over.`
+      ? `De cloudversie bevat <b>${rc}</b> ${plur(rc,'wijn','wijnen')}, terwijl hier <b>${lc}</b> staan. Dat kan kloppen (bijvoorbeeld na "Alles wissen" op een ander apparaat), maar het kan ook een vergissing zijn. Daarom neem ik dit niet stilzwijgend over.`
       : `Dit apparaat heeft <b>${lc}</b> ${plur(lc,'wijn','wijnen')}, de cloud <b>${rc}</b>. Doorzetten zou de cloudversie overschrijven.`}</p>
     <div class="btnrow mt14">
       <button class="btn ghost" id="shrinkKeep">${mode === 'adopt' ? `Behoud mijn ${lc}` : `Cloud (${rc}) overnemen`}</button>
@@ -3022,14 +3026,14 @@ function askShrink(mode, remote, lc, rc){
       if(mode === 'adopt'){ await applyRemote(remote); }
       else { snapshotLocal('caveau_backup_prev'); await pushDoc(); await pushPhotos(); }
       await done();
-    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt — ' + lastSyncNote); }
+    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt: ' + lastSyncNote); }
   };
   document.getElementById('shrinkKeep').onclick = async () => { closeSheet();
     try{
       if(mode === 'adopt'){ snapshotLocal('caveau_backup_prev'); S.rev = Date.now(); save(true); await pushDoc(); await pushPhotos(); }
       else { await applyRemote(remote); }
       await done();
-    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt — ' + lastSyncNote); }
+    }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt: ' + lastSyncNote); }
   };
 }
 
@@ -3038,7 +3042,7 @@ async function syncNow(interactive){
   if(syncBusy){ syncAgain = true; return; }
   syncBusy = true;
   try{
-    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
+    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
     const remote = await pullDoc();
     const localRev = S.rev||0, remoteRev = (remote && remote.rev)||0;
     const lc = S.wines.length, rc = remote ? (remote.wines||[]).length : 0;
@@ -3054,7 +3058,7 @@ async function syncNow(interactive){
     if(interactive) toast('Gesynchroniseerd ✓');
   }catch(e){
     lastSyncNote = String(e.message||e).slice(0,110);
-    if(interactive) toast('Sync mislukt — ' + lastSyncNote, null, null, 6000);
+    if(interactive) toast('Sync mislukt: ' + lastSyncNote, null, null, 6000);
   }
   syncBusy = false;
   if(syncAgain){ syncAgain = false; syncNow(); }
@@ -3094,7 +3098,7 @@ function cloudDeletePhoto(id){
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
 async function sbAI(content, maxTokens, kind, onText){
-  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in bij Meer → Account'); }
+  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in bij Meer → Account'); }
   const stream = !!onText && CAN_STREAM;
   let res;
   try{
@@ -3103,13 +3107,13 @@ async function sbAI(content, maxTokens, kind, onText){
       headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
       body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}] })
     });
-  }catch(_){ throw new Error('Geen verbinding met de Caveau-server — probeer het zo nog eens'); }
+  }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   if(res.ok && stream && res.body && (res.headers.get('content-type')||'').includes('event-stream'))
     return readSSE(res, onText);
   const d = await res.json().catch(() => ({}));
   if(!res.ok){
-    const e = new Error(res.status === 402 ? 'Je AI-tegoed voor deze maand is op — kijk bij Meer → Account'
-      : res.status === 429 ? (d.error || 'Even rustig aan — daglimiet bereikt')
+    const e = new Error(res.status === 402 ? 'Je AI-tegoed voor deze maand is op. Kijk bij Meer → Account'
+      : res.status === 429 ? (d.error || 'Even rustig aan, daglimiet bereikt')
       : res.status === 404 ? 'De serverfunctie is nog niet geplaatst (zie instructies)'
       : (d.error || ('Serverfout ' + res.status)));
     e.status = res.status; throw e;
@@ -3130,7 +3134,7 @@ function planBoxHtml(){
     return `<div class="panel" style="margin-top:12px">
       <div class="eyebrow mb8">Caveau Plus</div>
       <p style="font-size:14px;margin-bottom:8px">${quota.limit} credits per maand${t?` · ${stopt?'loopt af':'verlengt'} op ${esc(t)}`:''}.
-      ${gedoe?`<br><b>Let op:</b> de betaling is niet gelukt (${esc(quota.status)}) — werk je betaalmethode bij om Plus te houden.`:''}</p>
+      ${gedoe?`<br><b>Let op:</b> de betaling is niet gelukt (${esc(quota.status)}). Werk je betaalmethode bij om Plus te houden.`:''}</p>
       <button class="btn plain" data-act="acPortal">Abonnement beheren</button></div>`;
   }
   const over = Math.max(0, quota.limit - quota.used);
@@ -3140,12 +3144,12 @@ function planBoxHtml(){
     <p class="small">Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Kom je tekort? Laat het even weten, dan zet ik je tegoed hoger.</p></div>`;
   return `<div class="panel" style="margin-top:12px">
     <div class="eyebrow mb8">Caveau Plus · ${PLUS_PRIJS}</div>
-    <p style="font-size:14px;margin-bottom:8px">Je hebt nog <b>${over} van de ${quota.limit} gratis credits</b> deze maand. Met Plus krijg je er <b>${PLUS_CREDITS} per maand</b> — genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten.</p>
+    <p style="font-size:14px;margin-bottom:8px">Je hebt nog <b>${over} van de ${quota.limit} gratis credits</b> deze maand. Met Plus krijg je er <b>${PLUS_CREDITS} per maand</b>, genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten.</p>
     <p class="small mb8">Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Maandelijks opzegbaar.</p>
     <button class="btn" data-act="acUpgrade">Plus nemen</button></div>`;
 }
 async function sbFn(name, body){
-  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen — log opnieuw in'); }
+  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
   let res;
   try{
     res = await fetch(SB_URL + '/functions/v1/' + name, {
@@ -3153,7 +3157,7 @@ async function sbFn(name, body){
       headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
       body: JSON.stringify(body||{})
     });
-  }catch(_){ throw new Error('Geen verbinding met de Caveau-server — probeer het zo nog eens'); }
+  }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   const d = await res.json().catch(() => ({}));
   if(!res.ok) throw new Error(d.error || (res.status === 404 ? 'De betaalfunctie is nog niet geplaatst' : 'Serverfout ' + res.status));
   return d;
@@ -3166,11 +3170,11 @@ async function billingGo(action, el){
   }catch(e){ toast(String(e.message||e)); if(el){ el.disabled = false; render(); } }
 }
 /* Voor het afrekenen: wat je koopt, wat het kost, en het vinkje. Dat vinkje is
-   geen formaliteit — bij een dienst die meteen begint moet je daar uitdrukkelijk
+   geen formaliteit: bij een dienst die meteen begint moet je daar uitdrukkelijk
    om vragen, anders klopt de bedenktijd van veertien dagen niet. */
 ACT.acUpgrade = () => openSheet(`${sheetHead('Caveau Plus')}
   <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:6px"><b>${PLUS_CREDITS} credits per maand</b> voor ${esc(PLUS_PRIJS)}, btw inbegrepen.</p>
-  <p class="small mb8">Genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten. Maandelijks opzegbaar — je houdt Plus tot het einde van de periode die je betaald hebt.</p>
+  <p class="small mb8">Genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten. Maandelijks opzegbaar. Je houdt Plus tot het einde van de periode die je betaald hebt.</p>
   <label style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink2);line-height:1.55;margin:14px 0 10px">
     <input type="checkbox" id="plusAkkoord" style="width:19px;height:19px;flex:none;margin-top:1px;accent-color:var(--acc)">
     <span>Ik ga akkoord met de <button class="linkbtn" data-act="legalGo" data-p="voorwaarden">voorwaarden</button> en de <button class="linkbtn" data-act="legalGo" data-p="privacy">privacyverklaring</button>, en ik wil dat Plus meteen ingaat.</span></label>
@@ -3179,7 +3183,7 @@ ACT.acUpgrade = () => openSheet(`${sheetHead('Caveau Plus')}
 ACT.legalGo = el => { closeSheet(true); UI.tab='meer'; UI.meerPage = el.dataset.p; render(); };
 ACT.plusGo = el => {
   const v = document.getElementById('plusAkkoord');
-  if(!v || !v.checked){ toast('Zet eerst het vinkje — dat hoort bij een abonnement dat meteen ingaat'); return; }
+  if(!v || !v.checked){ toast('Zet eerst het vinkje, dat hoort bij een abonnement dat meteen ingaat'); return; }
   billingGo('checkout', el);
 };
 ACT.acPortal = el => billingGo('portal', el);
@@ -3205,8 +3209,8 @@ ACT.acPortal = el => billingGo('portal', el);
   setTimeout(() => {
     if(q === 'ok'){
       UI.tab = 'meer'; UI.meerPage = 'account'; render(); fetchQuota();
-      toast('Welkom bij Caveau Plus — je tegoed staat klaar', null, null, 6000);
-    } else toast('Afgebroken — er is niets afgeschreven');
+      toast('Welkom bij Caveau Plus. Je tegoed staat klaar', null, null, 6000);
+    } else toast('Afgebroken, er is niets afgeschreven');
   }, 400);
 })();
 
@@ -3235,7 +3239,7 @@ async function fetchQuota(){
   }catch(e){ el.textContent = 'AI-tegoed: nog niet beschikbaar'; }
 }
 
-/* hook — aangeroepen vanuit save() */
+/* hook, aangeroepen vanuit save() */
 function cloudOnSave(){
   if(!loggedIn()) return;
   clearTimeout(syncTimer);
@@ -3247,7 +3251,7 @@ function viewAccount(){
   const c = cloud();
   if(!CLOUD_OK)
     return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync</h2>
-      <div class="banner"><span>🔒</span><span>Sync is niet beschikbaar in deze omgeving — gebruik de app via <b>mpoons.github.io/caveau</b>.</span></div>`;
+      <div class="banner"><span>🔒</span><span>Sync is niet beschikbaar in deze omgeving. Gebruik de app via <b>mpoons.github.io/caveau</b>.</span></div>`;
   if(!loggedIn()){
     return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync aanzetten</h2>
       <p class="small mb8">Log in en je kelder synchroniseert automatisch tussen al je apparaten. Nog geen account? Kies een wachtwoord en tik op "Account aanmaken".</p>
@@ -3280,16 +3284,16 @@ async function acAuth(el, isNew){
   try{
     const r = isNew ? await sbSignup(email, pass) : await sbLogin(email, pass);
     if(r === 'confirm'){
-      toast('Bevestig je account via je mail — of log in als je al een account had', null, null, 7000);
+      toast('Bevestig je account via je mail, of log in als je al een account had', null, null, 7000);
     } else {
-      toast('Ingelogd — synchroniseren…');
+      toast('Ingelogd, synchroniseren…');
       render();
       await syncNow(true);
       return;
     }
   }catch(e){
     const m = String(e.message||'');
-    toast(/invalid|credentials/i.test(m) ? 'Onjuiste inloggegevens' : 'Lukte niet — ' + m.slice(0,90), null, null, 6000);
+    toast(/invalid|credentials/i.test(m) ? 'Onjuiste inloggegevens' : 'Lukte niet: ' + m.slice(0,90), null, null, 6000);
   }
   el.textContent = orig; el.style.pointerEvents = '';
 }
