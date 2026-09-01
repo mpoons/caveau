@@ -344,6 +344,14 @@ textarea.inp{resize:vertical;min-height:64px}
 .mprice small{display:block;font-family:var(--sans);font-size:10.5px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase}
 .mflag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-ink);border:1px solid var(--line);border-radius:999px;padding:2px 9px;margin-bottom:7px}
 hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
+.legal{font-size:14px;line-height:1.65;color:var(--ink2)}
+.legal h3{font-family:var(--serif);font-size:17px;color:var(--ink);margin:20px 0 6px;font-weight:600}
+.legal h3:first-child{margin-top:4px}
+.legal p{margin-bottom:10px}
+.legal ul{margin:0 0 10px 18px}
+.legal li{margin-bottom:5px}
+.legal b{color:var(--ink)}
+.legal .upd{font-size:12px;color:var(--ink3);margin-top:22px;padding-top:12px;border-top:1px solid var(--line)}
 .small{font-size:12.5px;color:var(--ink3)}
 .center{text-align:center}
 .mt8{margin-top:8px}.mt14{margin-top:14px}.mb8{margin-bottom:8px}
@@ -414,6 +422,12 @@ function save(skipCloud){
 
 /* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/ai-function.ts */
 const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
+/* Wie Caveau aanbiedt. Staat hier op één plek zodat het in één regel verandert
+   zodra er een eenmanszaak of BV achter zit (dan hoort hier ook een KvK-nummer
+   en een vestigingsadres bij). Deze gegevens staan op de openbare pagina's. */
+const AANBIEDER = 'Max Ponsen';
+const CONTACT_MAIL = 'max.ponsen@gmail.com';
+const LEGAL_DATUM = '1 september 2026';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2358,6 +2372,8 @@ function viewMeer(){
   if(UI.meerPage==='account') return viewAccount();
   if(UI.meerPage==='locs') return viewLocs();
   if(UI.meerPage==='recipes') return viewRecipes();
+  if(UI.meerPage==='privacy') return viewPrivacy();
+  if(UI.meerPage==='voorwaarden') return viewVoorwaarden();
   const ic = p => `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
   return `${brandRow('')}<div class="eyebrow">Meer</div><h2 class="h2">${esc(S.settings.cellarName)}</h2>
     <div class="menu">
@@ -2368,6 +2384,8 @@ function viewMeer(){
       <button class="mitem" data-act="meerGo" data-p="recipes">${ic('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5V5.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>')}<span class="grow">Recepten</span><span class="cnt">${(S.recipeCache||[]).length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="voorwaarden">${ic('<path d="M6 3.5h8.5L19 8v12.5H6z"/><path d="M14 3.5V8h5"/><path d="M9 12.5h7M9 16h5"/>')}<span class="grow">Voorwaarden</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="privacy">${ic('<path d="M12 3.2l6.5 2.6v5.4c0 4.2-2.7 7.4-6.5 8.6-3.8-1.2-6.5-4.4-6.5-8.6V5.8z"/><path d="M9.4 12.1l1.9 1.9 3.4-3.6"/>')}<span class="grow">Privacy</span><span class="chev">›</span></button>
     </div>`;
 }
 ACT.meerGo = el => { UI.meerPage = el.dataset.p; render(); if(el.dataset.p === 'account' && typeof fetchQuota === 'function') fetchQuota(); };
@@ -2633,6 +2651,88 @@ ACT.restoreBackup = el => {
 INP.setName = el => { S.settings.cellarName = el.value; save(); };
 INP.setKey = el => { S.settings.apiKey = el.value; save(); };
 INP.setModel = el => { S.settings.model = el.value; save(); };
+
+/* ================= privacy & voorwaarden ================= */
+function viewPrivacy(){
+  return `${brandRow('')}${backRow}<div class="eyebrow">Privacy</div><h2 class="h2">Wat Caveau van je bewaart</h2>
+  <div class="legal">
+    <p>Caveau wordt aangeboden door ${esc(AANBIEDER)}. Vragen of een verzoek over je gegevens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>.</p>
+
+    <h3>Zonder account gaat er niets weg</h3>
+    <p>Gebruik je Caveau zonder in te loggen, dan staat je hele kelder — flessen, notities, foto's — alleen op dit apparaat, in de opslag van je browser. Er gaat niets naar een server. Wis je de app-gegevens of je browser, dan is het weg; maak dus af en toe een back-up via Instellingen.</p>
+
+    <h3>Met een account</h3>
+    <p>Log je in, dan bewaren we bij onze hostingpartij <b>Supabase</b>, op servers in <b>Ierland</b>:</p>
+    <ul>
+      <li>je e-mailadres en een versleutelde versie van je wachtwoord;</li>
+      <li>je kelder: flessen, voorraad, locaties, notities, verlanglijst en drinkhistorie;</li>
+      <li>de foto's die je bij flessen bewaart;</li>
+      <li>hoeveel credits je per maand gebruikt — het aantal, niet wat je vroeg of kreeg.</li>
+    </ul>
+    <p>Alleen jij kunt bij je eigen kelder; dat is op databaseniveau afgedwongen.</p>
+
+    <h3>Wat de sommelier te zien krijgt</h3>
+    <p>Laat je een etiket of wijnkaart lezen, of vraag je om een pairing, dan gaat die foto of vraag naar <b>Anthropic</b> in de Verenigde Staten, die het antwoord maakt. Anthropic gebruikt wat er via deze weg binnenkomt niet om modellen mee te trainen. Caveau bewaart het antwoord in jouw kelder en verder alleen de telling van je verbruik.</p>
+    <p>Foto's van een <b>wijnkaart in een restaurant</b> zijn een uitzondering: die blijven in het geheugen van je telefoon zolang je ernaar kijkt en worden nooit opgeslagen — niet op je apparaat en niet in de cloud.</p>
+
+    <h3>Betalen</h3>
+    <p>Betalingen lopen via <b>Stripe</b>. Je kaartgegevens gaan rechtstreeks naar Stripe; Caveau ziet ze niet en bewaart ze niet. Wat wij wél bewaren is een klantnummer van Stripe en de status van je abonnement, zodat we weten hoeveel tegoed je hebt.</p>
+
+    <h3>Wat we níét doen</h3>
+    <p>Geen advertenties. Geen volgcookies, geen bezoekersstatistieken, geen partij die meekijkt. We verkopen of delen je gegevens met niemand, en we lezen niet mee in je kelder.</p>
+
+    <h3>Hoe lang, en hoe je het weghaalt</h3>
+    <p>Je gegevens blijven staan zolang je een account hebt. In de app kun je zelf alles wissen (Instellingen → Alles wissen; met sync aan haalt dat ook de cloudversie weg) en op elk moment een volledige back-up downloaden.</p>
+    <p>Je hebt het recht om je gegevens in te zien, te laten corrigeren, te laten verwijderen of mee te nemen. Voor het verwijderen van je hele account, inclusief je inloggegevens: mail me even, dan doe ik het. Ben je het ergens niet mee eens, dan kun je klagen bij de Autoriteit Persoonsgegevens.</p>
+
+    <p class="upd">Laatst bijgewerkt op ${esc(LEGAL_DATUM)}.</p>
+  </div>`;
+}
+
+function viewVoorwaarden(){
+  return `${brandRow('')}${backRow}<div class="eyebrow">Voorwaarden</div><h2 class="h2">De afspraken</h2>
+  <div class="legal">
+    <p>Caveau is een app om je eigen wijnkelder bij te houden, aangeboden door ${esc(AANBIEDER)}. Door hem te gebruiken ga je met het onderstaande akkoord.</p>
+
+    <h3>Gratis, en Plus</h3>
+    <p>Het bijhouden van je kelder is gratis en blijft dat: flessen, voorraad, locaties, foto's, back-ups, en de ingebouwde regels voor drinkvenster en pairing werken zonder account en zonder te betalen.</p>
+    <p>Wat de sommelier doet — etiketten lezen, wijnkaarten lezen, pairing en recepten — kost credits. Ingelogd krijg je er <b>${FREE_CREDITS} per maand gratis</b>. Met <b>Caveau Plus</b> (${esc(PLUS_PRIJS)}) worden dat er <b>${PLUS_CREDITS}</b>.</p>
+
+    <h3>Wat credits kosten</h3>
+    <ul>
+      <li>een etiket lezen, een pairing of een vraag aan de sommelier: 1 credit;</li>
+      <li>een wijnkaart lezen: 2 credits per gefotografeerde pagina.</li>
+    </ul>
+    <p>Je tegoed loopt per kalendermaand en begint elke maand opnieuw; wat je niet gebruikt schuift niet door. Er geldt ook een daglimiet, puur om misbruik tegen te gaan.</p>
+
+    <h3>Opzeggen</h3>
+    <p>Plus is maandelijks opzegbaar, wanneer je wilt, via Meer → Account → Abonnement beheren. Je houdt Plus tot het einde van de periode die je al betaald hebt; daarna word je vanzelf weer een gratis account. Je kelder blijft gewoon van jou en blijft werken.</p>
+
+    <h3>Bedenktijd</h3>
+    <p>Je hebt veertien dagen bedenktijd. Omdat Plus meteen ingaat, vraag je bij het afrekenen uitdrukkelijk om die directe levering. In de praktijk houd ik het simpel: <b>heb je binnen veertien dagen nog geen credits gebruikt en wil je ervanaf, dan krijg je je geld terug.</b> Mail me even. Heb je al credits gebruikt, dan verrekenen we naar rato van wat je hebt verbruikt.</p>
+
+    <h3>De sommelier is een adviseur, geen orakel</h3>
+    <p>Drinkvensters, waarde-inschattingen en pairings zijn schattingen — gemaakt door een AI, en soms door vaste regels als de AI er niet bij kan. Ze zijn bedoeld om je te helpen kiezen, niet om op te vertrouwen bij verzekeren, verkopen of investeren. Een waarde in Caveau is geen taxatie. Wat je met een fles doet, blijft jouw beslissing.</p>
+
+    <h3>Beschikbaarheid</h3>
+    <p>Ik doe mijn best om Caveau te laten draaien, maar ik kan geen ononderbroken beschikbaarheid beloven. Valt de server uit, dan blijft je kelder op je eigen apparaat gewoon werken — alleen synchroniseren en de sommelier liggen er dan uit. Duurt een storing lang en heb je Plus, mail me dan; dan zoeken we het samen op.</p>
+
+    <h3>Je gegevens blijven van jou</h3>
+    <p>Je kelder is van jou. Je kunt hem op elk moment volledig exporteren en meenemen, ook als je stopt met Plus of je account opheft. Hoe we met je gegevens omgaan staat in de <button class="linkbtn" data-act="meerGo" data-p="privacy">privacyverklaring</button>.</p>
+
+    <h3>Fatsoenlijk gebruik</h3>
+    <p>Caveau is bedoeld voor je eigen wijnkelder. Geautomatiseerd gebruik, doorverkopen van het tegoed of pogingen om de limieten te omzeilen mag ik afsluiten. Bij misbruik krijg je het ongebruikte deel van je maand terug.</p>
+
+    <h3>Als er iets verandert</h3>
+    <p>Verandert de prijs of het aantal credits, dan hoor je dat vooraf en kun je opzeggen voordat het ingaat. Wijzigingen in deze voorwaarden zet ik op deze pagina, met de datum eronder.</p>
+
+    <h3>Verder</h3>
+    <p>Caveau gaat over wijn en is bedoeld voor volwassenen. Op deze voorwaarden is Nederlands recht van toepassing. Iets onduidelijk of oneens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a> — dat werkt bijna altijd sneller dan de formele weg.</p>
+
+    <p class="upd">Laatst bijgewerkt op ${esc(LEGAL_DATUM)}.</p>
+  </div>`;
+}
+
 ACT.overSheet = () => openSheet(`${sheetHead('Over Caveau')}
   <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen — of andersom. Je gegevens blijven op je eigen apparaat; deel de link gerust, iedereen krijgt z'n eigen kelder.</p>
   <p class="small mt14">Drinkvensters en pairing zijn schattingen — jouw smaak wint altijd. Santé!</p>`);
@@ -3021,8 +3121,37 @@ async function billingGo(action, el){
     if(d.url) location.href = d.url; else throw new Error('Geen betaallink ontvangen');
   }catch(e){ toast(String(e.message||e)); if(el){ el.disabled = false; render(); } }
 }
-ACT.acUpgrade = el => billingGo('checkout', el);
+/* Voor het afrekenen: wat je koopt, wat het kost, en het vinkje. Dat vinkje is
+   geen formaliteit — bij een dienst die meteen begint moet je daar uitdrukkelijk
+   om vragen, anders klopt de bedenktijd van veertien dagen niet. */
+ACT.acUpgrade = () => openSheet(`${sheetHead('Caveau Plus')}
+  <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:6px"><b>${PLUS_CREDITS} credits per maand</b> voor ${esc(PLUS_PRIJS)}, btw inbegrepen.</p>
+  <p class="small mb8">Genoeg voor zo'n 35 wijnkaarten in een restaurant, of honderden etiketten. Maandelijks opzegbaar — je houdt Plus tot het einde van de periode die je betaald hebt.</p>
+  <label style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink2);line-height:1.55;margin:14px 0 10px">
+    <input type="checkbox" id="plusAkkoord" style="width:19px;height:19px;flex:none;margin-top:1px;accent-color:var(--acc)">
+    <span>Ik ga akkoord met de <button class="linkbtn" data-act="legalGo" data-p="voorwaarden">voorwaarden</button> en de <button class="linkbtn" data-act="legalGo" data-p="privacy">privacyverklaring</button>, en ik wil dat Plus meteen ingaat.</span></label>
+  <p class="small mb8">Bedenktijd: heb je binnen veertien dagen nog geen credits gebruikt en wil je er toch vanaf, dan krijg je je geld terug.</p>
+  <button class="btn" data-act="plusGo">Naar de betaling</button>`);
+ACT.legalGo = el => { closeSheet(true); UI.tab='meer'; UI.meerPage = el.dataset.p; render(); };
+ACT.plusGo = el => {
+  const v = document.getElementById('plusAkkoord');
+  if(!v || !v.checked){ toast('Zet eerst het vinkje — dat hoort bij een abonnement dat meteen ingaat'); return; }
+  billingGo('checkout', el);
+};
 ACT.acPortal = el => billingGo('portal', el);
+
+/* Directe adressen voor de twee openbare pagina's, zodat je ze kunt delen en
+   in Stripe kunt opgeven: .../caveau/#voorwaarden en .../caveau/#privacy */
+(function(){
+  const naar = () => {
+    const h = (location.hash||'').replace('#','').toLowerCase();
+    if(h !== 'privacy' && h !== 'voorwaarden') return;
+    UI.tab = 'meer'; UI.meerPage = h;
+    if(typeof render === 'function') render();
+  };
+  addEventListener('hashchange', naar);
+  addEventListener('load', naar);
+})();
 
 /* terug uit Stripe Checkout: ?plus=ok / ?plus=annuleer */
 (function(){
