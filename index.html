@@ -1570,8 +1570,14 @@ async function aiPrijs(w){
   const wie = `${w.name}${w.producer && w.producer !== w.name ? ', ' + w.producer : ''}, jaargang ${w.vintage || 'NV'}, ${[w.appellation, w.region, w.country].filter(Boolean).join(', ') || 'herkomst onbekend'}`;
   const prompt = `Zoek de actuele marktprijs in euro's van precies deze wijn en jaargang: ${wie}. Zoek bij Europese wijnhandels, veilingsites en prijsvergelijkers, Nederland en België eerst. Neem alleen prijzen van dezelfde jaargang; is die nergens te koop, neem dan de dichtstbijzijnde jaargang en zet die in vintage_found. Prijs per fles van 75 cl inclusief btw. Antwoord na het zoeken UITSLUITEND met geldig JSON, zonder andere tekst:
 {"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}
-Niets gevonden: {"value":null,"note":"reden"}.${STIJLREGELS}`;
+Niets gevonden: {"value":null,"note":"reden"}. Zoek eerst met de zoekfunctie op "${[w.producer, w.name, w.vintage].filter(Boolean).join(' ')} prijs" en daarna, als dat niets oplevert, zonder jaargang. Geef als allerlaatste alleen het JSON-object, zonder tekst ervoor of erna en zonder codeblok.${STIJLREGELS}`;
   const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}});
+  return parsePrijs(out);
+}
+/* Het model mag om het JSON heen praten of citeren; we nemen het laatste object met "value". */
+function parsePrijs(out){
+  const m = String(out || '').match(/\{[^{}]*"value"[^{}]*\}/g);
+  if(m && m.length){ try{ return JSON.parse(m[m.length - 1]); }catch(e){} }
   return parseJsonLoose(out);
 }
 function pasPrijsToe(w, r){
@@ -1600,10 +1606,10 @@ ACT.prijsZoek = async el => {
   el.textContent = 'Zoeken…'; el.style.pointerEvents = 'none';
   try{
     const r = await aiPrijs(w);
-    if(!pasPrijsToe(w, r)){ toast(r && r.note ? 'Geen prijs gevonden: ' + String(r.note).slice(0, 80) : 'Geen prijs gevonden'); el.textContent = '🔎 Prijs opzoeken'; el.style.pointerEvents = ''; return; }
+    if(!pasPrijsToe(w, r)){ toast(r && r.note ? 'Geen prijs gevonden: ' + String(r.note).slice(0, 120) : 'Geen prijs gevonden', null, null, 8000); el.textContent = '🔎 Precies opzoeken'; el.style.pointerEvents = ''; return; }
     save(); closeSheet(); render(); openDetail(w.id);
     toast(`${money(w.value)}${w.valueBron.name ? ' · ' + w.valueBron.name : ''}${r.cached ? ' (uit de Caveau-prijstabel)' : ''}`, null, null, 5000);
-  }catch(e){ toast('Opzoeken mislukte: ' + String(e.message || e).slice(0, 90), null, null, 6000); el.textContent = '🔎 Prijs opzoeken'; el.style.pointerEvents = ''; }
+  }catch(e){ toast('Opzoeken mislukte: ' + String(e.message || e).slice(0, 120), null, null, 8000); el.textContent = '🔎 Precies opzoeken'; el.style.pointerEvents = ''; }
 };
 ACT.prijsBulk = () => {
   if(!aiReady()){ toast('Log in (Meer → Account) om prijzen op te zoeken'); return; }

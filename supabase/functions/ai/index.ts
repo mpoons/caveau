@@ -200,6 +200,17 @@ Deno.serve(async (req) => {
       })
     }
     const data = await r.json()
+    // logboek voor de zoekagent: het letterlijke antwoord, zodat een misser te herleiden is
+    if (wijn) {
+      try {
+        const txt = r.ok ? tekstUit(data) : JSON.stringify(data)
+        const p = r.ok ? jsonUit(txt) : null
+        await supa.from('wine_price_log').insert({ user_id: user.id, key: prijsSleutel(wijn), model, status: r.status,
+          text: String(txt || '').slice(0, 6000), value: p && p.value != null && Number(p.value) > 0 ? Number(p.value) : null,
+          error: r.ok ? (p ? null : 'geen JSON') : String((data as { error?: { message?: string } })?.error?.message || 'API-fout').slice(0, 300),
+          tokens_in: data?.usage?.input_tokens || 0, tokens_out: data?.usage?.output_tokens || 0 })
+      } catch (_) { /* logboek is bijzaak */ }
+    }
     if (r.ok) {
       await supa.from('ai_usage').insert({
         user_id: user.id,
