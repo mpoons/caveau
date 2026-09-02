@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
 
     return json({ error: 'Onbekende actie' }, 400)
   } catch (e) {
-    return json({ error: String((e as Error)?.message || e).slice(0, 200) }, 500)
+    console.error('billing', String((e as Error)?.message || e).slice(0, 300))
+    return json({ error: 'Er ging iets mis aan onze kant. Probeer het zo nog eens' }, 500)
   }
 })

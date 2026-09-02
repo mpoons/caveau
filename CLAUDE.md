@@ -7,7 +7,7 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 - Artifact-formaat: geen doctype/html/head/body-tags in caveau.html; `head.html` + `build.sh` wikkelen hem naar `index.html`.
 - Data: localStorage (`caveau_v1`, object `S`) + IndexedDB voor foto's. Cloud-sync via Supabase (document-LWW op `S.rev`, foto's incrementeel). `save(true)` = technische write zonder rev-bump/cloud-push.
 - Supabase-project: `https://dbzgrkipcoebglacsqwe.supabase.co` (publishable key staat in de code, by design). Tabellen: `cellars`, `photos`, `profiles`, `ai_usage` (RLS per gebruiker). Auth: e-mail+wachtwoord ("Confirm email" staat uit).
-- AI-routering (`callClaude`): eigen API-sleutel **alleen in de ontwikkelaarsstand** (`S.settings.devMode`, aan te zetten met zeven tikken op de titel in Instellingen; uitzetten wist de sleutel). `ownKey()` is de enige plek die hem teruggeeft; buiten die stand wordt een opgeslagen sleutel genegeerd, zodat niemand het tegoedmodel omzeilt. Met sleutel → rechtstreeks Anthropic; anders ingelogd → Edge Function **`ai`** (`supabase/functions/ai/index.ts`, secret `CAVEAU_ANTHROPIC_KEY`, telt acties in `ai_usage`; gratis 15/maand, plus 500, plan `unlimited` via dashboard → profiles). Sandbox (claude.ai-artifact) = AI uit, kelderregels (offline heuristiek) vangen alles op.
+- AI-routering (`callClaude`): eigen API-sleutel **alleen in de ontwikkelaarsstand** (`S.settings.devMode`, aan te zetten met zeven tikken op de titel in Instellingen; uitzetten wist de sleutel). `ownKey()` is de enige plek die hem teruggeeft; buiten die stand wordt een opgeslagen sleutel genegeerd, zodat niemand het tegoedmodel omzeilt. Met sleutel → rechtstreeks Anthropic; anders ingelogd → Edge Function **`ai`** (`supabase/functions/ai/index.ts`, secret `CAVEAU_ANTHROPIC_KEY`, telt acties in `ai_usage`; gratis 15/maand, plus 500, plan `unlimited` via dashboard → profiles; gratis is 20 credits per maand, `FREE_CREDITS`). Sandbox (claude.ai-artifact) = AI uit, kelderregels (offline heuristiek) vangen alles op.
 
 ## Edge Functions
 - Liggen in de CLI-indeling: `supabase/functions/<naam>/index.ts`, met `supabase/config.toml` voor de JWT-instelling per functie (`stripe-webhook` staat daar bewust op `verify_jwt = false`).
@@ -15,7 +15,7 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 
 ## Wijzigingen uitrollen
 1. Bewerk `caveau.html` rechtstreeks.
-2. Versienummer in `sw.js` ophogen (`caveau-vN`).
+2. Versienummer in `sw.js` ophogen (`caveau-vN`). Strikt nodig alleen als iconen of manifest veranderen (de app zelf is netwerk-eerst met `cache:'no-cache'`), maar het is een handig versiestempel.
 3. `./build.sh` (maakt index.html).
 4. Syntax-check: script-blokken uitknippen en `node --check`; daarna controleren dat er **géén typografische aanhalingstekens** (“ ”) in attributen zitten; dat is eerder misgegaan.
 5. Functioneel testen in de browser (file:// werkt; localStorage beschikbaar).
@@ -45,6 +45,18 @@ Persoonlijke wijnkelder-PWA van Max. Live: **https://mpoons.github.io/caveau/** 
 - **Meerdere flessen tegelijk** (Meer, `viewImport`/`aiImport`, kind `import`): lijst plakken of tot 4 foto's van een lijst of staande flessen. Eén aanroep levert een reeks wijnen, de gebruiker vinkt aan wat mee mag. Drinkvensters komen van `estimateWindow`, niet van de AI. Dubbelen worden gemarkeerd en staan uit. Tik op een rij om bij te werken (hergebruikt `formFields`/`readForm`), en een veld boven de lijst zet de locatie op alle aangevinkte. Liggende flessen in een rek hebben geen zin, dat staat ook zo op het scherm.
 - **Vensters en geschiedenis.** Een sheet sluit ook met een veeg naar beneden (alleen als `.sheet-in` bovenaan staat, anders is het scrollen). Elke sheet is een `pushState`-stap; de terugknop en de Safari-randveeg sluiten het venster (`popstate`; `sheetSkipPops`/`sheetNaPop` vangen de asynchrone `history.go` op). Een veeg vanaf de linkerrand (`wireSwipeBack`) sluit het bovenste venster, ook in de iPhone-app.
 - **`readForm(root)` en `wireSeg(id, root)` kijken binnen één sheet.** Een sluitende sheet blijft 300 ms in de DOM, en met vaste veld-ids las `readForm` anders de velden van het verkeerde formulier.
+
+## Beveiligings- en optimalisatieronde (2 sep 2026)
+Twee reviews gedaan en verwerkt. Wat er nu geldt:
+- **Alles van buiten wordt genormaliseerd** vóór het de kelder in gaat: `schoonAI()` op elk AI-antwoord (scan, herbereken, import), `schoonWijn/schoonHist/schoonWens` op back-ups (`doImport`) en het cloud-document (`adoptDoc`). Ids moeten aan `ID_OK` voldoen, jaartallen aan `jaarOk`, getallen aan `getalOk`, links aan `safeUrl` (alleen http/https). Formulier-attributen zijn geëscaped. Nieuwe velden die van buiten komen: hier toevoegen.
+- **De server bouwt de prijsopdracht zelf** (`prijsPrompt` in de Edge Function) en negeert client-`messages` bij `kind:'prijs'`; een prijs komt alleen in `wine_prices` na controle (getal, confidence hoog/middel, URL op `PRIJS_SITES`), met `user_id` erbij. Het logboek `wine_price_log` heeft geen gebruikers-id meer en ruimt zichzelf na 30 dagen op.
+- **Credits in één transactie**: SQL-functie `boek_credits` (advisory lock per gebruiker) boekt vóór de Anthropic-aanroep; mislukt die, of komt er bij streamen geen tekst, dan wordt de regel weer verwijderd. Kosten volgen ook de werkelijke beeldgrootte (`B64_PER_CREDIT`). Grenzen: body 8 MB, 30k tekens tekst, 8 beelden, 2 berichten, geen document-blokken. Foutdetails gaan naar `console.error`, de client krijgt een vaste tekst.
+- **Webhook**: `plan_event_at` bewaakt de volgorde van Stripe-gebeurtenissen; checkout zet Plus alleen bij `payment_status === 'paid'`.
+- **CSP** als meta in `head.html` (connect-src alleen Supabase en Anthropic). Nieuwe externe host: daar toevoegen, anders stil geblokkeerd.
+- **Sync haalt eerst alleen het revisienummer** (`pullRev`); het document alleen bij een echte wijziging. `S.syncedTel` bewaart de tellingen van de laatste sync voor de krimp-guard. Elke fetch heeft een tijdslimiet (`tijdslimiet`). Gepullde foto's gaan niet meer terug omhoog.
+- **Rendersnelheid**: `kelderPrijzen` en `smaakSets` zijn memo's die `save()` leegt. Achtergrondrenders lopen via `renderTenzijFormulier`. De stille herberekening bij een jaargangwijziging gebruikt de kelderregels (geen credit). Pairing- en waardeprompts sturen volgnummers in plaats van UUID's (`cellarIdx`); waardes gaan in blokken van 40.
+- Reservekopieën bevatten geen caches meer; `dishCache` houdt drie richtingen per wijn.
+- **Nog open uit de review**: e-mailbevestiging of captcha op signup (dashboard), uitgavenplafond bij Anthropic, wachtwoord-reset in de app, `prijscache` heeft geen eigen limiet, foto's pullen gaat nog één voor één, en de zoekbalk rendert nog de hele kelderview per toets.
 
 ## Schrijfstijl
 Geen gedachtestreepjes en geen "niet X, maar Y". Geldt voor de app, voor dit bestand en voor antwoorden in de chat. `STIJLREGELS` gaat via `styleNote()` mee in élke AI-prompt, anders komt het via de gegenereerde tekst weer binnen. Een los `—` als "geen waarde" in een tabelcel en getalbereiken zoals `16–18 °C` blijven.

@@ -397,11 +397,12 @@ function save(skipCloud){
      lopende klok altijd, ook als het niets nieuws te melden heeft, en overschrijft
      het stilletjes de echte wijzigingen van het andere apparaat. */
   if(!skipCloud) S.rev = (S.rev||0) + 1;
+  if(typeof _kelderPrijzen !== 'undefined'){ _kelderPrijzen = null; _smaakSets = null; }
   try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt. Is de opslag vol?'); }
   if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
 }
 
-/* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/ai-function.ts */
+/* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/functions/ai/index.ts */
 const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
 /* Wie Caveau aanbiedt. Staat hier op één plek zodat het in één regel verandert
    zodra er een eenmanszaak of BV achter zit (dan hoort hier ook een KvK-nummer
@@ -419,6 +420,55 @@ const LEGAL_DATUM = '1 september 2026';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+/* ---- alles wat van buiten komt (AI, back-up, cloud) eerst normaliseren ---- */
+const safeUrl = u => { try{ const x = new URL(String(u || '')); return /^https?:$/.test(x.protocol) ? x.href.slice(0, 500) : ''; }catch(e){ return ''; } };
+const jaarOk = v => { const n = parseInt(v, 10); return (n >= 1900 && n <= 2100) ? n : null; };
+const getalOk = v => { if(v == null || v === '') return null; const n = Number(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+const tekstOk = (v, n) => v == null ? '' : String(v).slice(0, n || 300);
+const lijstOk = (v, n, len) => Array.isArray(v) ? v.slice(0, n || 12).map(x => tekstOk(x, len || 120)).filter(Boolean) : [];
+/* antwoord van de scanner, herbereken of import: alleen de vorm die de app verwacht */
+function schoonAI(d){
+  if(!d || typeof d !== 'object') return {};
+  const uit = {...d};
+  for(const k of ['name','producer','type','country','region','appellation']) if(k in uit) uit[k] = tekstOk(uit[k], 200);
+  for(const k of ['note']) if(k in uit) uit[k] = tekstOk(uit[k], 600);
+  if('score_seen' in uit) uit.score_seen = tekstOk(uit.score_seen, 60);
+  for(const k of ['vintage','drink_from','drink_to']) if(k in uit) uit[k] = jaarOk(uit[k]);
+  for(const k of ['value_eur','value_low','value_high','price','value']) if(k in uit) uit[k] = getalOk(uit[k]);
+  if('qty' in uit) uit.qty = Math.max(0, Math.min(999, parseInt(uit.qty, 10) || 0));
+  if('grapes' in uit) uit.grapes = lijstOk(uit.grapes, 8, 60);
+  if('pairing' in uit) uit.pairing = lijstOk(uit.pairing, 8, 120);
+  return uit;
+}
+const ID_OK = /^[A-Za-z0-9_-]{1,64}$/;
+/* een wijn uit een back-up of het cloud-document */
+function schoonWijn(w){
+  w = (w && typeof w === 'object') ? w : {};
+  return {...w, id: ID_OK.test(String(w.id)) ? String(w.id) : uid(),
+    name: tekstOk(w.name, 200), producer: tekstOk(w.producer, 200), location: tekstOk(w.location, 120), note: tekstOk(w.note, 4000),
+    country: tekstOk(w.country, 100), region: tekstOk(w.region, 120), appellation: tekstOk(w.appellation, 160), score: tekstOk(w.score, 60),
+    vintage: jaarOk(w.vintage), drinkFrom: jaarOk(w.drinkFrom), drinkTo: jaarOk(w.drinkTo),
+    price: getalOk(w.price), value: getalOk(w.value), valueLow: getalOk(w.valueLow), valueHigh: getalOk(w.valueHigh),
+    qty: Math.max(0, Math.min(999, parseInt(w.qty, 10) || 0)), type: TYPES[w.type] ? w.type : 'rood',
+    grapes: lijstOk(w.grapes, 8, 60), pairing: lijstOk(w.pairing, 8, 120), photo: !!w.photo,
+    valueBron: (w.valueBron && typeof w.valueBron === 'object') ? {...w.valueBron, name: tekstOk(w.valueBron.name, 80), url: safeUrl(w.valueBron.url), vintage: jaarOk(w.valueBron.vintage)} : null};
+}
+function schoonHist(h){
+  h = (h && typeof h === 'object') ? h : {};
+  const r = Number(h.rating);
+  return {...h, id: ID_OK.test(String(h.id)) ? String(h.id) : uid(), wineId: ID_OK.test(String(h.wineId)) ? String(h.wineId) : null,
+    name: tekstOk(h.name, 200), producer: tekstOk(h.producer, 200), place: tekstOk(h.place, 120), note: tekstOk(h.note, 2000),
+    vintage: jaarOk(h.vintage), type: TYPES[h.type] ? h.type : 'rood', rating: Number.isFinite(r) ? Math.max(0, Math.min(5, r)) : 0,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(String(h.date)) ? String(h.date) : vandaagISO(), grapes: lijstOk(h.grapes, 8, 60), region: tekstOk(h.region, 120)};
+}
+function schoonWens(x){
+  x = (x && typeof x === 'object') ? x : {};
+  return {...x, id: ID_OK.test(String(x.id)) ? String(x.id) : uid(), name: tekstOk(x.name, 200), producer: tekstOk(x.producer, 200),
+    note: tekstOk(x.note, 1000), region: tekstOk(x.region, 120), country: tekstOk(x.country, 100), vintage: jaarOk(x.vintage),
+    type: TYPES[x.type] ? x.type : 'rood', price: getalOk(x.price), photo: !!x.photo};
+}
+const schoonLijst = (arr, f) => Array.isArray(arr) ? arr.map(f) : [];
+const vandaagISO = () => new Date().toISOString().slice(0, 10);
 const money = n => (n==null||n===''||isNaN(n)) ? '—' : '€ '+Number(n).toLocaleString('nl-NL',{maximumFractionDigits:0});
 const plur = (n,e,m) => n===1?e:m;
 
@@ -834,7 +884,7 @@ function styleNote(){
 }
 
 /* Wat een AI-actie kost aan tegoed. Moet gelijk blijven aan creditsFor() in
-   supabase/ai-function.ts: foto's bepalen de kosten, en een kaartpagina (1568 px)
+   supabase/functions/ai/index.ts: foto's bepalen de kosten, en een kaartpagina (1568 px)
    is ongeveer twee keer zo duur als een etiket (1100 px). */
 function creditCost(kind, images){
   images = images || 0;
@@ -894,7 +944,7 @@ async function callAnthropicDirect(content, maxTokens, onText, opts){
   const stream = !!onText && CAN_STREAM;
   if(stream) body.stream = true;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
+    method:'POST', signal: tijdslimiet(120000),
     headers:{ 'content-type':'application/json', 'x-api-key':ownKey(),
       'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
     body: JSON.stringify(body)
@@ -919,7 +969,7 @@ drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
     {type:'text', text:prompt}
   ], 2500, 'scan', onPartial);
-  return parseJsonLoose(out);
+  return schoonAI(parseJsonLoose(out));
 }
 
 /* Wat er al leesbaar in het halve antwoord staat. Een sleutel-waardepaar telt pas
@@ -994,11 +1044,12 @@ Naam: ${d.name||'?'} | Producent: ${d.producer||'?'} | Jaargang: ${d.vintage||'N
 Schat het drinkvenster, de pairing en de winkelwaarde. Antwoord UITSLUITEND met geldig JSON:
 {"drink_from":2024,"drink_to":2032,"grapes":["druif",...],"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin Nederlands over stijl en karakter"}
 value_eur is de geschatte marktwaarde per fles in euro's van déze jaargang op dit moment (${YR()}) op de Europese markt (winkel of veiling), niet de introductieprijs. Reken met wat leeftijd doet: geklasseerde en bewaarwijnen worden duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. value_low/value_high is een eerlijke bandbreedte; bij een wijn ouder dan acht jaar of een die je niet goed kent maak je die band breed. pairing en note in het Nederlands. ${styleNote()} Onbekende velden: null.`;
-  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken'));
+  return schoonAI(parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken')));
 }
 
 const CELLAR_MAX = 25;   /* hoeveel wijnen er hoogstens meegaan in een AI-prompt */
-const wineLine = w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
+let cellarIdx = [];   /* volgnummer → wijn, voor de pairing-prompt (UUID's zijn een derde van de tokens) */
+const wineLine = (w, n) => `${n} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
 
 /* Een hele kelder meesturen is zonde van het tegoed: bij een bekend gerecht
    sturen we alleen de plausibele kandidaten (kelderregels doen de voorselectie),
@@ -1018,19 +1069,23 @@ function cellarLines(dish){
       list = [...pick.values()];
     }
   }
-  return list.slice(0, 120).map(wineLine).join('\n');
+  cellarIdx = list.slice(0, 120);
+  return cellarIdx.map((w, i) => wineLine(w, i + 1)).join('\n');
 }
 
 async function aiDish(dish){
-  const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
+  const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (nummer | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
 ${cellarLines(dish)}
 
 Ik ga dit eten: "${dish}".${smaakPrompt()}
 Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
-{"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
+{"matches":[{"id":"nummer uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
-  return parseJsonLoose(out);
+  const r = parseJsonLoose(out);
+  /* volgnummers terugvertalen naar echte id's, zodat de cache en de rest van de app niets merken */
+  r.matches = (Array.isArray(r.matches) ? r.matches : []).map(m => { const w = cellarIdx[parseInt(m.id, 10) - 1]; return w ? {...m, id: w.id} : null; }).filter(Boolean);
+  return r;
 }
 
 /* smaakprofiel: waar de gebruiker eerder hoge cijfers aan gaf; helpt bij een vreemde kaart */
@@ -1087,11 +1142,13 @@ Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, gee
 }
 
 async function aiValues(list){
-  const lines = list.map(w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
-  const prompt = `Schat per wijn de marktwaarde per fles in euro's van díe jaargang op dit moment (${YR()}) op de Europese markt, niet de introductieprijs. Geklasseerde en bewaarwijnen worden met de jaren duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. De lijst (id | naam | producent | jaargang | herkomst):
+  const lines = list.map((w, i) => `${i + 1} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
+  const prompt = `Schat per wijn de marktwaarde per fles in euro's van díe jaargang op dit moment (${YR()}) op de Europese markt, niet de introductieprijs. Geklasseerde en bewaarwijnen worden met de jaren duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. De lijst (nummer | naam | producent | jaargang | herkomst):
 ${lines}
-Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]}. value = beste schatting, low/high = eerlijke bandbreedte, breed bij wijnen ouder dan acht jaar of wijnen die je niet goed kent. Wijnen die je niet kunt inschatten sla je over.`;
-  return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000, 'waardes'));
+Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"nummer uit de lijst","value":28,"low":24,"high":34}]}. value = beste schatting, low/high = eerlijke bandbreedte, breed bij wijnen ouder dan acht jaar of wijnen die je niet goed kent. Wijnen die je niet kunt inschatten sla je over.`;
+  const r = parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000, 'waardes'));
+  r.values = (Array.isArray(r.values) ? r.values : []).map(v => { const w = list[parseInt(v.id, 10) - 1]; return w ? {...v, id: w.id} : null; }).filter(Boolean);
+  return r;
 }
 
 async function aiRecipe(dish, persons){
@@ -1313,10 +1370,11 @@ function smaakGeleerd(){
   const per = {druif:{}, regio:{}, type:{}};
   const tel = (kant, k, r) => { if(!k) return; const key = norm(k); const e = per[kant][key] || (per[kant][key] = {n:0, som:0, naam:k}); e.n++; e.som += r; };
   let n = 0;
+  const perId = new Map(S.wines.map(w => [w.id, w]));
   for(const h of (S.history||[])){
     const r = Number(h.rating); if(!(r > 0)) continue;
     n++;
-    const w = h.wineId ? findWine(h.wineId) : null;
+    const w = h.wineId ? perId.get(h.wineId) : null;
     (h.grapes || (w && w.grapes) || []).forEach(g => tel('druif', g, r));
     tel('regio', h.region || (w && w.region), r);
     tel('type', TYPES[h.type] ? TYPES[h.type].l : '', r);
@@ -1327,13 +1385,15 @@ function smaakGeleerd(){
     /* een hele streek afschrijven vraagt meer bewijs dan één druif */
     laag: {druif: pluk('druif', a => a <= 2.5), regio: pluk('regio', a => a <= 2.5, 3), type: pluk('type', a => a <= 2.5, 3)} };
 }
+let _smaakSets = null;   /* memo: leegt in save() */
 function smaakSets(){
+  if(_smaakSets) return _smaakSets;
   const p = smaak(), L = smaakGeleerd();
   const fav = new Set([...p.druiven, ...(L.genoeg ? L.hoog.druif : [])].map(norm));
   const favR = new Set([...p.regios, ...(L.genoeg ? L.hoog.regio : [])].map(norm));
   const nee = new Set((L.genoeg ? L.laag.druif : []).map(norm));
   const neeR = new Set((L.genoeg ? L.laag.regio : []).map(norm));
-  return {fav, favR, nee, neeR};
+  return (_smaakSets = {fav, favR, nee, neeR});
 }
 /* +1 past bij je smaak, -1 juist niet, 0 niets over te zeggen */
 function smaakMatch(w){
@@ -1425,8 +1485,9 @@ function klasse(w){
   return null;
 }
 const waardeVan = w => Number(w.value ?? w.price) || 0;
+let _kelderPrijzen = null;   /* memo: leegt in save() */
 function kelderPrijzen(){
-  return S.wines.map(waardeVan).filter(v => v > 0).sort((a,b) => a-b);
+  return _kelderPrijzen || (_kelderPrijzen = S.wines.map(waardeVan).filter(v => v > 0).sort((a,b) => a-b));
 }
 function plekInKelder(w){
   const v = waardeVan(w); if(!v) return null;
@@ -1474,7 +1535,8 @@ function waardeSub(w){
     const jr = w.valueBron.vintage && w.vintage && w.valueBron.vintage !== w.vintage ? `, jaargang ${w.valueBron.vintage}` : '';
     const naam = esc(w.valueBron.name || 'opgezocht');
     const oud = w.valueAt && (Date.now() - new Date(w.valueAt).getTime()) > 365 * 864e5;
-    bron = (w.valueBron.url ? `<a href="${esc(w.valueBron.url)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', gegevens van ' + dat : '') + (oud ? ' (ouder dan een jaar)' : '');
+    const link = safeUrl(w.valueBron.url);
+    bron = (link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', gegevens van ' + dat : '') + (oud ? ' (ouder dan een jaar)' : '');
   } else if(w.valueSrc === 'eigen') bron = 'zelf ingevuld' + (dat ? ', ' + dat : '');
   else if(w.value != null) bron = 'ruwe schatting' + (dat ? ' van ' + dat : '') + (oud ? ', bij oudere wijnen extra grof' : '');
   return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>${bron ? `<div class="small">${bron}</div>` : ''}`;
@@ -1515,7 +1577,7 @@ async function prijzenUitTabel(wines){
   const map = new Map((d.prices || []).map(p => [p.key, p]));
   let n = 0;
   for(const w of wines){ const p = map.get(prijsSleutel(w)); if(p && pasPrijsToe(w, {...p, cached:true})) n++; }
-  if(n){ save(); render(); }
+  if(n){ save(); renderTenzijFormulier(); }
   return n;
 }
 /* Na een scan: eerst gratis in de tabel kijken. Staat hij er niet in en is de fles
@@ -1562,13 +1624,13 @@ function parsePrijs(out){
   return parseJsonLoose(out);
 }
 function pasPrijsToe(w, r){
-  if(!r || r.value == null) return false;
-  w.value = Math.round(r.value);
-  w.valueLow = r.low != null ? Math.round(r.low) : null;
-  w.valueHigh = r.high != null ? Math.round(r.high) : null;
+  const v = getalOk(r && r.value); if(!(v > 0 && v < 100000)) return false;
+  w.value = Math.round(v);
+  w.valueLow = getalOk(r.low) != null ? Math.round(getalOk(r.low)) : null;
+  w.valueHigh = getalOk(r.high) != null ? Math.round(getalOk(r.high)) : null;
   w.valueSrc = 'zoek'; w.valueAt = vandaag();
-  w.valueBron = { name: String(r.source || '').slice(0, 80), url: String(r.url || '').slice(0, 400),
-    vintage: r.vintage_found || null, conf: r.confidence || null, note: String(r.note || '').slice(0, 200), cached: !!r.cached };
+  w.valueBron = { name: tekstOk(r.source, 80), url: safeUrl(r.url),
+    vintage: jaarOk(r.vintage_found), conf: tekstOk(r.confidence, 10) || null, note: tekstOk(r.note, 200), cached: !!r.cached };
   return true;
 }
 /* Voor welke flessen loont opzoeken: oud, of aan de bovenkant van de kelder. */
@@ -1782,7 +1844,7 @@ function formFields(w){
   <div class="field"><label>Naam van de wijn *</label><input class="inp" id="f_name" value="${esc(w.name||'')}" placeholder="bv. Château Talbot"></div>
   <div class="frow">
     <div class="field"><label>Producent</label><input class="inp" id="f_producer" value="${esc(w.producer||'')}" placeholder="domaine / château"></div>
-    <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="f_vintage" inputmode="numeric" value="${w.vintage||''}" placeholder="NV"></div>
+    <div class="field" style="max-width:110px"><label>Jaargang</label><input class="inp tnum" id="f_vintage" inputmode="numeric" value="${esc(w.vintage||'')}" placeholder="NV"></div>
   </div>
   <div class="field"><label>Type</label><div class="seg" id="f_type">${Object.keys(TYPES).map(t =>
     `<button type="button" data-val="${t}" class="${(w.type||'rood')===t?'on':''}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`).join('')}</div></div>
@@ -1793,13 +1855,13 @@ function formFields(w){
   </div>
   <div class="field"><label>Appellation / classificatie</label><input class="inp" id="f_app" value="${esc(w.appellation||'')}" placeholder="bv. Saint-Julien Grand Cru Classé"></div>
   <div class="frow">
-    <div class="field"><label>Op dronk van</label><input class="inp tnum" id="f_from" inputmode="numeric" value="${w.drinkFrom||''}" placeholder="2026"></div>
-    <div class="field"><label>Op dronk tot</label><input class="inp tnum" id="f_to" inputmode="numeric" value="${w.drinkTo||''}" placeholder="2035"></div>
+    <div class="field"><label>Op dronk van</label><input class="inp tnum" id="f_from" inputmode="numeric" value="${esc(w.drinkFrom||'')}" placeholder="2026"></div>
+    <div class="field"><label>Op dronk tot</label><input class="inp tnum" id="f_to" inputmode="numeric" value="${esc(w.drinkTo||'')}" placeholder="2035"></div>
   </div>
   <div class="center" style="margin:-4px 0 12px"><button type="button" class="linkbtn" data-act="recalc" id="recalcBtn">↻ Herbereken venster &amp; pairing uit deze velden</button></div>
   <div class="frow">
-    <div class="field"><label>Aankoopprijs €</label><input class="inp tnum" id="f_price" inputmode="decimal" value="${w.price??''}"></div>
-    <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${w.value??''}" placeholder="= prijs"></div>
+    <div class="field"><label>Aankoopprijs €</label><input class="inp tnum" id="f_price" inputmode="decimal" value="${esc(w.price??'')}"></div>
+    <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${esc(w.value??'')}" placeholder="= prijs"></div>
   </div>
   <div class="field"><label>Score gezien (optioneel)</label><input class="inp" id="f_score" value="${esc(w.score||'')}" placeholder="bv. 92 Parker, 8,5 Hamersma"></div>
   <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec, zone boven">
@@ -1976,7 +2038,8 @@ async function doRecalc(el, silent){
   if(el){ el.innerHTML = 'Herberekenen…'; el.style.pointerEvents = 'none'; }
   const setVal = (id, v) => { const x = document.getElementById(id); if(x && v != null && v !== '') x.value = v; };
   let src = 'Kelderregels', done = false;
-  if(aiReady()){
+  /* de stille route (jaargang aangepast) rekent met de kelderregels: gratis en meteen; de AI alleen op de knop */
+  if(!silent && aiReady()){
     try{
       const r = await aiRecalc(d);
       if(r.drink_from) setVal('f_from', r.drink_from);
@@ -2083,7 +2146,10 @@ async function runWineDishes(w, richting, force){
     try{
       const r = await aiWine(w, richting);
       dishes = (r.dishes||[]).map(d => ({dish:d.dish, reason:d.reason})).filter(d => d.dish);
-      if(dishes.length){ src = 'Sommelier-AI'; w.dishCache = w.dishCache || {}; w.dishCache[key] = {at:Date.now(), list:dishes}; save(); }
+      if(dishes.length){ src = 'Sommelier-AI'; w.dishCache = w.dishCache || {}; w.dishCache[key] = {at:Date.now(), list:dishes};
+        /* hoogstens drie richtingen per wijn bewaren, anders groeit het document en de sync zonder grens */
+        const ks = Object.keys(w.dishCache); if(ks.length > 3) delete w.dishCache[ks.sort((a, b) => (w.dishCache[a].at||0) - (w.dishCache[b].at||0))[0]];
+        save(); }
     }catch(e){ dishes = null; }
   }
   if(!dishes || !dishes.length){ dishes = dishesForWine(w); src = 'Kelderregels'; }
@@ -2136,9 +2202,9 @@ function showRecipe(e){
   openSheet(`${sheetHead(esc(r.title || e.dish))}
     <div class="small mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${e.persons} personen${r.time ? ` · ${esc(r.time)}` : ''} · <span class="srcchip">${e.cached ? 'Opgeslagen' : 'Sommelier-AI'}</span>${wijnRow}</div>
     <div class="eyebrow mb8">Ingrediënten</div>
-    <div class="panel" style="margin-bottom:14px">${(r.ingredients||[]).map(i => `<div class="rowline" style="padding:6px 0"><span class="a" style="font-size:14px">${esc(i)}</span></div>`).join('')}</div>
+    <div class="panel" style="margin-bottom:14px">${lijstOk(r.ingredients, 40, 200).map(i => `<div class="rowline" style="padding:6px 0"><span class="a" style="font-size:14px">${esc(i)}</span></div>`).join('')}</div>
     <div class="eyebrow mb8">Bereiding</div>
-    ${(r.steps||[]).map((s,i) => `<div style="display:flex;gap:10px;margin-bottom:10px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:14px;flex:1">${esc(s)}</span></div>`).join('')}`);
+    ${lijstOk(r.steps, 30, 600).map((s,i) => `<div style="display:flex;gap:10px;margin-bottom:10px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc-soft);color:var(--acc-ink);font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</span><span style="font-size:14px;flex:1">${esc(s)}</span></div>`).join('')}`);
 }
 ACT.recipeOpen = el => {
   const r = (S.recipeCache||[]).find(x => x.key === el.dataset.k);
@@ -2442,7 +2508,7 @@ function wineFromScanForm(){
 ACT.scanAdd = async () => {
   const d = wineFromScanForm(); if(!d) return;
   if(d.location) S.settings.lastLocation = d.location;
-  const w = { id:uid(), ...d, qty:formQty, pairing:(scan.data&&scan.data.pairing)||recalcPairing||[], photo:!!scan.thumb, addedAt:Date.now() };
+  const w = { id:uid(), ...d, qty:formQty, pairing:lijstOk(scan.data&&scan.data.pairing, 8, 120).length ? lijstOk(scan.data.pairing, 8, 120) : (recalcPairing||[]), photo:!!scan.thumb, addedAt:Date.now() };
   if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
   if(scan.data && scan.data.value_high != null) w.valueHigh = Math.round(scan.data.value_high);
   if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
@@ -3076,9 +3142,10 @@ ACT.estValues = async el => {
   if(!targets.length){ toast('Alle flessen hebben al een waarde'); return; }
   const orig = el.textContent; el.textContent = 'Inschatten…'; el.style.pointerEvents = 'none';
   try{
-    const r = await aiValues(targets.slice(0, 120));
-    let n = 0;
-    for(const v of (r.values||[])){
+    /* in blokken van 40: meer wijnen per antwoord loopt tegen het uitvoerplafond aan (afgekapte JSON) */
+    let n = 0; const alle = [];
+    for(let i = 0; i < Math.min(targets.length, 120); i += 40){ const r = await aiValues(targets.slice(i, i + 40)); alle.push(...(r.values||[])); }
+    for(const v of alle){
       const w = findWine(v.id);
       if(w && v.value != null){
         w.value = Math.round(v.value); w.valueSrc = 'ai'; w.valueAt = vandaag(); w.valueBron = null;
@@ -3107,7 +3174,7 @@ ACT.restoreBackup = el => {
     save(); render(); toast('Reservekopie teruggezet');
   });
 };
-INP.setName = el => { S.settings.cellarName = el.value; save(); };
+INP.setName = el => { S.settings.cellarName = el.value.slice(0, 60); save(true); clearTimeout(INP._naamT); INP._naamT = setTimeout(() => save(), 800); };
 INP.setKey = el => { S.settings.apiKey = el.value; save(); };
 INP.setModel = el => { S.settings.model = el.value; save(); };
 
@@ -3192,7 +3259,7 @@ Neem alleen flessen op die je echt leest of ziet. Verzin niets: een veld dat je 
   content.push({type:'text', text: prompt + (t ? `\n\nDe tekst:\n${t.slice(0, 6000)}` : '')});
   const out = await callClaude(content, 4000, 'import');
   const d = parseJsonLoose(out);
-  return Array.isArray(d.wines) ? d.wines : [];
+  return Array.isArray(d.wines) ? d.wines.slice(0, 60).map(schoonAI) : [];
 }
 
 function viewImport(){
@@ -3454,16 +3521,18 @@ async function doImport(text){
     <div class="btnrow mt14"><button class="btn ghost" id="impMerge">Samenvoegen</button><button class="btn" id="impReplace">Vervangen</button></div>
     <p class="small center mt8">Samenvoegen slaat flessen over die er al staan.</p>`);
   const apply = async (replace) => {
-    if(replace){ S.wines = d.wines; S.history = d.history||[]; S.wishlist = d.wishlist||[]; if(d.cellarName) S.settings.cellarName = d.cellarName; }
+    /* een back-up is een bestand van buiten: eerst normaliseren, dan pas in de kelder */
+    const wijnen = schoonLijst(d.wines, schoonWijn), hist = schoonLijst(d.history, schoonHist), wensen = schoonLijst(d.wishlist, schoonWens);
+    if(replace){ S.wines = wijnen; S.history = hist; S.wishlist = wensen; if(d.cellarName) S.settings.cellarName = tekstOk(d.cellarName, 60); }
     else {
       const have = new Set(S.wines.map(w => w.id));
-      d.wines.forEach(w => { if(!have.has(w.id)) S.wines.push(w); });
+      wijnen.forEach(w => { if(!have.has(w.id)) S.wines.push(w); });
       const hh = new Set(S.history.map(h => h.id));
-      (d.history||[]).forEach(h => { if(!hh.has(h.id)) S.history.push(h); });
+      hist.forEach(h => { if(!hh.has(h.id)) S.history.push(h); });
       const ww = new Set(S.wishlist.map(x => x.id));
-      (d.wishlist||[]).forEach(x => { if(!ww.has(x.id)) S.wishlist.push(x); });
+      wensen.forEach(x => { if(!ww.has(x.id)) S.wishlist.push(x); });
     }
-    if(d.photos) for(const [id, p] of Object.entries(d.photos)) await pSet(id, p);
+    if(d.photos && typeof d.photos === 'object') for(const [id, p] of Object.entries(d.photos)) if(ID_OK.test(id) && typeof p === 'string' && p.startsWith('data:image/')) await pSet(id, p);
     save(); closeSheet(true); render(); toast('Back-up ingelezen');
   };
   document.getElementById('impReplace').onclick = () => apply(true);
@@ -3565,11 +3634,13 @@ let syncTimer = null, syncBusy = false, syncAgain = false, lastSyncNote = '';
 function cloud(){ if(!S.settings.cloud) S.settings.cloud = {refresh:null, email:null, uid:null, lastSync:null}; return S.settings.cloud; }
 function loggedIn(){ return CLOUD_OK && !!cloud().refresh; }
 
+/* Geen enkele fetch mag eeuwig hangen: op slechte wifi bleef de app anders 'bezig'. */
+const tijdslimiet = ms => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
 async function sbFetch(path, opts, noAuth){
   opts = opts || {};
   const h = { 'apikey': SB_KEY, 'content-type': 'application/json', ...(opts.headers||{}) };
   if(!noAuth && sbAccess) h['authorization'] = 'Bearer ' + sbAccess;
-  const res = await fetch(SB_URL + path, {...opts, headers: h});
+  const res = await fetch(SB_URL + path, {signal: tijdslimiet(30000), ...opts, headers: h});
   if(!res.ok){
     const t = await res.text().catch(()=> '');
     const e = new Error('HTTP ' + res.status + ' ' + t.slice(0,160)); e.status = res.status; throw e;
@@ -3631,7 +3702,7 @@ function sbLogout(){
 function cloudDoc(){ return { rev: S.rev||0, wines: S.wines, history: S.history, wishlist: S.wishlist,
   locations: S.locations||[], pairCache: S.pairCache||[], recipeCache: S.recipeCache||[], tonight: S.tonight||[], cellarName: S.settings.cellarName }; }
 function adoptDoc(d){
-  S.wines = d.wines || []; S.history = d.history || []; S.wishlist = d.wishlist || [];
+  S.wines = schoonLijst(d.wines, schoonWijn); S.history = schoonLijst(d.history, schoonHist); S.wishlist = schoonLijst(d.wishlist, schoonWens);
   S.locations = d.locations || []; S.pairCache = d.pairCache || []; S.recipeCache = d.recipeCache || [];
   S.tonight = d.tonight || [];
   if(d.cellarName) S.settings.cellarName = d.cellarName;
@@ -3642,6 +3713,10 @@ async function pushDoc(){
   await sbFetch('/rest/v1/cellars?on_conflict=user_id', {method:'POST',
     headers:{'prefer':'resolution=merge-duplicates,return=minimal'},
     body: JSON.stringify([{user_id: cloud().uid, data: cloudDoc(), updated_at: new Date().toISOString()}])});
+}
+async function pullRev(){
+  const rows = await sbFetch('/rest/v1/cellars?select=data->rev&user_id=eq.' + cloud().uid, {method:'GET'});
+  return (rows && rows[0]) ? {rev: Number(rows[0].rev)||0} : null;
 }
 async function pullDoc(){
   const rows = await sbFetch('/rest/v1/cellars?select=data&user_id=eq.' + cloud().uid, {method:'GET'});
@@ -3659,14 +3734,15 @@ function snapshotLocal(key, extra){
       if(oud) localStorage.setItem('caveau_backup_prev2', oud);
     }
     localStorage.setItem(key, JSON.stringify({...(extra||{}), at:Date.now(),
-      data:{wines:S.wines, history:S.history, wishlist:S.wishlist, locations:S.locations||[],
-        pairCache:S.pairCache||[], recipeCache:S.recipeCache||[], cellarName:S.settings.cellarName}}));
+      data:{wines:S.wines, history:S.history, wishlist:S.wishlist, locations:S.locations||[], cellarName:S.settings.cellarName}}));   /* caches zijn regenereerbaar en horen niet in een reservekopie */
   }catch(e){}
 }
 async function applyRemote(remote){
   snapshotLocal('caveau_backup_prev');
-  adoptDoc(remote); render(); await pullPhotos();
+  adoptDoc(remote); renderTenzijFormulier(); await pullPhotos();
 }
+/* een sync of prijsronde op de achtergrond mag een formulier in bewerking niet wissen */
+function renderTenzijFormulier(){ if(UI.tab === 'scan' && scan.stage === 'confirm') return; if(sheets.length) return; render(); }
 const shrinks = (van, naar) => van >= 5 && naar < Math.max(1, Math.ceil(van * 0.2)); /* >80% zou verdwijnen */
 /* Ook een historie of verlanglijst kan in één klap verdwijnen, en die zijn net zo
    min terug te halen als de flessen zelf. Alle drie apart wegen. */
@@ -3720,8 +3796,10 @@ async function syncNow(interactive){
   syncBusy = true;
   try{
     if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
-    const remote = await pullDoc();
-    const localRev = S.rev||0, remoteRev = (remote && remote.rev)||0;
+    /* Eerst alleen het revisienummer (een paar bytes); het hele document (honderden KB)
+       pas als er echt iets te vergelijken valt. */
+    const kop = await pullRev();
+    const localRev = S.rev||0, remoteRev = (kop && kop.rev)||0;
     /* Wat stond er bij de laatste geslaagde sync? Zonder dat getal kun je niet zien
        of één kant iets veranderde (veilig overnemen) of allebei (dan gaat er werk
        verloren, wat je ook kiest). Ontbreekt het, dan doen we alsof er lokaal niets
@@ -3735,7 +3813,12 @@ async function syncNow(interactive){
        nummers zoals vroeger. */
     const eersteKeer = syncedRev == null;
     const lokaalGewijzigd = eersteKeer ? (localRev > remoteRev) : (localRev !== syncedRev);
-    const cloudGewijzigd  = !remote ? false : (eersteKeer ? (remoteRev > localRev) : (remoteRev !== syncedRev));
+    const cloudGewijzigd  = !kop ? false : (eersteKeer ? (remoteRev > localRev) : (remoteRev !== syncedRev));
+    /* Niets veranderd aan beide kanten: klaar zonder het document op te halen. Alleen lokaal
+       veranderd en de telling van de vorige sync bekend: de krimp-guard kan zonder document. */
+    const alleenLokaal = lokaalGewijzigd && !cloudGewijzigd && kop && S.syncedTel;
+    const remote = !kop ? null : (alleenLokaal || (!lokaalGewijzigd && !cloudGewijzigd)) ? {rev: remoteRev, wines: [], history: [], wishlist: [], _kop: true} : await pullDoc();
+    if(alleenLokaal){ remote.wines = new Array(S.syncedTel[0]); remote.history = new Array(S.syncedTel[1]); remote.wishlist = new Array(S.syncedTel[2]); }
     const lc = S.wines.length, rc = remote ? (remote.wines||[]).length : 0;
     if(!remote){
       await pushDoc(); await pushPhotos();
@@ -3748,7 +3831,7 @@ async function syncNow(interactive){
       if(krimpErgens(remote, S)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
       await pushDoc(); await pushPhotos();
     }
-    const c = cloud(); c.lastSync = Date.now(); S.syncedRev = S.rev||0; save(true);
+    const c = cloud(); c.lastSync = Date.now(); S.syncedRev = S.rev||0; S.syncedTel = [S.wines.length, S.history.length, S.wishlist.length]; save(true);
     lastSyncNote = '';
     if(interactive) toast('Gesynchroniseerd ✓');
   }catch(e){
@@ -3791,8 +3874,8 @@ async function pullPhotos(){
   try{
     for(const w of [...S.wines, ...S.wishlist, ...(S.locations||[])]){
       if(w.photo && !(await pGet(w.id))){
-        const rows = await sbFetch('/rest/v1/photos?select=data&id=eq.' + w.id, {method:'GET'});
-        if(rows && rows[0] && rows[0].data) await pSet(w.id, rows[0].data);
+        const rows = await sbFetch('/rest/v1/photos?select=data&user_id=eq.' + encodeURIComponent(cloud().uid) + '&id=eq.' + encodeURIComponent(w.id), {method:'GET'});
+        if(rows && rows[0] && typeof rows[0].data === 'string'){ await pSet(w.id, rows[0].data); fotoOpnieuw.delete(w.id); }   /* net binnengehaald: niet meteen weer omhoog */
       }
     }
     fillPhotos();
@@ -3800,7 +3883,7 @@ async function pullPhotos(){
 }
 function cloudDeletePhoto(id){
   if(!loggedIn()) return;
-  sbFetch('/rest/v1/photos?id=eq.' + id, {method:'DELETE', headers:{'prefer':'return=minimal'}}).catch(()=>{});
+  sbFetch('/rest/v1/photos?user_id=eq.' + encodeURIComponent(cloud().uid) + '&id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'prefer':'return=minimal'}}).catch(()=>{});
 }
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
@@ -3810,7 +3893,7 @@ async function sbAI(content, maxTokens, kind, onText, opts){
   let res;
   try{
     res = await fetch(SB_URL + '/functions/v1/ai', {
-      method:'POST',
+      method:'POST', signal: tijdslimiet(120000),
       headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
       body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}], ...(opts && opts.web ? {web:true, wine:opts.wine||null, refresh:!!opts.refresh} : {}) })
     });
@@ -4011,8 +4094,9 @@ ACT.acLogout = () => confirmSheet('Uitloggen?', 'Je kelder blijft lokaal én in 
 (function(){
   try{
     const k = 'caveau_backup_daily', today = new Date().toISOString().slice(0,10);
-    const prev = JSON.parse(localStorage.getItem(k)||'null');
-    if((S.wines.length || S.history.length) && (!prev || prev.day !== today)) snapshotLocal(k, {day:today});
+    /* alleen de datum lezen, niet de hele kopie parsen */
+    const m = /"day":"([^"]+)"/.exec((localStorage.getItem(k)||'').slice(0, 80));
+    if((S.wines.length || S.history.length) && (!m || m[1] !== today)) snapshotLocal(k, {day:today});
   }catch(e){}
 })();
 if(loggedIn()){ syncNow(); setTimeout(() => { prijsTabelRonde().catch(() => {}); }, 6000); }

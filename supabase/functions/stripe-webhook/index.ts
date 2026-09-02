@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
       Deno.env.get('STRIPE_WEBHOOK_SECRET')!,
     )
   } catch (e) {
-    return new Response('Ongeldige handtekening: ' + String((e as Error)?.message || e), { status: 400 })
+    console.error('stripe-webhook handtekening', String((e as Error)?.message || e).slice(0, 200))
+    return new Response('Ongeldige handtekening', { status: 400 })
   }
 
   // Het profiel vinden: bij checkout weten we de gebruiker, daarna alleen de Stripe-klant.
@@ -50,10 +51,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Stripe garandeert geen volgorde: een vertraagde 'updated' mag een latere 'deleted' niet
+    // overschrijven. Daarom bewaren we per profiel het tijdstip van de laatst verwerkte gebeurtenis.
+    const nieuwer = async (userId: string) => {
+      const { data } = await supa.from('profiles').select('plan_event_at').eq('user_id', userId).maybeSingle()
+      const vorige = data?.plan_event_at ? Date.parse(data.plan_event_at) / 1000 : 0
+      return event.created >= vorige
+    }
+    const stempel = new Date(event.created * 1000).toISOString()
+
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object as Stripe.Checkout.Session
       const userId = await findUserId(String(s.customer || ''), s.client_reference_id)
-      if (userId) {
+      // Bij SEPA is de sessie 'completed' terwijl de betaling nog onderweg is; dan wacht
+      // Plus op 'subscription.updated' met status active.
+      if (userId && s.payment_status === 'paid' && await nieuwer(userId)) {
         // Meteen de eerste verlengdatum ophalen, anders staat die pas na de eerste
         // 'subscription.updated' in het profiel en ziet de eerste maand er kaal uit.
         let ends: number | undefined
@@ -66,6 +78,7 @@ Deno.serve(async (req) => {
           plan_status: 'active',
           plan_renews_at: ends ? new Date(ends * 1000).toISOString() : null,
           stripe_customer_id: String(s.customer || ''),
+          plan_event_at: stempel,
         }).eq('user_id', userId)
       }
     }
@@ -73,7 +86,7 @@ Deno.serve(async (req) => {
     if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub = event.data.object as Stripe.Subscription
       const userId = await findUserId(String(sub.customer || ''), sub.metadata?.user_id || null)
-      if (userId) {
+      if (userId && await nieuwer(userId)) {
         const live = event.type !== 'customer.subscription.deleted' && ACTIVE.includes(sub.status)
         // Bij opzeggen loopt het abonnement door tot het eind van de betaalde periode:
         // Stripe stuurt dan pas bij het aflopen 'deleted'. Tot die tijd blijft plan 'plus',
@@ -89,12 +102,14 @@ Deno.serve(async (req) => {
           plan: live ? 'plus' : 'free',
           plan_status: live && stopt ? 'canceling' : sub.status,
           plan_renews_at: ends ? new Date(ends * 1000).toISOString() : null,
+          plan_event_at: stempel,
         }).eq('user_id', userId)
       }
     }
   } catch (e) {
     // 500 → Stripe probeert het opnieuw; beter dan stilzwijgend een abonnement missen.
-    return new Response('Fout: ' + String((e as Error)?.message || e), { status: 500 })
+    console.error('stripe-webhook', String((e as Error)?.message || e).slice(0, 300))
+    return new Response('Fout aan onze kant', { status: 500 })
   }
 
   return new Response('ok', { status: 200 })
