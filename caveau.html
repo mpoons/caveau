@@ -560,7 +560,7 @@ function schoonHist(h){
   return {...h, id: ID_OK.test(String(h.id)) ? String(h.id) : uid(), wineId: ID_OK.test(String(h.wineId)) ? String(h.wineId) : null,
     name: tekstOk(h.name, 200), producer: tekstOk(h.producer, 200), place: tekstOk(h.place, 120), note: tekstOk(h.note, 2000),
     vintage: jaarOk(h.vintage), type: TYPES[h.type] ? h.type : 'rood', rating: Number.isFinite(r) ? Math.max(0, Math.min(5, r)) : 0,
-    date: /^\d{4}-\d{2}-\d{2}$/.test(String(h.date)) ? String(h.date) : vandaagISO(), grapes: lijstOk(h.grapes, 8, 60), region: tekstOk(h.region, 120)};
+    date: /^\d{4}-\d{2}-\d{2}$/.test(String(h.date)) ? String(h.date) : vandaagISO(), grapes: lijstOk(h.grapes, 8, 60), region: tekstOk(h.region, 120), proef: !!h.proef, extern: !!h.extern};
 }
 function schoonWens(x){
   x = (x && typeof x === 'object') ? x : {};
@@ -1886,6 +1886,54 @@ function wireStars(){
   });
 }
 
+
+/* ---- al geproefd bij het toevoegen ----
+   Wie een doos koopt na een proeverij op het domaine heeft al een oordeel. Dat
+   oordeel gaat als proefnotitie in de historie (zonder een fles af te boeken) en
+   telt meteen mee in het smaakprofiel. */
+let proefRating = null;
+function proefHtml(){
+  return `<div class="panel" style="padding:11px 13px;margin:12px 0"><div class="eyebrow mb8">Al geproefd?</div>
+    <p class="small mb8">Op het domaine, in de winkel of bij vrienden. Je oordeel telt meteen mee in je smaakprofiel; overslaan mag.</p>
+    <div class="stars" id="proefStars" role="radiogroup" aria-label="Beoordeling">${[1,2,3,4,5].map(n=>`<button type="button" data-star="${n}" role="radio" aria-label="${n} sterren">★</button>`).join('')}</div>
+    <div class="small center" id="proefLbl" style="margin:-2px 0 8px">Tik een ster, of sla over</div>
+    <input class="inp" id="proefWaar" placeholder="waar geproefd, bv. op het domaine (optioneel)">
+    <textarea class="inp" id="proefNote" style="margin-top:8px" placeholder="hoe was hij? (optioneel)"></textarea></div>`;
+}
+function wireProefStars(){
+  const paint = () => {
+    document.querySelectorAll('#proefStars button').forEach(x => {
+      const n = Number(x.dataset.star);
+      x.classList.toggle('on', proefRating != null && proefRating >= n);
+      x.classList.toggle('half', proefRating != null && proefRating === n - 0.5);
+    });
+    const l = document.getElementById('proefLbl');
+    if(l) l.textContent = proefRating == null ? 'Tik een ster, of sla over'
+      : proefRating === 0 ? '0 van 5, die was niks' : `${String(proefRating).replace('.',',')} van 5`;
+  };
+  document.querySelectorAll('#proefStars button').forEach(b => b.onclick = ev => {
+    const n = Number(b.dataset.star);
+    const rect = b.getBoundingClientRect();
+    const half = ev.clientX && (ev.clientX - rect.left) < rect.width / 2;
+    const v = half ? n - 0.5 : n;
+    proefRating = (proefRating === v) ? 0 : v;
+    paint();
+  });
+}
+/* lezen vóór het venster sluit; schrijven zodra de wijn een id heeft */
+function proefLees(){
+  const g = id => ((document.getElementById(id)||{}).value||'').trim();
+  return { rating: proefRating, place: g('proefWaar').slice(0, 120), note: g('proefNote').slice(0, 2000) };
+}
+function proefSchrijf(w, pr){
+  if(!pr || (pr.rating == null && !pr.note && !pr.place)) return false;
+  S.history.unshift({ id:uid(), wineId:w.id, proef:true, place:pr.place, date:vandaagISO(),
+    name:w.name, producer:w.producer||'', vintage:w.vintage||null, type:w.type,
+    grapes:(w.grapes||[]).slice(0,4), region:w.region||'', rating:pr.rating, note:pr.note });
+  proefRating = null;
+  return true;
+}
+
 /* Proefnotitie buiten de kelder (restaurant, bij vrienden): telt mee in de historie, raakt de voorraad niet. */
 let drinkExternThumb = null;
 function openDrinkExtern(pre, thumb){
@@ -2181,17 +2229,17 @@ document.addEventListener('change', e => {
   doRecalc(document.getElementById('recalcBtn'), true);
 });
 function openWineForm(w){
-  formQty = 1; recalcPairing = null; recalcValueRange = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
+  formQty = 1; recalcPairing = null; recalcValueRange = null; proefRating = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
   const isNew = !w;
   openSheet(`${sheetHead(isNew ? 'Fles toevoegen' : 'Bewerken')}
     ${formFields(w || {location:(S.settings.lastLocation||'')})}
-    ${isNew ? `<div class="field"><label>Aantal flessen</label>
+    ${isNew ? `${proefHtml()}<div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">1</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
       <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>` : ''}
     <div class="btnrow mt8"><button class="btn plain" data-act="closeSheet">Annuleer</button>
     <button class="btn" data-act="wineSave" data-id="${w?w.id:''}">Bewaren</button></div>
     <div class="small center mt8">Laat het drinkvenster leeg om het automatisch te laten schatten.</div>`);
-  wireSeg('f_type');
+  wireSeg('f_type'); wireProefStars();
 }
 function syncQty(){ const q = document.getElementById('fQty'); if(q) q.textContent = formQty;
   const m = document.getElementById('mq'); if(m) m.textContent = formQty; }
@@ -2199,6 +2247,7 @@ ACT.fq = el => { formQty = Math.max(1, formQty + Number(el.dataset.d)); syncQty(
 ACT.fqset = el => { formQty = Number(el.dataset.n); syncQty(); };
 ACT.wineSave = el => {
   const d = readForm();
+  const pr = proefLees();
   if(!d.name){ toast('Geef de wijn een naam'); return; }
   if(d.location) S.settings.lastLocation = d.location;
   if(!d.drinkFrom && !d.drinkTo){ const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to; }
@@ -2212,8 +2261,9 @@ ACT.wineSave = el => {
     const w = { id:uid(), ...d, qty:formQty, pairing:recalcPairing||[], photo:false, addedAt:Date.now() };
     if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; w.valueSrc = 'ai'; w.valueAt = vandaag(); }
     if(d.value != null && !(recalcValueRange && d.value === recalcValueRange.value)){ w.valueSrc = 'eigen'; w.valueAt = vandaag(); }
+    const geproefd = proefSchrijf(w, pr);
     S.wines.unshift(w); save(); closeSheet(true); UI.tab = 'kelder'; render();
-    toast(`${formQty} ${plur(formQty,'fles','flessen')} toegevoegd`);
+    toast(`${formQty} ${plur(formQty,'fles','flessen')} toegevoegd${geproefd ? ', proefnotitie bewaard' : ''}`);
   }
 };
 
@@ -2350,7 +2400,7 @@ ACT.askGo = async el => {
 'use strict';
 /* ================= SCAN ================= */
 let scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false };
-function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; recalcPairing = null; recalcValueRange = null; }
+function scanReset(){ scan = { stage:'idle', photo:null, thumb:null, data:null, match:null, err:null, busy:false }; recalcPairing = null; recalcValueRange = null; proefRating = null; }
 
 function aiBanner(){
   if(IN_SANDBOX) return `<div class="banner"><span>ℹ️</span><span><b>Etiket-lezen met AI staat uit</b> in deze omgeving (de app-sandbox blokkeert externe verbindingen). Foto's bewaren en zelf invullen werkt gewoon. De ingebouwde sommelier-regels schatten drinkvenster en pairing. Host je het bestand zelf, dan leest Claude etiketten automatisch.</span></div>`;
@@ -2400,6 +2450,7 @@ function viewScan(){
       <button class="btn sm" data-act="${scan.match?'scanMerge':'scanAdd'}" style="flex:none">+ Kelder in</button></div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="scanTonight" style="width:18px;height:18px;accent-color:var(--acc)"> 🍷 Vanavond drinken, herinner me om af te strepen</label></div>`}
     ${formFields(pre)}
+    ${proefHtml()}
     <div class="field"><label>Aantal flessen</label>
       <div class="stepper"><button class="stepbtn" data-act="fq" data-d="-1">−</button><span class="stepval tnum" id="fQty">${formQty}</span><button class="stepbtn" data-act="fq" data-d="1">+</button></div>
       <div class="qquick"><button data-act="fqset" data-n="6">doos van 6</button><button data-act="fqset" data-n="12">doos van 12</button></div></div>
@@ -2608,6 +2659,7 @@ function wineFromScanForm(){
 }
 ACT.scanAdd = async () => {
   const d = wineFromScanForm(); if(!d) return;
+  const pr = proefLees();
   if(d.location) S.settings.lastLocation = d.location;
   const w = { id:uid(), ...d, qty:formQty, pairing:lijstOk(scan.data&&scan.data.pairing, 8, 120).length ? lijstOk(scan.data.pairing, 8, 120) : (recalcPairing||[]), photo:!!scan.thumb, addedAt:Date.now() };
   if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
@@ -2618,10 +2670,11 @@ ACT.scanAdd = async () => {
     w.valueSrc = vanAI ? 'ai' : 'eigen'; w.valueAt = vandaag();
   }
   if((document.getElementById('scanTonight')||{}).checked){ if(!S.tonight) S.tonight = []; S.tonight.push({wineId:w.id, at:Date.now()}); }
+  const geproefd = proefSchrijf(w, pr);
   S.wines.unshift(w); save();
   if(scan.thumb) await pSet(w.id, scan.thumb);
   const n = formQty; scanReset(); UI.tab = 'kelder'; render();
-  toast(`${n} ${plur(n,'fles','flessen')} in de kelder gelegd`);
+  toast(`${n} ${plur(n,'fles','flessen')} in de kelder gelegd${geproefd ? ', proefnotitie bewaard' : ''}`);
   /* eerst gratis de prijstabel; daarna pas zoeken, als het tegoed dat toelaat en de fles het waard is */
   if(w.valueSrc !== 'zoek') prijsNaScan(w);
 };
@@ -3091,7 +3144,7 @@ function viewHistory(){
     ${keys.map(k => `<div class="sect"><div class="eyebrow mb8">${esc(mName(k))}</div><div class="panel">
       ${groups[k].map(h => `<div class="rowline"><button class="a" style="text-align:left;flex:1;min-width:0" data-act="histOpen" data-id="${h.id}">
         <div class="t">${esc(h.name)} ${h.vintage||''}</div>
-        <div class="u">${esc(h.date)}${h.extern?` · 🍽️ ${esc(h.place||'buiten de kelder')}`:''}${h.producer?' · '+esc(h.producer):''}</div>
+        <div class="u">${esc(h.date)}${h.extern?` · 🍽️ ${esc(h.place||'buiten de kelder')}`:''}${h.proef?` · 🍇 geproefd bij aankoop${h.place?', '+esc(h.place):''}`:''}${h.producer?' · '+esc(h.producer):''}</div>
         ${h.note?`<div class="u" style="margin-top:2px;font-style:italic">"${esc(h.note.slice(0,60))}${h.note.length>60?'…':''}"</div>`:''}</button>
         <span class="z"><span class="starmini">${h.rating!=null?'★'.repeat(Math.floor(h.rating))+(h.rating%1?'½':'')+'<span style="color:var(--line)">'+'★'.repeat(5-Math.ceil(h.rating))+'</span>':''}</span><br>
         <button class="linkbtn" style="font-size:12px" data-act="histDel" data-id="${h.id}">verwijder</button></span></div>`).join('')}
@@ -3102,7 +3155,7 @@ ACT.histOpen = el => {
   const h = S.history.find(x => x.id === el.dataset.id); if(!h) return;
   const w = h.wineId ? findWine(h.wineId) : null;
   openSheet(`${sheetHead(esc(h.name) + (h.vintage?' '+h.vintage:''))}
-    <div class="wmeta">${typeHtml(h.type||'rood')}${h.extern?`<span class="badge b-onb">🍽️ ${esc(h.place||'buiten de kelder')}</span>`:''}</div>
+    <div class="wmeta">${typeHtml(h.type||'rood')}${h.extern?`<span class="badge b-onb">🍽️ ${esc(h.place||'buiten de kelder')}</span>`:''}${h.proef?`<span class="badge b-onb">🍇 geproefd bij aankoop${h.place?', '+esc(h.place):''}</span>`:''}</div>
     <div class="small mt8">${esc(h.date)}${h.producer?' · '+esc(h.producer):''}</div>
     <div class="stars" style="pointer-events:none;margin-top:10px">${[1,2,3,4,5].map(n=>`<button class="${h.rating!=null&&h.rating>=n?'on':(h.rating===n-0.5?'half':'')}">★</button>`).join('')}</div>
     <div class="small center" style="margin:-2px 0 8px">${h.rating==null?'Geen beoordeling':h.rating===0?'0 van 5, die was niks':`${String(h.rating).replace('.',',')} van 5`}</div>
@@ -3674,7 +3727,7 @@ function render(keepFocus){
   if(typeof updateBadge === 'function') updateBadge();
   if(UI.tab==='pairing' && UI.pairMode==='menu') menuFillShots();
   if(UI.tab==='meer' && UI.meerPage==='import') imp.shots.forEach((sh,i) => { const im = document.getElementById('is'+i); if(im) im.src = sh; });
-  if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); wireSeg('f_type'); }
+  if(UI.tab==='scan' && scan.stage==='confirm'){ showScanImg(); wireSeg('f_type'); wireProefStars(); }
   if(keepFocus){ const s = v.querySelector('input[type=search]'); if(s){ s.focus(); const n = s.value.length; try{ s.setSelectionRange(n,n); }catch(e){} } }
 }
 /* dezelfde twee bestandskiezers bedienen zowel het etiket als de wijnkaart */
