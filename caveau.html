@@ -3672,7 +3672,7 @@ function applySession(s){
 }
 
 async function sbSignup(email, pass){
-  const r = await sbFetch('/auth/v1/signup', {method:'POST', body:JSON.stringify({email, password:pass})}, true);
+  const r = await sbFetch('/auth/v1/signup?redirect_to=' + encodeURIComponent(appAdres()), {method:'POST', body:JSON.stringify({email, password:pass, data:{}})}, true);
   if(r.access_token){ applySession(r); return 'ok'; }
   return 'confirm';
 }
@@ -4049,6 +4049,7 @@ function viewAccount(){
       <div class="field"><label>Wachtwoord</label><input class="inp" id="ac_pass" type="password" autocomplete="current-password" placeholder="minimaal 8 tekens"></div>
       <button class="btn" data-act="acLogin" style="margin-bottom:9px">Inloggen</button>
       <button class="btn ghost" data-act="acSignup">Account aanmaken</button>
+      <div class="center mt8"><button class="linkbtn" data-act="acVergeten">Wachtwoord vergeten?</button></div>
       <p class="small mt8">Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Je AI-sleutel en foto's van etiketten blijven van jou; alleen jíj kunt bij je kelder.</p>`;
   }
   const last = c.lastSync ? new Date(c.lastSync).toLocaleString('nl-NL', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'nog niet';
@@ -4074,7 +4075,7 @@ async function acAuth(el, isNew){
   try{
     const r = isNew ? await sbSignup(email, pass) : await sbLogin(email, pass);
     if(r === 'confirm'){
-      toast('Bevestig je account via je mail, of log in als je al een account had', null, null, 7000);
+      toast('Bijna klaar: open de mail die we je stuurden en tik op de bevestigingslink, op dit apparaat', null, null, 9000);
     } else {
       toast('Ingelogd, synchroniseren…');
       render();
@@ -4089,6 +4090,63 @@ async function acAuth(el, isNew){
 }
 ACT.acSync = () => syncNow(true);
 ACT.acLogout = () => confirmSheet('Uitloggen?', 'Je kelder blijft lokaal én in de cloud bewaard; dit apparaat synchroniseert alleen niet meer.', 'Log uit', () => { sbLogout(); render(); toast('Uitgelogd'); });
+
+
+/* ---- links uit de mail: bevestiging van een account en wachtwoordherstel ----
+   Supabase stuurt de gebruiker terug naar de app met de sessie in het hash-deel
+   (#access_token=…&type=signup|recovery). We halen die eruit, zetten de sessie en
+   wissen het adres, zodat de tokens niet in de geschiedenis blijven staan. */
+const appAdres = () => location.origin + location.pathname.replace(/index\.html$/, '');
+(function(){
+  const h = location.hash || '';
+  if(!/access_token=|error=/.test(h)) return;
+  const p = new URLSearchParams(h.replace(/^#/, ''));
+  history.replaceState(null, '', location.pathname + location.search);
+  if(p.get('error')){
+    const why = (p.get('error_description') || '').replace(/\+/g, ' ');
+    setTimeout(() => toast(/expired|invalid/i.test(why) ? 'Deze link is verlopen of al gebruikt. Vraag een nieuwe aan' : 'De link werkte niet: ' + why.slice(0, 80), null, null, 7000), 300);
+    return;
+  }
+  const s = { access_token: p.get('access_token'), refresh_token: p.get('refresh_token') };
+  const type = p.get('type') || '';
+  if(!s.access_token) return;
+  sbFetch('/auth/v1/user', {method:'GET', headers:{authorization:'Bearer ' + s.access_token}}, true).then(u => {
+    applySession({...s, user: u});
+    if(type === 'recovery'){ openNieuwWachtwoord(); return; }
+    toast(type === 'signup' ? 'Account bevestigd. Welkom!' : 'Ingelogd', null, null, 5000);
+    UI.tab = 'meer'; UI.meerPage = 'account'; render();
+    syncNow(true);
+  }).catch(() => toast('Deze link is verlopen of al gebruikt. Vraag een nieuwe aan', null, null, 7000));
+})();
+ACT.acVergeten = async el => {
+  const email = ((document.getElementById('ac_email')||{}).value||'').trim().toLowerCase();
+  if(!/.+@.+\..+/.test(email)){ toast('Vul eerst je e-mailadres in, dan sturen we een herstel-link'); return; }
+  const orig = el.textContent; el.textContent = 'Versturen…'; el.style.pointerEvents = 'none';
+  try{
+    await sbFetch('/auth/v1/recover?redirect_to=' + encodeURIComponent(appAdres()), {method:'POST', body:JSON.stringify({email})}, true);
+    toast('Als dit adres bekend is, ligt er nu een mail met een herstel-link. Open die op dit apparaat', null, null, 8000);
+  }catch(e){ toast('Versturen lukte niet: ' + String(e.message||e).slice(0, 90), null, null, 6000); }
+  el.textContent = orig; el.style.pointerEvents = '';
+};
+function openNieuwWachtwoord(){
+  openSheet(`${sheetHead('Nieuw wachtwoord')}
+    <p class="small mb8">Je bent ingelogd via de herstel-link. Kies nu een nieuw wachtwoord; laat je telefoon het in de sleutelhanger bewaren.</p>
+    <div class="field"><label>Nieuw wachtwoord</label><input class="inp" id="nw_pass" type="password" autocomplete="new-password" placeholder="minimaal 8 tekens"></div>
+    <div class="field"><label>Nog een keer</label><input class="inp" id="nw_pass2" type="password" autocomplete="new-password"></div>
+    <button class="btn" data-act="acNieuwWachtwoord">Wachtwoord opslaan</button>`);
+}
+ACT.acNieuwWachtwoord = async el => {
+  const a = (document.getElementById('nw_pass')||{}).value||'', b = (document.getElementById('nw_pass2')||{}).value||'';
+  if(a.length < 8){ toast('Gebruik een wachtwoord van minimaal 8 tekens'); return; }
+  if(a !== b){ toast('De twee wachtwoorden zijn niet gelijk'); return; }
+  el.textContent = 'Opslaan…'; el.style.pointerEvents = 'none';
+  try{
+    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen, vraag een nieuwe herstel-link aan'); }
+    await sbFetch('/auth/v1/user', {method:'PUT', body:JSON.stringify({password:a})});
+    closeSheet(); toast('Wachtwoord gewijzigd. Je bent ingelogd', null, null, 5000);
+    UI.tab = 'meer'; UI.meerPage = 'account'; render(); syncNow(true);
+  }catch(e){ toast('Opslaan lukte niet: ' + String(e.message||e).slice(0, 90), null, null, 6000); el.textContent = 'Wachtwoord opslaan'; el.style.pointerEvents = ''; }
+};
 
 /* init: dagelijkse reservekopie (vóór de eerste sync) + bestaande sessie hervatten */
 (function(){
