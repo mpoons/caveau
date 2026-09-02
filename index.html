@@ -1568,9 +1568,15 @@ async function prijsTabelRonde(){
 /* ---- zoekagent: echte prijs met bron en datum ---- */
 async function aiPrijs(w){
   const wie = `${w.name}${w.producer && w.producer !== w.name ? ', ' + w.producer : ''}, jaargang ${w.vintage || 'NV'}, ${[w.appellation, w.region, w.country].filter(Boolean).join(', ') || 'herkomst onbekend'}`;
-  const prompt = `Zoek de actuele marktprijs in euro's van precies deze wijn en jaargang: ${wie}. Zoek bij Europese wijnhandels, veilingsites en prijsvergelijkers, Nederland en België eerst. Neem alleen prijzen van dezelfde jaargang; is die nergens te koop, neem dan de dichtstbijzijnde jaargang en zet die in vintage_found. Prijs per fles van 75 cl inclusief btw. Antwoord na het zoeken UITSLUITEND met geldig JSON, zonder andere tekst:
-{"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}
-Niets gevonden: {"value":null,"note":"reden"}. Zoek eerst met de zoekfunctie op "${[w.producer, w.name, w.vintage].filter(Boolean).join(' ')} prijs" en daarna, als dat niets oplevert, zonder jaargang. Geef als allerlaatste alleen het JSON-object, zonder tekst ervoor of erna en zonder codeblok.${STIJLREGELS}`;
+  const zoek = [w.producer, w.name, w.vintage].filter(Boolean).join(' ');
+  const prompt = `Zoek de actuele marktprijs in euro's van deze wijn: ${wie}.
+Zo werk je: zoek eerst met de zoekfunctie op "${zoek} prijs". Levert dat geen prijs op, zoek dan op "${[w.producer, w.name].filter(Boolean).join(' ')} prijs" zonder jaargang. Een prijs die in een zoekresultaat staat telt, je hoeft de pagina niet te openen. Prijs per fles van 75 cl inclusief btw; een halve fles of magnum reken je om.
+Regels voor het antwoord, in deze volgorde:
+1. Vind je een prijs van precies jaargang ${w.vintage || 'NV'}: geef die, confidence "hoog".
+2. Vind je alleen andere jaargangen van dezelfde wijn: geef VERPLICHT de prijs van de dichtstbijzijnde jaargang, zet die jaargang in vintage_found en confidence "middel". Dit is geen mislukking, dit is het gewenste antwoord. Nooit value null zolang je van deze wijn een prijs van welke jaargang dan ook hebt gezien.
+3. Alleen als je van deze wijn helemaal geen enkele prijs vindt: {"value":null,"note":"reden"}.
+Antwoord als allerlaatste met alleen dit JSON-object, zonder tekst ervoor of erna en zonder codeblok:
+{"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}${STIJLREGELS}`;
   const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}});
   return parsePrijs(out);
 }
@@ -1593,7 +1599,7 @@ function pasPrijsToe(w, r){
 /* Voor welke flessen loont opzoeken: oud, of aan de bovenkant van de kelder. */
 const prijsWaardig = w => (w.vintage && YR() - w.vintage >= 8) || !!plekInKelder(w);
 async function prijsAchteraf(w, meld){
-  if(meld) toast('Zoeken…', null, null, 20000);
+  if(meld) toast('Zoeken bij wijnhandels en veilingen…', null, null, 20000);
   try{
     const r = await aiPrijs(w);
     if(pasPrijsToe(findWine(w.id) || w, r)){ save(); render(); toast(`Prijs opgezocht: ${money(w.value)}${w.valueBron.name ? ' · ' + w.valueBron.name : ''}`, null, null, 5000); }
@@ -1603,7 +1609,7 @@ async function prijsAchteraf(w, meld){
 ACT.prijsZoek = async el => {
   const w = findWine(el.dataset.id); if(!w) return;
   if(!aiReady()){ toast('Log in (Meer → Account) om prijzen op te zoeken'); return; }
-  el.textContent = 'Zoeken…'; el.style.pointerEvents = 'none';
+  el.innerHTML = '<span class="pulse">🔎 Zoeken bij wijnhandels en veilingen…</span>'; el.style.pointerEvents = 'none';
   try{
     const r = await aiPrijs(w);
     if(!pasPrijsToe(w, r)){ toast(r && r.note ? 'Geen prijs gevonden: ' + String(r.note).slice(0, 120) : 'Geen prijs gevonden', null, null, 8000); el.textContent = '🔎 Precies opzoeken'; el.style.pointerEvents = ''; return; }

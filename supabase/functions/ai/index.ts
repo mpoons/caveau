@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     if (!/haiku/.test(model)) payload.thinking = { type: 'disabled' }
     // de webzoekfunctie van de API zelf; het model zoekt, leest en antwoordt in één beurt.
     // Haiku 4.5 kent alleen de basisvariant van de zoekfunctie.
-    if (web) payload.tools = [{ type: /haiku/.test(model) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 2, allowed_domains: PRIJS_SITES }]
+    if (web) payload.tools = [{ type: /haiku/.test(model) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 3, allowed_domains: PRIJS_SITES }]
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
