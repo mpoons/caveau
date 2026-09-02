@@ -38,9 +38,10 @@ const MODEL_BY_KIND: Record<string, string> = { prijs: 'claude-haiku-4-5' }   //
 const PRIJS_SITES = ['wine-searcher.com', 'idealwine.com', 'vivino.com', 'cellartracker.com', 'gall.nl', 'grandcruwijnen.nl', 'wijnvoordeel.nl',
   'wijnbeurs.nl', 'drankdozijn.nl', 'bestofwines.com', 'topwijnen.be', 'vinatis.com', 'millesima.com', 'vino.com', 'catawiki.com', 'winedecider.com']
 
-// Prijstabel: een opgezochte prijs geldt drie maanden voor iedereen. Zo zoekt de
-// agent één keer per wijn en jaargang, en niet bij elke scan opnieuw.
-const PRIJS_TTL_MS = 90 * 24 * 3600 * 1000
+// Prijstabel: een opgezochte prijs geldt een jaar voor iedereen. Wijnprijzen bewegen
+// langzaam, en de datum staat er in de app bij. Zo zoekt de agent één keer per wijn
+// en jaargang, en niet bij elke scan opnieuw.
+const PRIJS_TTL_MS = 365 * 24 * 3600 * 1000
 type Wijn = { name?: unknown; producer?: unknown; vintage?: unknown }
 function prijsSleutel(w: Wijn): string {
   const n = (x: unknown) => String(x || '').toLowerCase().normalize('NFD')

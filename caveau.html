@@ -1543,13 +1543,13 @@ async function aiPrijs(w){
   const wie = `${w.name}${w.producer && w.producer !== w.name ? ', ' + w.producer : ''}, jaargang ${w.vintage || 'NV'}, ${[w.appellation, w.region, w.country].filter(Boolean).join(', ') || 'herkomst onbekend'}`;
   const zoek = [w.producer, w.name, w.vintage].filter(Boolean).join(' ');
   const prompt = `Zoek de actuele marktprijs in euro's van deze wijn: ${wie}.
-Zo werk je: zoek eerst met de zoekfunctie op "${zoek} prijs". Levert dat geen prijs op, zoek dan op "${[w.producer, w.name].filter(Boolean).join(' ')} prijs" zonder jaargang. Een prijs die in een zoekresultaat staat telt, je hoeft de pagina niet te openen. Prijs per fles van 75 cl inclusief btw; een halve fles of magnum reken je om.
+Zo werk je: zoek eerst met de zoekfunctie op "${zoek} prijs". Levert dat geen prijs op, zoek dan op "${[w.producer, w.name].filter(Boolean).join(' ')} prijs" zonder jaargang. Een prijs die in een zoekresultaat staat telt, je hoeft de pagina niet te openen. Let op de flesmaat: Quarts de Chaume, Sauternes, Tokaji en veel zoete wijnen worden vaak per 50 cl of 37,5 cl verkocht. Zet de maat die je bij de prijs zag in size_seen en reken de prijs om naar 75 cl (50 cl × 1,5; 37,5 cl × 2; magnum ÷ 2), inclusief btw. Zie je geen maat, ga dan uit van 75 cl.
 Regels voor het antwoord, in deze volgorde:
 1. Vind je een prijs van precies jaargang ${w.vintage || 'NV'}: geef die, confidence "hoog".
 2. Vind je alleen andere jaargangen van dezelfde wijn: geef VERPLICHT de prijs van de dichtstbijzijnde jaargang, zet die jaargang in vintage_found en confidence "middel". Dit is geen mislukking, dit is het gewenste antwoord. Nooit value null zolang je van deze wijn een prijs van welke jaargang dan ook hebt gezien.
 3. Alleen als je van deze wijn helemaal geen enkele prijs vindt: {"value":null,"note":"reden"}.
 Antwoord als allerlaatste met alleen dit JSON-object, zonder tekst ervoor of erna en zonder codeblok:
-{"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}${STIJLREGELS}`;
+{"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"size_seen":"75cl|50cl|37.5cl|magnum|onbekend","confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt, met de flesmaat als die geen 75 cl was"}${STIJLREGELS}`;
   const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}});
   return parsePrijs(out);
 }
