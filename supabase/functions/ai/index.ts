@@ -33,7 +33,10 @@ function countImages(messages: unknown): number {
 // en bij de dure acties (etiket en wijnkaart lezen, prijzen inschatten) is Haiku
 // juist te zwak. Eén soort verplaatsen kan hieronder, bv. recept: 'claude-haiku-4-5'.
 const MODEL_DEFAULT = 'claude-sonnet-5'
-const MODEL_BY_KIND: Record<string, string> = {}
+const MODEL_BY_KIND: Record<string, string> = { prijs: 'claude-haiku-4-5' }   // prijzen plukken uit zoekresultaten: klein model volstaat, en de gelezen pagina's zijn het duurst
+// Wijnsites waar de zoekagent mag kijken: minder ruis, minder tokens.
+const PRIJS_SITES = ['wine-searcher.com', 'idealwine.com', 'vivino.com', 'cellartracker.com', 'gall.nl', 'grandcruwijnen.nl', 'wijnvoordeel.nl',
+  'wijnbeurs.nl', 'drankdozijn.nl', 'bestofwines.com', 'topwijnen.be', 'vinatis.com', 'millesima.com', 'vino.com', 'catawiki.com', 'winedecider.com']
 
 // Prijstabel: een opgezochte prijs geldt drie maanden voor iedereen. Zo zoekt de
 // agent één keer per wijn en jaargang, en niet bij elke scan opnieuw.
@@ -138,15 +141,18 @@ Deno.serve(async (req) => {
 
     // verzoek doorsturen — de server bepaalt model en instellingen
     const wantStream = body.stream === true && !web
+    const model = MODEL_BY_KIND[kind] || MODEL_DEFAULT
     const payload: Record<string, unknown> = {
-      model: MODEL_BY_KIND[kind] || MODEL_DEFAULT,
+      model,
       max_tokens: Math.min(Number(body.max_tokens) || 2000, 4000),
-      thinking: { type: 'disabled' },
       messages: body.messages,
       ...(wantStream ? { stream: true } : {}),
     }
-    // de webzoekfunctie van de API zelf; het model zoekt, leest en antwoordt in één beurt
-    if (web) payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }]
+    // Sonnet/Opus 5 denken standaard mee in het antwoordbudget; voor JSON zetten we dat uit. Haiku 4.5 kent dat veld anders: weglaten.
+    if (!/haiku/.test(model)) payload.thinking = { type: 'disabled' }
+    // de webzoekfunctie van de API zelf; het model zoekt, leest en antwoordt in één beurt.
+    // Haiku 4.5 kent alleen de basisvariant van de zoekfunctie.
+    if (web) payload.tools = [{ type: /haiku/.test(model) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 2, allowed_domains: PRIJS_SITES }]
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {

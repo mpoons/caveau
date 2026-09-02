@@ -567,30 +567,38 @@ addEventListener('popstate', () => {
   const want = (history.state && history.state.sheet) || 0;
   while(sheets.length > want) closeSheet(false, true);
 });
-/* Veeg vanaf de linkerrand naar rechts: sluit het bovenste venster. Op de iPhone als
-   app op het beginscherm bestaat geen randveeg van Safari, dus die doen we zelf. */
+/* Veeg vanaf de linkerrand naar rechts, of naar beneden als de inhoud bovenaan staat:
+   sluit het bovenste venster. Op de iPhone als app op het beginscherm bestaat geen
+   randveeg van Safari, dus die doen we zelf. */
 function wireSwipeBack(sh){
-  let x0 = null, y0 = null, actief = false;
+  let x0 = null, y0 = null, t0 = 0, richting = null; /* 'x' = vanaf de linkerrand, 'y' = naar beneden */
+  const inhoud = sh.querySelector('.sheet-in');
   sh.addEventListener('touchstart', e => {
-    const t = e.touches[0]; x0 = y0 = null; actief = false;
-    if(t.clientX <= 36){ x0 = t.clientX; y0 = t.clientY; }
+    const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); richting = null;
   }, {passive:true});
   sh.addEventListener('touchmove', e => {
     if(x0 == null) return;
     const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-    if(!actief){
-      if(Math.abs(dy) > 24 && Math.abs(dy) > dx){ x0 = null; return; }
-      if(dx > 12) actief = true; else return;
+    if(!richting){
+      if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if(x0 <= 36 && dx > Math.abs(dy)) richting = 'x';
+      /* naar beneden alleen als de inhoud bovenaan staat, anders is het gewoon scrollen */
+      else if(dy > Math.abs(dx) && (!inhoud || inhoud.scrollTop <= 0)) richting = 'y';
+      else { x0 = null; return; }
     }
-    sh.style.transition = 'none'; sh.style.translate = Math.max(0, dx) + 'px 0';
+    sh.style.transition = 'none';
+    sh.style.translate = richting === 'x' ? Math.max(0, dx) + 'px 0' : '0 ' + Math.max(0, dy) + 'px';
   }, {passive:true});
   const einde = e => {
     if(x0 == null) return;
     const t = (e.changedTouches && e.changedTouches[0]) || null;
-    const dx = t ? t.clientX - x0 : 0;
+    const dx = t ? t.clientX - x0 : 0, dy = t ? t.clientY - y0 : 0, snel = Date.now() - t0 < 300;
     sh.style.transition = ''; sh.style.translate = '';
-    x0 = null;
-    if(actief && dx > 80 && sheets.length && sheets[sheets.length-1].sh === sh) closeSheet();
+    const bovenste = sheets.length && sheets[sheets.length-1].sh === sh;
+    const r = richting; x0 = null; richting = null;
+    if(!bovenste) return;
+    if(r === 'x' && (dx > 80 || (snel && dx > 40))) closeSheet();
+    if(r === 'y' && (dy > 110 || (snel && dy > 50))) closeSheet();
   };
   sh.addEventListener('touchend', einde, {passive:true});
   sh.addEventListener('touchcancel', einde, {passive:true});
@@ -1494,7 +1502,7 @@ function waardeSub(w){
     const naam = esc(w.valueBron.name || 'opgezocht');
     bron = (w.valueBron.url ? `<a href="${esc(w.valueBron.url)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', ' + dat : '');
   } else if(w.valueSrc === 'eigen') bron = 'zelf ingevuld' + (dat ? ', ' + dat : '');
-  else if(w.value != null) bron = 'schatting' + (dat ? ' van ' + dat : '') + (oud ? ', bij oudere wijnen grof' : '');
+  else if(w.value != null) bron = 'ruwe schatting' + (dat ? ' van ' + dat : '') + (oud ? ', bij oudere wijnen extra grof' : '');
   return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>${bron ? `<div class="small">${bron}</div>` : ''}`;
 }
 function plekHtml(w){
@@ -1504,7 +1512,7 @@ function plekHtml(w){
   if(kl) chips.push(`<span class="grape">${esc(kl)}</span>`);
   if(w.score) chips.push(`<span class="grape">★ ${esc(w.score)}</span>`);
   const zoek = w.valueSrc !== 'zoek' && aiReady()
-    ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">🔎 Prijs opzoeken${ownKey() ? '' : ' · tot 5 credits'}</button>` : '';
+    ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">🔎 Precies opzoeken${ownKey() ? '' : ' · ' + creditCost('prijs') + ' credits'}</button>` : '';
   if(!zin && !chips.length && !zoek) return '';
   return `<div class="eyebrow mb8">Plek in je kelder</div>${zin ? `<p class="verdict">${esc(zin)}</p>` : ''}
     ${chips.length ? `<div class="grapes" style="margin-bottom:10px">${chips.join('')}</div>` : ''}${zoek ? `<div class="mb8" style="margin-bottom:12px">${zoek}</div>` : ''}`;
@@ -1535,14 +1543,15 @@ async function prijzenUitTabel(wines){
   if(n){ save(); render(); }
   return n;
 }
-/* Na een scan: eerst gratis in de tabel kijken; staat hij er niet in, dan zoeken
-   als het tegoed dat toelaat en de fles het waard is. */
+/* Na een scan: eerst gratis in de tabel kijken. Staat hij er niet in en is de fles
+   het waard, dan één tik om precies te zoeken. Nooit ongevraagd credits uitgeven. */
 async function prijsNaScan(w){
   try{
     const n = await prijzenUitTabel([w]);
     if(n){ toast(`Prijs uit de Caveau-prijstabel: ${money(w.value)}${w.valueBron && w.valueBron.name ? ' · ' + w.valueBron.name : ''}`, null, null, 5000); return; }
   }catch(_){}
-  if(aiReady() && prijsAutoMag() && prijsWaardig(w)) prijsAchteraf(w);
+  if(aiReady() && prijsWaardig(w) && w.value != null)
+    toast(`Ruwe schatting ${money(w.value)}. Precies opzoeken?`, ownKey() ? 'Zoek op' : `Zoek op · ${creditCost('prijs')} credits`, () => prijsAchteraf(w, true), 9000);
 }
 /* Eén keer per dag, bij het openen: alle flessen zonder opgezochte prijs langs de tabel. */
 async function prijsTabelRonde(){
@@ -1577,12 +1586,13 @@ function pasPrijsToe(w, r){
 }
 /* Voor welke flessen loont opzoeken: oud, of aan de bovenkant van de kelder. */
 const prijsWaardig = w => (w.vintage && YR() - w.vintage >= 8) || !!plekInKelder(w);
-const prijsAutoMag = () => !!ownKey() || !!(quota && (quota.plan === 'plus' || quota.plan === 'unlimited'));
-async function prijsAchteraf(w){
+async function prijsAchteraf(w, meld){
+  if(meld) toast('Zoeken…', null, null, 20000);
   try{
     const r = await aiPrijs(w);
     if(pasPrijsToe(findWine(w.id) || w, r)){ save(); render(); toast(`Prijs opgezocht: ${money(w.value)}${w.valueBron.name ? ' · ' + w.valueBron.name : ''}`, null, null, 5000); }
-  }catch(e){ /* stil: de schatting blijft staan */ }
+    else if(meld) toast(r && r.note ? 'Geen prijs gevonden: ' + String(r.note).slice(0, 80) : 'Geen prijs gevonden', null, null, 5000);
+  }catch(e){ if(meld) toast('Opzoeken mislukte: ' + String(e.message || e).slice(0, 90), null, null, 6000); }
 }
 ACT.prijsZoek = async el => {
   const w = findWine(el.dataset.id); if(!w) return;
@@ -1636,7 +1646,7 @@ function openDetail(id){
         </div></div>
       <div class="dcell"><div class="k">Locatie</div><div class="v">${esc(w.location||'—')}</div></div>
       <div class="dcell"><div class="k">Aankoopprijs</div><div class="v tnum">${money(w.price)}</div></div>
-      <div class="dcell"><div class="k">${w.valueSrc==='zoek'?'Marktwaarde':'Geschatte waarde'}</div><div class="v tnum">${money(w.value ?? w.price)}</div>${waardeSub(w)}</div>
+      <div class="dcell"><div class="k">${w.valueSrc==='zoek'?'Marktwaarde':(w.valueSrc==='eigen'?'Waarde':'Ruwe schatting')}</div><div class="v tnum">${money(w.value ?? w.price)}</div>${waardeSub(w)}</div>
     </div>
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
     ${plekHtml(w)}
