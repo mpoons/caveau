@@ -1473,7 +1473,8 @@ function waardeSub(w){
   if(w.valueSrc === 'zoek' && w.valueBron){
     const jr = w.valueBron.vintage && w.vintage && w.valueBron.vintage !== w.vintage ? `, jaargang ${w.valueBron.vintage}` : '';
     const naam = esc(w.valueBron.name || 'opgezocht');
-    bron = (w.valueBron.url ? `<a href="${esc(w.valueBron.url)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', ' + dat : '');
+    const oud = w.valueAt && (Date.now() - new Date(w.valueAt).getTime()) > 365 * 864e5;
+    bron = (w.valueBron.url ? `<a href="${esc(w.valueBron.url)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', gegevens van ' + dat : '') + (oud ? ' (ouder dan een jaar)' : '');
   } else if(w.valueSrc === 'eigen') bron = 'zelf ingevuld' + (dat ? ', ' + dat : '');
   else if(w.value != null) bron = 'ruwe schatting' + (dat ? ' van ' + dat : '') + (oud ? ', bij oudere wijnen extra grof' : '');
   return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>${bron ? `<div class="small">${bron}</div>` : ''}`;
@@ -1484,8 +1485,9 @@ function plekHtml(w){
   if(p) chips.push(`<span class="badge b-top">${p.k === 'top' ? MEDAL(p.zeker) + ' ' : ''}${plekLabel(p)}</span>`);
   if(kl) chips.push(`<span class="grape">${esc(kl)}</span>`);
   if(w.score) chips.push(`<span class="grape">★ ${esc(w.score)}</span>`);
-  const zoek = w.valueSrc !== 'zoek' && aiReady()
-    ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">🔎 Precies opzoeken${ownKey() ? '' : ' · ' + creditCost('prijs') + ' credits'}</button>` : '';
+  const oudPunt = w.valueSrc === 'zoek' && w.valueAt && (Date.now() - new Date(w.valueAt).getTime()) > 365 * 864e5;
+  const zoek = (w.valueSrc !== 'zoek' || oudPunt) && aiReady()
+    ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">🔎 ${oudPunt ? 'Opnieuw opzoeken' : 'Precies opzoeken'}${ownKey() ? '' : ' · ' + creditCost('prijs') + ' credits'}</button>` : '';
   if(!zin && !chips.length && !zoek) return '';
   return `<div class="eyebrow mb8">Plek in je kelder</div>${zin ? `<p class="verdict">${esc(zin)}</p>` : ''}
     ${chips.length ? `<div class="grapes" style="margin-bottom:10px">${chips.join('')}</div>` : ''}${zoek ? `<div class="mb8" style="margin-bottom:12px">${zoek}</div>` : ''}`;
@@ -1550,7 +1552,7 @@ Regels voor het antwoord, in deze volgorde:
 3. Alleen als je van deze wijn helemaal geen enkele prijs vindt: {"value":null,"note":"reden"}.
 Antwoord als allerlaatste met alleen dit JSON-object, zonder tekst ervoor of erna en zonder codeblok:
 {"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"size_seen":"75cl|50cl|37.5cl|magnum|onbekend","confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt, met de flesmaat als die geen 75 cl was"}${STIJLREGELS}`;
-  const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}});
+  const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}, refresh: w.valueSrc === 'zoek'});
   return parsePrijs(out);
 }
 /* Het model mag om het JSON heen praten of citeren; we nemen het laatste object met "value". */
@@ -3810,7 +3812,7 @@ async function sbAI(content, maxTokens, kind, onText, opts){
     res = await fetch(SB_URL + '/functions/v1/ai', {
       method:'POST',
       headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
-      body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}], ...(opts && opts.web ? {web:true, wine:opts.wine||null} : {}) })
+      body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}], ...(opts && opts.web ? {web:true, wine:opts.wine||null, refresh:!!opts.refresh} : {}) })
     });
   }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   if(res.ok && stream && res.body && (res.headers.get('content-type')||'').includes('event-stream'))

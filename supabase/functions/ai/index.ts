@@ -38,10 +38,9 @@ const MODEL_BY_KIND: Record<string, string> = { prijs: 'claude-haiku-4-5' }   //
 const PRIJS_SITES = ['wine-searcher.com', 'idealwine.com', 'vivino.com', 'cellartracker.com', 'gall.nl', 'grandcruwijnen.nl', 'wijnvoordeel.nl',
   'wijnbeurs.nl', 'drankdozijn.nl', 'bestofwines.com', 'topwijnen.be', 'vinatis.com', 'millesima.com', 'vino.com', 'catawiki.com', 'winedecider.com']
 
-// Prijstabel: een opgezochte prijs geldt een jaar voor iedereen. Wijnprijzen bewegen
-// langzaam, en de datum staat er in de app bij. Zo zoekt de agent één keer per wijn
-// en jaargang, en niet bij elke scan opnieuw.
-const PRIJS_TTL_MS = 365 * 24 * 3600 * 1000
+// Prijstabel: een opgezochte prijs blijft staan, met datum. Wijnprijzen bewegen
+// langzaam en de app toont "gegevens van <maand>". Wie een ouder datapunt wil
+// verversen stuurt refresh:true mee; dan slaan we de tabel over en zoeken opnieuw.
 type Wijn = { name?: unknown; producer?: unknown; vintage?: unknown }
 function prijsSleutel(w: Wijn): string {
   const n = (x: unknown) => String(x || '').toLowerCase().normalize('NFD')
@@ -93,7 +92,7 @@ Deno.serve(async (req) => {
       try {
         const keys = [...new Set(lijst.map(prijsSleutel))]
         const { data: rows } = await supa.from('wine_prices').select('*').in('key', keys)
-        const vers = (rows || []).filter((r) => r.value != null && Date.now() - new Date(r.updated_at).getTime() < PRIJS_TTL_MS)
+        const vers = (rows || []).filter((r) => r.value != null)
         for (const r of vers) await supa.from('wine_prices').update({ hits: (r.hits || 0) + 1 }).eq('key', r.key)
         return json({ prices: vers.map((r) => ({ key: r.key, value: r.value, low: r.low, high: r.high, source: r.source, url: r.url,
           vintage_found: r.vintage_found, confidence: r.confidence, note: r.note, at: r.updated_at })) }, 200)
@@ -105,11 +104,11 @@ Deno.serve(async (req) => {
     // zoekagent: alleen voor prijzen, en eerst kijken of de prijstabel hem al kent
     const web = body.web === true && kind === 'prijs'
     const wijn: Wijn | null = web && body.wine && typeof body.wine === 'object' ? body.wine : null
-    if (wijn) {
+    if (wijn && body.refresh !== true) {
       try {
         const key = prijsSleutel(wijn)
         const { data: row } = await supa.from('wine_prices').select('*').eq('key', key).maybeSingle()
-        if (row && row.value != null && Date.now() - new Date(row.updated_at).getTime() < PRIJS_TTL_MS) {
+        if (row && row.value != null) {
           await supa.from('wine_prices').update({ hits: (row.hits || 0) + 1 }).eq('key', key)
           const uit = { value: row.value, low: row.low, high: row.high, source: row.source, url: row.url,
             vintage_found: row.vintage_found, confidence: row.confidence, note: row.note, cached: true, at: row.updated_at }
