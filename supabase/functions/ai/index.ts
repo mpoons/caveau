@@ -16,7 +16,7 @@ const DAY_CREDITS  = 60    // anti-misbruik per dag (geldt niet voor 'unlimited'
 // Moet gelijk blijven aan creditCost() in caveau.html.
 function creditsFor(kind: string, images: number): number {
   if (kind === 'wijnkaart') return Math.max(2, images * 2)   // wijnkaart + menukaart, per pagina
-  if (kind === 'prijs') return 3                             // zoekagent
+  if (kind === 'prijs') return 5                             // zoekagent: gemeten ± 44k invoertokens + 3 à 4 zoekopdrachten ≈ $0,14
   return Math.max(1, images)                                  // etiketscan = 1, tekstacties = 1
 }
 function countImages(messages: unknown): number {
@@ -78,8 +78,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => null)
-    if (!body || !Array.isArray(body.messages)) return json({ error: 'Ongeldig verzoek' }, 400)
+    if (!body) return json({ error: 'Ongeldig verzoek' }, 400)
     const kind = String(body.kind || 'ai').slice(0, 30)
+
+    // Gratis: alleen de prijstabel raadplegen, voor een lijst flessen (nieuwe scan of hele kelder).
+    // Geen Anthropic-aanroep, geen credit.
+    if (kind === 'prijscache') {
+      const lijst: Wijn[] = Array.isArray(body.wines) ? body.wines.slice(0, 100) : []
+      if (!lijst.length) return json({ prices: [] }, 200)
+      try {
+        const keys = [...new Set(lijst.map(prijsSleutel))]
+        const { data: rows } = await supa.from('wine_prices').select('*').in('key', keys)
+        const vers = (rows || []).filter((r) => r.value != null && Date.now() - new Date(r.updated_at).getTime() < PRIJS_TTL_MS)
+        for (const r of vers) await supa.from('wine_prices').update({ hits: (r.hits || 0) + 1 }).eq('key', r.key)
+        return json({ prices: vers.map((r) => ({ key: r.key, value: r.value, low: r.low, high: r.high, source: r.source, url: r.url,
+          vintage_found: r.vintage_found, confidence: r.confidence, note: r.note, at: r.updated_at })) }, 200)
+      } catch (_) { return json({ prices: [] }, 200) }
+    }
+    if (!Array.isArray(body.messages)) return json({ error: 'Ongeldig verzoek' }, 400)
     const units = creditsFor(kind, countImages(body.messages))
 
     // zoekagent: alleen voor prijzen, en eerst kijken of de prijstabel hem al kent
@@ -130,7 +146,7 @@ Deno.serve(async (req) => {
       ...(wantStream ? { stream: true } : {}),
     }
     // de webzoekfunctie van de API zelf; het model zoekt, leest en antwoordt in één beurt
-    if (web) payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }]
+    if (web) payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }]
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
