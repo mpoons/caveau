@@ -188,6 +188,9 @@ h1,h2,h3{text-wrap:balance}
 .wmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;justify-content:center}
 .wname{font-family:var(--serif);font-size:16.5px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .wsub{font-size:12.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wcard .wsub{display:flex;min-width:0}
+.wcard .wprod{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.wcard .wjaar{flex:none;white-space:pre}
 .wmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
 .wside{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px;padding:2px 0}
 .wtap{display:flex;gap:12px;flex:1;min-width:0;align-items:stretch;text-align:left}
@@ -492,6 +495,18 @@ function loadState(){
   }catch(e){ return DEFAULTS(); }
 }
 let S = loadState();
+/* Weergave: '' volgt de telefoon, 'light' is Maison, 'dark' is Étiquette. Het kleurtje van de
+   statusbalk gaat mee, anders staat er een lichte balk boven een donkere app. */
+const THEME_KLEUR = {light:'#F4EFE6', dark:'#2B2229'};
+function applyTheme(){
+  const t = S.settings.theme === 'light' || S.settings.theme === 'dark' ? S.settings.theme : '';
+  if(t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+    if(!m.dataset.orig) m.dataset.orig = m.getAttribute('content');
+    m.setAttribute('content', t ? THEME_KLEUR[t] : m.dataset.orig);
+  });
+}
+applyTheme();
 /* save(true) = technische schrijfactie (tokens, sync-adoptie): geen rev-bump, geen cloud-push */
 function save(skipCloud){
   /* Een teller, geen klok. Met Date.now() wint het apparaat met de verst vooruit
@@ -1375,7 +1390,7 @@ function wineCardHtml(w){
       <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
       <span class="wmain">
         <span class="wname">${esc(w.name)}</span>
-        <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
+        <span class="wsub"><span class="wprod">${esc(w.producer||'')}</span><span class="wjaar">${w.producer?' · ':''}${esc(w.vintage||'NV')}</span></span>
         <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span>${topKort(w)}${onTable(w.id)?'<span class="badge b-nu">🍷 op tafel</span>':''}</span>
       </span>
     </button>
@@ -3273,6 +3288,8 @@ function viewSettings(){
       <div class="field"><label>Model (bij eigen sleutel)</label><input class="inp" value="${esc(S.settings.model)}" data-in="setModel"></div>` : ''}`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Instellingen</div><h2 class="h2" data-act="devTap">Instellingen & back-up</h2>
     <div class="field"><label>Naam van je kelder</label><input class="inp" value="${esc(S.settings.cellarName)}" data-in="setName"></div>
+    <div class="field"><label>Weergave</label><div class="seg" id="themeSeg">${[['','Volgt je telefoon'],['light','Licht'],['dark','Donker']].map(([v,l]) => `<button type="button" class="${(S.settings.theme||'')===v?'on':''}" data-act="setTheme" data-v="${v}">${l}</button>`).join('')}</div>
+      <div class="small mt8">Licht is ivoor met lijnen, donker is de kelder met etiketten. Kies er een als je wilt zien hoe de andere kant eruitziet.</div></div>
     <hr class="sep"><div class="eyebrow mb8">Sommelier-AI</div>${ai}
     <hr class="sep"><div class="eyebrow mb8">Back-up & exporteren</div>
     <p class="small mb8">Je kelder staat alleen op dit apparaat. Maak regelmatig een back-up; op een ander apparaat lees je die weer in.</p>
@@ -3289,6 +3306,7 @@ function viewSettings(){
     <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
     <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
 }
+ACT.setTheme = el => { S.settings.theme = el.dataset.v || ''; applyTheme(); save(true); render(); };
 ACT.aiStyle = el => { S.settings.aiStyle = el.dataset.s; save(true); render(); toast(`Antwoordstijl: ${el.textContent}`); };
 ACT.estValues = async el => {
   if(!aiReady()){ toast('Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)'); return; }
