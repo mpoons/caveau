@@ -133,7 +133,6 @@ h1,h2,h3{text-wrap:balance}
 .b-op{background:var(--ok-bg);color:var(--ok)}
 .b-nu{background:var(--warn-bg);color:var(--warn)}
 .b-top{background:transparent;color:var(--gold-ink);border:1px solid var(--gold)}
-.topdiamant{color:var(--gold-ink);margin-right:5px;font-size:.85em}
 .verdict{font-size:14.5px;line-height:1.5;color:var(--ink);margin:0 0 10px}
 .b-jong{background:var(--info-bg);color:var(--info)}
 .b-over{background:var(--bad-bg);color:var(--bad)}
@@ -761,6 +760,8 @@ function scoreWines(text){
     const st = windowStatus(w);
     /* urgentie telt mee: wat op moet en past, schenk je juist nú */
     if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.4; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc += 0.8;
+    /* je smaak: een druif of streek waar je van houdt krijgt een duwtje, een afkeer een tikje */
+    sc += 0.8 * smaakMatch(w);
     return {w, sc, reason, grapeHit, st};
   }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc);
   return {cats, scored};
@@ -1015,7 +1016,8 @@ async function aiDish(dish){
   const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (id | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
 ${cellarLines(dish)}
 
-Ik ga dit eten: "${dish}". Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
+Ik ga dit eten: "${dish}".${smaakPrompt()}
+Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
 {"matches":[{"id":"exacte id uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
@@ -1046,7 +1048,7 @@ ${food.length?`Lees eerst het menu van de foto's: welke gangen en gerechten staa
 ${food.length?'Daarnaast heb ik zelf gezegd':'Ik ga dit eten'}: "${dish}".`:''}${budget?`
 Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één fles er net boven écht veel beter is. Zeg dat dan expliciet.`:''}${glass?`
 Ik drink liever per glas: geef voorrang aan wijnen die per glas op de kaart staan.`:''}${taste?`
-Wijnen die ik eerder hoog beoordeelde (mijn smaak): ${taste}`:''}
+Wijnen die ik eerder hoog beoordeelde: ${taste}`:''}${smaakPrompt()}
 
 Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 of 4 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten. Verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
 Bij meerdere gangen of gerechten: kies bij voorkeur één fles die het hele menu draagt, en geef daarnaast alleen dáár een tweede fles of een glas-advies waar dat écht beter is. Zet bij elke wijn voor welke gang of welk gerecht hij bedoeld is.
@@ -1070,7 +1072,7 @@ async function aiAsk(w, dish, question){
   const prompt = `Je bent mijn sommelier. Context:
 Wijn: ${w.name}, ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
 Gerecht waar het om gaat: ${dish}.`:''}
-Vraag: ${question}
+Vraag: ${question}${smaakPrompt()}
 Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON. ${styleNote()}`;
   return await callClaude([{type:'text', text:prompt}], 1000, 'vraag');
 }
@@ -1205,9 +1207,9 @@ function wineCardHtml(w){
     <button class="wtap" data-act="detail" data-id="${w.id}">
       <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
       <span class="wmain">
-        <span class="wname">${topMark(w)}${esc(w.name)}</span>
+        <span class="wname">${esc(w.name)}</span>
         <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
-        <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span>${onTable(w.id)?'<span class="badge b-nu">🍷 op tafel</span>':''}</span>
+        <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span>${topKort(w)}${onTable(w.id)?'<span class="badge b-nu">🍷 op tafel</span>':''}</span>
       </span>
     </button>
     <span class="wside">
@@ -1276,6 +1278,122 @@ ACT.chipSort = () => {
 ACT.pickSort = el => { UI.sort = el.dataset.s; closeSheet(); render(); };
 
 
+/* ================= smaakprofiel ================= */
+/* Twee lagen: wat je zelf aangeeft (druiven, streken, vijf schuifjes, kleur) en
+   wat de sterren in je historie laten zien. Gaat als één regel mee in de
+   AI-prompts en telt mee in de kelderregels. Blijft lokaal en in het sync-document. */
+const SMAAK_DRUIVEN = ['Cabernet Sauvignon','Merlot','Pinot Noir','Syrah','Grenache','Tempranillo','Sangiovese','Nebbiolo','Malbec','Cabernet Franc','Gamay','Mourvèdre','Barbera','Primitivo','Zinfandel',
+  'Chardonnay','Sauvignon Blanc','Riesling','Chenin Blanc','Pinot Grigio','Viognier','Grüner Veltliner','Albariño','Verdejo','Gewürztraminer'];
+const SMAAK_REGIOS = ['Bordeaux','Bourgogne','Rhône','Loire','Champagne','Languedoc','Provence','Elzas','Piemonte','Toscane','Veneto','Sicilië','Rioja','Ribera del Duero','Priorat','Douro','Mosel','Oostenrijk','Californië','Chili','Argentinië','Zuid-Afrika','Australië','Nieuw-Zeeland'];
+const SMAAK_SCHUIF = [
+  ['body',    'Licht',          'Vol'],
+  ['tannine', 'Weinig tannine', 'Veel tannine'],
+  ['zuur',    'Zacht en rond',  'Fris en strak'],
+  ['zoet',    'Droog',          'Zoet'],
+  ['hout',    'Geen hout',      'Veel hout'],
+];
+function smaak(){
+  if(!S.settings.smaak) S.settings.smaak = {druiven:[], regios:[], schuif:{}, kleur:''};
+  const p = S.settings.smaak;
+  p.druiven = p.druiven || []; p.regios = p.regios || []; p.schuif = p.schuif || [];
+  return p;
+}
+/* Wat de sterren in je historie laten zien: per druif, streek en type het
+   gemiddelde, en alleen als er genoeg is om iets van te vinden. */
+function smaakGeleerd(){
+  const per = {druif:{}, regio:{}, type:{}};
+  const tel = (kant, k, r) => { if(!k) return; const key = norm(k); const e = per[kant][key] || (per[kant][key] = {n:0, som:0, naam:k}); e.n++; e.som += r; };
+  let n = 0;
+  for(const h of (S.history||[])){
+    const r = Number(h.rating); if(!(r > 0)) continue;
+    n++;
+    const w = h.wineId ? findWine(h.wineId) : null;
+    (h.grapes || (w && w.grapes) || []).forEach(g => tel('druif', g, r));
+    tel('regio', h.region || (w && w.region), r);
+    tel('type', TYPES[h.type] ? TYPES[h.type].l : '', r);
+  }
+  const pluk = (kant, test, min) => Object.values(per[kant]).filter(e => e.n >= (min || 2) && test(e.som / e.n)).sort((a,b) => b.som/b.n - a.som/a.n).map(e => e.naam);
+  return { n, genoeg: n >= 5,
+    hoog: {druif: pluk('druif', a => a >= 4), regio: pluk('regio', a => a >= 4), type: pluk('type', a => a >= 4)},
+    /* een hele streek afschrijven vraagt meer bewijs dan één druif */
+    laag: {druif: pluk('druif', a => a <= 2.5), regio: pluk('regio', a => a <= 2.5, 3), type: pluk('type', a => a <= 2.5, 3)} };
+}
+function smaakSets(){
+  const p = smaak(), L = smaakGeleerd();
+  const fav = new Set([...p.druiven, ...(L.genoeg ? L.hoog.druif : [])].map(norm));
+  const favR = new Set([...p.regios, ...(L.genoeg ? L.hoog.regio : [])].map(norm));
+  const nee = new Set((L.genoeg ? L.laag.druif : []).map(norm));
+  const neeR = new Set((L.genoeg ? L.laag.regio : []).map(norm));
+  return {fav, favR, nee, neeR};
+}
+/* +1 past bij je smaak, -1 juist niet, 0 niets over te zeggen */
+function smaakMatch(w){
+  const s = smaakSets();
+  const gs = (w.grapes || []).map(norm), r = norm([w.region, w.appellation, w.country].filter(Boolean).join(' '));
+  const raak = set => gs.some(g => [...set].some(f => g.includes(f) || f.includes(g)));
+  const raakR = set => [...set].some(f => f && r.includes(f));
+  if(raak(s.fav) || raakR(s.favR)) return 1;
+  if(raak(s.nee) || raakR(s.neeR)) return -1;
+  return 0;
+}
+const smaakHit = w => smaakMatch(w) > 0;
+/* één regel voor in de AI-prompts */
+function smaakNote(){
+  const p = smaak(), L = smaakGeleerd(), delen = [];
+  if(p.druiven.length) delen.push('houdt van ' + p.druiven.join(', '));
+  if(p.regios.length) delen.push('drinkt graag wijn uit ' + p.regios.join(', '));
+  const s = p.schuif || {};
+  const woord = {
+    body:    ['heel lichte wijnen', 'lichte wijnen', '', 'volle wijnen', 'heel volle wijnen'],
+    tannine: ['nauwelijks tannine', 'weinig tannine', '', 'stevige tannine', 'veel tannine'],
+    zuur:    ['zacht en rond', 'eerder rond dan fris', '', 'fris', 'strak en fris'],
+    zoet:    ['', '', 'een vleugje zoet mag', 'graag wat zoet', 'zoete wijnen'],
+    hout:    ['geen hout', 'weinig hout', '', 'graag wat hout', 'veel hout'],
+  };
+  const stijl = Object.keys(woord).map(k => s[k] != null && woord[k][s[k]] ? woord[k][s[k]] : '').filter(Boolean);
+  if(stijl.length) delen.push('voorkeur voor ' + stijl.join(', '));
+  if(p.kleur === 'rood' || p.kleur === 'wit') delen.push('drinkt het liefst ' + p.kleur);
+  if(L.genoeg){
+    const hoog = [...L.hoog.druif, ...L.hoog.regio].slice(0, 6), laag = [...L.laag.druif, ...L.laag.regio].slice(0, 4);
+    if(hoog.length) delen.push('gaf eerder hoge cijfers aan ' + hoog.join(', '));
+    if(laag.length) delen.push('lage cijfers aan ' + laag.join(', '));
+  }
+  return delen.join('; ');
+}
+const smaakPrompt = () => { const n = smaakNote(); return n ? `\nMijn smaak: ${n}. Weeg dat mee, maar het gerecht gaat voor.` : ''; };
+
+function viewSmaak(){
+  const p = smaak(), L = smaakGeleerd();
+  const eigen = new Set(), kelderDruiven = [], kelderRegios = [];
+  S.wines.forEach(w => { (w.grapes||[]).forEach(g => { const k = norm(g); if(!eigen.has(k)){ eigen.add(k); kelderDruiven.push(g); } }); });
+  const alleDruiven = [...SMAAK_DRUIVEN]; kelderDruiven.forEach(g => { if(!alleDruiven.some(x => norm(x) === norm(g))) alleDruiven.push(g); });
+  const rs = new Set(); S.wines.forEach(w => { if(w.region && !rs.has(norm(w.region))){ rs.add(norm(w.region)); kelderRegios.push(w.region); } });
+  const alleRegios = [...SMAAK_REGIOS]; kelderRegios.forEach(r => { if(!alleRegios.some(x => norm(x) === norm(r))) alleRegios.push(r); });
+  const aan = (lijst, v) => lijst.some(x => norm(x) === norm(v));
+  const chips = (lijst, gekozen, act) => `<div class="chiprow" style="padding:6px 0 2px;flex-wrap:wrap">${lijst.map(v => `<button type="button" class="chip ${aan(gekozen, v)?'on':''}" data-act="${act}" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`;
+  const geleerd = !L.genoeg
+    ? `<p class="small">Na vijf beoordeelde flessen (sterren in je drink-historie, nu ${L.n}) verschijnt hier waar je hoog en laag scoort.</p>`
+    : `<p class="small mb8">Uit ${L.n} beoordelingen.</p>
+       ${[['Hoog', L.hoog], ['Laag', L.laag]].map(([kop, d]) => { const alles = [...d.druif, ...d.regio, ...d.type]; return alles.length ? `<div class="small mb8"><b>${kop}:</b> ${alles.map(esc).join(', ')}</div>` : ''; }).join('') || '<p class="small">Nog geen duidelijke lijn; dat komt met meer beoordelingen.</p>'}`;
+  return `${brandRow('')}${backRow}<div class="eyebrow">Jouw smaak</div><h2 class="h2">Waar je van houdt</h2>
+    <p class="small mb8">De sommelier weegt dit mee bij "Vanavond", op de wijnkaart en bij vragen. Het gerecht gaat altijd voor. Alles hieronder is optioneel.</p>
+    <div class="eyebrow mb8 mt14">Druiven</div>${chips(alleDruiven, p.druiven, 'smaakDruif')}
+    <div class="eyebrow mb8 mt14">Streken</div>${chips(alleRegios, p.regios, 'smaakRegio')}
+    <div class="eyebrow mb8 mt14">Stijl</div>
+    ${SMAAK_SCHUIF.map(([k, l, r]) => `<div class="field" style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink2)"><span>${l}</span><span>${r}</span></div>
+      <input type="range" min="0" max="4" step="1" value="${p.schuif[k] != null ? p.schuif[k] : 2}" data-in="smaakSchuif" data-k="${k}" style="width:100%;accent-color:var(--acc)" aria-label="${l} tot ${r}"></div>`).join('')}
+    <p class="small mb8">In het midden laten betekent geen voorkeur.</p>
+    <div class="eyebrow mb8 mt14">Kleur</div>
+    <div class="seg" id="smaakKleur">${[['','Geen voorkeur'],['rood','Rood'],['wit','Wit']].map(([v,l]) => `<button type="button" class="${(p.kleur||'')===v?'on':''}" data-act="smaakKleur" data-v="${v}">${l}</button>`).join('')}</div>
+    <hr class="sep"><div class="eyebrow mb8">Wat we van je merken</div>${geleerd}
+    ${smaakNote() ? `<hr class="sep"><div class="eyebrow mb8">Zo gaat het naar de sommelier</div><p class="small">${esc(smaakNote())}.</p>` : ''}`;
+}
+ACT.smaakDruif = el => { const p = smaak(), v = el.dataset.v; const i = p.druiven.findIndex(x => norm(x) === norm(v)); if(i >= 0) p.druiven.splice(i, 1); else p.druiven.push(v); save(); render(); };
+ACT.smaakRegio = el => { const p = smaak(), v = el.dataset.v; const i = p.regios.findIndex(x => norm(x) === norm(v)); if(i >= 0) p.regios.splice(i, 1); else p.regios.push(v); save(); render(); };
+ACT.smaakKleur = el => { smaak().kleur = el.dataset.v || ''; save(); render(); };
+INP.smaakSchuif = el => { const p = smaak(); const v = Number(el.value); if(v === 2) delete p.schuif[el.dataset.k]; else p.schuif[el.dataset.k] = v; save(true); clearTimeout(INP._smaakT); INP._smaakT = setTimeout(() => save(), 800); };
+
+
 /* ================= plek in je kelder ================= */
 /* Relatief aan de eigen kelder, nooit absolute prijsklassen, en alleen naar
    boven: wat onder de mediaan zit krijgt geen label. Een prijs zonder bron
@@ -1332,7 +1450,7 @@ function verdict(w){
   }
   return p ? `${hoofd(lab)}. Drinkvenster onbekend.` : '';
 }
-const topMark = w => { const p = plekInKelder(w); return p && p.k === 'top' ? `<span class="topdiamant" title="${p.zeker?'Je topfles':'Waarschijnlijk een topfles'}">${p.zeker?'◆':'◇'}</span>` : ''; };
+const topKort = w => { const p = plekInKelder(w); return p && p.k === 'top' ? `<span class="badge b-top">${p.zeker?'◆ Topfles':'◇ Mogelijk topfles'}</span>` : ''; };
 const topBadge = w => { const p = plekInKelder(w); return p && p.k === 'top' ? `<span class="badge b-top">${p.zeker?'◆':'◇'} ${plekLabel(p)}</span>` : ''; };
 function waardeSub(w){
   const b = waardeVan(w); if(!b) return '';
@@ -1573,7 +1691,7 @@ ACT.drinkExternSave = async el => {
 ACT.drinkSave = el => {
   const w = findWine(el.dataset.id); if(!w) return;
   const entry = { id:uid(), wineId:w.id, date:(document.getElementById('drDate')||{}).value || new Date().toISOString().slice(0,10),
-    name:w.name, producer:w.producer||'', vintage:w.vintage||null, type:w.type,
+    name:w.name, producer:w.producer||'', vintage:w.vintage||null, type:w.type, grapes:(w.grapes||[]).slice(0,4), region:w.region||'',
     rating:drinkRating, note:((document.getElementById('drNote')||{}).value||'').trim() };
   const prevQty = w.qty||0;
   w.qty = Math.max(0, prevQty - 1);
@@ -2032,6 +2150,7 @@ function viewScan(){
     ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse" id="scanLive">De sommelier leest het etiket…</span></div>` : ''}
     ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken". De foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
+    ${(!scan.busy && scan.data && smaakHit(pre)) ? `<div class="banner"><span>♥</span><span>Een druif of streek waar je van houdt.</span></div>` : ''}
     ${(!scan.busy && scan.data && d.value_eur!=null && verdict({...pre, valueSrc:'ai', qty:formQty})) ? `<div class="banner"><span>◆</span><span>${esc(verdict({...pre, valueSrc:'ai', qty:formQty}))}</span></div>` : ''}
     ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b>. Het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
@@ -2369,6 +2488,7 @@ async function runPair(dish, force){
         <div class="wsub">${esc([m.w.producer, m.w.vintage||'NV'].filter(Boolean).join(' · '))} · ×${m.w.qty}</div>
         <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}${st.sub?' · '+st.sub:''}</span>${topBadge(m.w)}</div></div>
         <div class="mscore">${m.score}<small>/10</small></div></div>
+        ${smaakHit(m.w)?'<div class="mreason" style="color:var(--acc-ink)">♥ Past bij je smaak</div>':''}
         <div class="mreason">${esc(m.reason||'')}</div>
         ${urg?`<div class="mreason" style="color:var(--warn);font-weight:600">⏳ ${urg}</div>`:''}
         <div class="mt8" style="display:flex;gap:16px;flex-wrap:wrap"><button class="linkbtn" data-act="${onTable(m.w.id)?'tafelAf':'tafelOp'}" data-id="${m.w.id}">${onTable(m.w.id)?'✓ Op tafel':'✓ Deze kies ik'}</button><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button><button class="linkbtn" data-act="askSomm" data-id="${m.w.id}" data-dish="${esc(dish)}">💬 Vraag</button></div></div>`;
@@ -2507,6 +2627,7 @@ function menuResultHtml(m){
       <div class="wmeta mt8">${typeHtml(p.type)}</div></div>
       <div class="mprice">${p.price!=null?money(p.price):'—'}<small>per ${esc(p.unit)}</small>
         <span class="mscore" style="font-size:16px">${p.score}<small>/10</small></span></div></div>
+    ${smaakHit({grapes:p.grapes||[], region:p.region, type:p.type})?'<div class="mreason" style="color:var(--acc-ink)">♥ Past bij je smaak</div>':''}
     <div class="mreason">${esc(p.reason)}</div>
     ${p.value?`<div class="mreason" style="color:var(--gold-ink)">💶 ${esc(p.value)}</div>`:''}
     <div class="mt8" style="display:flex;gap:16px;flex-wrap:wrap">
@@ -2624,6 +2745,7 @@ ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
 function viewMeer(){
   if(UI.meerPage==='wishlist') return viewWishlist();
   if(UI.meerPage==='history') return viewHistory();
+  if(UI.meerPage==='smaak') return viewSmaak();
   if(UI.meerPage==='settings') return viewSettings();
   if(UI.meerPage==='account') return viewAccount();
   if(UI.meerPage==='locs') return viewLocs();
@@ -2637,6 +2759,7 @@ function viewMeer(){
       <button class="mitem" data-act="meerGo" data-p="account">${ic('<circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3 3.4-4.6 6.5-4.6s5.7 1.6 6.5 4.6"/>')}<span class="grow">Account &amp; cloud-sync</span><span class="cnt">${(typeof loggedIn==='function' && loggedIn()) ? '✓ aan' : 'uit'}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="wishlist">${ic('<path d="M12 21s-7.5-4.6-9.5-9A5.4 5.4 0 0 1 12 6.5 5.4 5.4 0 0 1 21.5 12c-2 4.4-9.5 9-9.5 9Z"/>')}<span class="grow">Verlanglijst</span><span class="cnt">${S.wishlist.length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="history">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>')}<span class="grow">Drink-historie</span><span class="cnt">${S.history.length}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="meerGo" data-p="smaak">${ic('<path d="M12 20.5s-7-4.4-9-8.6A5 5 0 0 1 12 6.4a5 5 0 0 1 9 5.5c-2 4.2-9 8.6-9 8.6Z"/>')}<span class="grow">Jouw smaak</span><span class="cnt">${(S.settings.smaak&&((S.settings.smaak.druiven||[]).length+(S.settings.smaak.regios||[]).length))||''}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="locs">${ic('<path d="M4 20V9l8-5.5L20 9v11"/><path d="M4 14.5h16M9.5 20v-5.5M14.5 20v-5.5"/>')}<span class="grow">Locaties &amp; rekken</span><span class="cnt">${allLocations().length}</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="import">${ic('<path d="M4 7.5h11M4 12h11M4 16.5h7"/><path d="M18 9v7M14.5 12.5 18 16l3.5-3.5"/>')}<span class="grow">Meerdere flessen tegelijk</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="recipes">${ic('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5V5.5Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>')}<span class="grow">Recepten</span><span class="cnt">${(S.recipeCache||[]).length}</span><span class="chev">›</span></button>
