@@ -51,5 +51,18 @@ Geen gedachtestreepjes en geen "niet X, maar Y". Geldt voor de app, voor dit bes
 ## Nog open
 - Supabase Pro en Stripe live vóór er vreemden bij komen; uitgavenplafond bij Anthropic.
 - Kostprijs per credit meten met `ai_usage` (`tokens_in`/`tokens_out`). Blijft het onder $0,010, dan klopt de bundel van 300 voor €2,99.
-- Positionering: Caveau beantwoordt "welke fles moet vanavond open", Vivino "moet ik deze kopen". Echte concurrent is CellarTracker. Open vraag: hoe laat je het niveau van een fles zien zonder reviewdatabase. Scores nooit uit het geheugen van de AI laten komen.
+- Positionering: Caveau beantwoordt "welke fles moet vanavond open", Vivino "moet ik deze kopen". Echte concurrent is CellarTracker, niet Vivino.
+
+### Open ontwerpvraag: het niveau van een fles
+Mensen krijgen wijn cadeau en weten niet of het een fles voor vanavond is of een om te bewaren. Vivino lost dat op met community-scores; die database hebben wij niet en gaan we niet inhalen. De vraag is dus: hoe laat je niveau zien zonder reviewdatabase?
+
+Wat we al hebben of gratis kunnen krijgen: de geschatte waarde (`value_eur` met bandbreedte), de classificatie in `appellation` (Grand Cru Classé, DOCG, Riserva, VDP Grosse Lage; openbare structuurkennis waar een taalmodel betrouwbaar in is), en de reputatie van producent en jaargang (kwalitatief, zonder cijfer).
+
+Twee harde randvoorwaarden, allebei uit een fout die al gemaakt is:
+1. **Relatief aan de eigen kelder, nooit absolute prijsklassen.** Veel mensen hebben alles tussen €5 en €20. Voor hen is die fles van €19 de bijzondere. Een vaste schaal noemt die "doordeweeks" en heeft het mis. "Een van je duurdere flessen" klopt bij elke kelder.
+2. **Nooit neerbuigend over een fles die iemand bezit of cadeau kreeg.** Zeg waar een wijn goed tot z'n recht komt, niet waar hij te min voor is. "Prima bij het koken" is precies de zin die niet moet.
+
+Over externe scores (Parker, Hamersma, Decanter): **nooit uit het geheugen van de AI laten komen.** Die getallen worden overtuigend verzonnen, ze hangen per jaargang, en het is redactioneel eigendom van anderen. Wel goed: een vrij veld waarin de gebruiker zelf noteert wat hij gezien heeft ("92 Parker", "8,5 Hamersma"), sorteerbaar; en de scanner mag een score overnemen die echt op de foto staat (schapkaartje, halslabel), met de bron erbij.
+
+Wat we wél hebben en Vivino niet: het oordeel van de gebruiker zelf over flessen die hij echt heeft opgedronken (sterren in de historie, smaakprofiel). Aggregeren over gebruikers heen raakt de privacyverklaring, die nu zegt dat we niets delen. Iets voor bij schaal, niet nu.
 - Wens-backlog: gedeelde kelder voor twee mensen, échte pushmeldingen (vergt berichtenserver), meertalige versie.
