@@ -159,6 +159,9 @@ h1,h2,h3{text-wrap:balance}
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .b-op{background:var(--ok-bg);color:var(--ok)}
 .b-nu{background:var(--warn-bg);color:var(--warn)}
+.b-top{background:transparent;color:var(--gold-ink);border:1px solid var(--gold)}
+.topdiamant{color:var(--gold-ink);margin-right:5px;font-size:.85em}
+.verdict{font-size:14.5px;line-height:1.5;color:var(--ink);margin:0 0 10px}
 .b-jong{background:var(--info-bg);color:var(--info)}
 .b-over{background:var(--bad-bg);color:var(--bad)}
 .b-onb{background:var(--neut-bg);color:var(--neut)}
@@ -853,6 +856,7 @@ function styleNote(){
 function creditCost(kind, images){
   images = images || 0;
   if(kind === 'wijnkaart') return Math.max(2, images * 2);
+  if(kind === 'prijs') return 3;   /* webzoekopdrachten kosten extra */
   return Math.max(1, images);
 }
 
@@ -860,9 +864,9 @@ function creditCost(kind, images){
    anders via de Caveau-serverfunctie met het account-tegoed.
    onText (optioneel) maakt er een stroom van: die wordt bij elk stukje antwoord
    aangeroepen met alles wat er tot dan toe staat, zodat het scherm meeleest. */
-async function callClaude(content, maxTokens, kind, onText){
-  if(ownKey()) return callAnthropicDirect(content, maxTokens, onText);
-  if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind, onText);
+async function callClaude(content, maxTokens, kind, onText, opts){
+  if(ownKey()) return callAnthropicDirect(content, maxTokens, onText, opts);
+  if(typeof sbAI === 'function' && typeof loggedIn === 'function' && loggedIn()) return sbAI(content, maxTokens, kind, onText, opts);
   throw new Error('Log in (Meer → Account) of vul een API-sleutel in');
 }
 /* Kan deze browser een antwoord stuk voor stuk lezen? Zo niet, dan wachten we
@@ -895,9 +899,11 @@ async function readSSE(res, onText){
   }
   return out;
 }
-async function callAnthropicDirect(content, maxTokens, onText){
+async function callAnthropicDirect(content, maxTokens, onText, opts){
   const model = (S.settings.model||'claude-sonnet-5').trim();
   const body = { model, max_tokens:maxTokens||2000, messages:[{role:'user', content}] };
+  /* zoekagent: de server-side webzoekfunctie van de API, alleen voor prijzen */
+  if(opts && opts.web) body.tools = [{type:'web_search_20260209', name:'web_search', max_uses:4}];
   /* Sonnet 5 / Opus 5 denken standaard mee in het antwoordbudget, en voor JSON-extractie
      zetten we dat uit (sneller, goedkoper, geen afgekapte JSON). Fable/Mythos en Haiku
      accepteren dit veld niet op dezelfde manier: daar weglaten. */
@@ -924,8 +930,8 @@ function parseJsonLoose(s){
 async function aiScan(dataUrl, onPartial){
   const b64 = dataUrl.split(',')[1];
   const prompt = `Je bent een ervaren sommelier die wijnetiketten leest. Analyseer de foto van dit etiket en antwoord UITSLUITEND met geldig JSON, zonder andere tekst:
-{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter"}
-drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte actuele winkelprijs per fles in euro's (Europese retail), met value_low/value_high als realistische bandbreedte. pairing in het Nederlands. ${styleNote()} Onleesbare of onbekende velden: null.`;
+{"name":"naam van de wijn/cuvée","producer":"producent/château/domaine","vintage":2019 of null bij NV,"type":"rood|wit|rose|mousserend|zoet|versterkt","grapes":["druif",...],"country":"land","region":"regio","appellation":"appellation of null","drink_from":2024,"drink_to":2032,"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin in het Nederlands over stijl en karakter","score_seen":"92 Parker" of null}
+drink_from/drink_to is jouw beste schatting van het drinkvenster (jaartallen) op basis van wijn, appellation, kwaliteit en jaargang. value_eur is de geschatte marktwaarde per fles in euro's van déze jaargang op dit moment (${YR()}) op de Europese markt (winkel of veiling), niet de introductieprijs. Reken met wat leeftijd doet: geklasseerde en bewaarwijnen worden duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. value_low/value_high is een eerlijke bandbreedte; bij een wijn ouder dan acht jaar of een die je niet goed kent maak je die band breed. score_seen alleen als er letterlijk een cijfer met bron op de foto staat (halslabel, sticker, schapkaartje), bijvoorbeeld "92 Parker"; nooit uit je geheugen. pairing in het Nederlands. ${styleNote()} Onleesbare of onbekende velden: null.`;
   const out = await callClaude([
     {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
     {type:'text', text:prompt}
@@ -946,7 +952,7 @@ function scanPartial(txt){
     try{ return JSON.parse('"' + m[1] + '"'); }catch(e){ return undefined; }
   };
   const jaar = k => { const m = txt.match(new RegExp('"' + k + '"\\s*:\\s*(\\d{4})')); return m ? +m[1] : undefined; };
-  for(const k of ['name','producer','type','country','region','appellation']){
+  for(const k of ['name','producer','type','country','region','appellation','score_seen']){
     const v = tekst(k); if(v !== undefined) uit[k] = v;
   }
   for(const k of ['vintage','drink_from','drink_to']){
@@ -966,7 +972,7 @@ function vulFormLive(d){
   };
   zet('f_name', d.name); zet('f_producer', d.producer); zet('f_vintage', d.vintage);
   zet('f_country', d.country); zet('f_region', d.region); zet('f_app', d.appellation);
-  zet('f_from', d.drink_from); zet('f_to', d.drink_to);
+  zet('f_from', d.drink_from); zet('f_to', d.drink_to); zet('f_score', d.score_seen);
   if(d.grapes && d.grapes.length) zet('f_grapes', d.grapes.join(', '));
   if(d.type && TYPES[d.type] && !scanTouched.has('f_type')){
     const seg = document.getElementById('f_type');
@@ -982,7 +988,7 @@ function behoudEigenInvoer(d){
     ['f_vintage','vintage','vintage'], ['f_grapes','grapes','grapes'],
     ['f_country','country','country'], ['f_region','region','region'],
     ['f_app','appellation','appellation'], ['f_from','drink_from','drinkFrom'],
-    ['f_to','drink_to','drinkTo']];
+    ['f_to','drink_to','drinkTo'], ['f_score','score_seen','score']];
   for(const [id, inAntwoord, inFormulier] of paar) if(scanTouched.has(id)) d[inAntwoord] = f[inFormulier];
   if(scanTouched.has('f_type')) d.type = f.type;
 }
@@ -1004,7 +1010,7 @@ async function aiRecalc(d){
 Naam: ${d.name||'?'} | Producent: ${d.producer||'?'} | Jaargang: ${d.vintage||'NV'} | Type: ${TYPES[d.type]?TYPES[d.type].l:d.type} | Druiven: ${(d.grapes||[]).join(', ')||'?'} | Herkomst: ${[d.appellation,d.region,d.country].filter(Boolean).join(', ')||'?'}
 Schat het drinkvenster, de pairing en de winkelwaarde. Antwoord UITSLUITEND met geldig JSON:
 {"drink_from":2024,"drink_to":2032,"grapes":["druif",...],"value_eur":28,"value_low":24,"value_high":34,"pairing":["gerecht 1","gerecht 2","gerecht 3","gerecht 4"],"note":"één zin Nederlands over stijl en karakter"}
-value_eur = geschatte actuele winkelprijs per fles in euro's (EU-retail), value_low/high = realistische bandbreedte. pairing en note in het Nederlands. ${styleNote()} Onbekende velden: null.`;
+value_eur is de geschatte marktwaarde per fles in euro's van déze jaargang op dit moment (${YR()}) op de Europese markt (winkel of veiling), niet de introductieprijs. Reken met wat leeftijd doet: geklasseerde en bewaarwijnen worden duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. value_low/value_high is een eerlijke bandbreedte; bij een wijn ouder dan acht jaar of een die je niet goed kent maak je die band breed. pairing en note in het Nederlands. ${styleNote()} Onbekende velden: null.`;
   return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken'));
 }
 
@@ -1098,9 +1104,9 @@ Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, gee
 
 async function aiValues(list){
   const lines = list.map(w => `${w.id} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'?'}`).join('\n');
-  const prompt = `Schat per wijn de actuele winkelwaarde per fles in euro's (Europese retail). De lijst (id | naam | producent | jaargang | herkomst):
+  const prompt = `Schat per wijn de marktwaarde per fles in euro's van díe jaargang op dit moment (${YR()}) op de Europese markt, niet de introductieprijs. Geklasseerde en bewaarwijnen worden met de jaren duurder, eenvoudige wijnen zijn bijna niets meer waard zodra ze over hun venster zijn. De lijst (id | naam | producent | jaargang | herkomst):
 ${lines}
-Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]}. value = beste schatting, low/high = realistische bandbreedte. Wijnen die je niet kunt inschatten sla je over.`;
+Antwoord UITSLUITEND met geldig JSON: {"values":[{"id":"exacte id","value":28,"low":24,"high":34}]}. value = beste schatting, low/high = eerlijke bandbreedte, breed bij wijnen ouder dan acht jaar of wijnen die je niet goed kent. Wijnen die je niet kunt inschatten sla je over.`;
   return parseJsonLoose(await callClaude([{type:'text', text:prompt}], 4000, 'waardes'));
 }
 
@@ -1210,12 +1216,15 @@ function filteredWines(){
     naam:   (x,y) => (x.name||'').localeCompare(y.name||'', 'nl'),
     jaar:   (x,y) => (x.vintage||9999) - (y.vintage||9999),
     venster:(x,y) => (URG[windowStatus(x).k] - URG[windowStatus(y).k]) || ((x.drinkTo||9999) - (y.drinkTo||9999)),
-    waarde: (x,y) => ((Number(y.value ?? y.price)||0) - (Number(x.value ?? x.price)||0))
+    waarde: (x,y) => ((Number(y.value ?? y.price)||0) - (Number(x.value ?? x.price)||0)),
+    score:  (x,y) => (scoreNum(y) - scoreNum(x)) || (x.name||'').localeCompare(y.name||'', 'nl')
   };
   a.sort(by[UI.sort] || by.recent);
   return a;
 }
-const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster:'Drinkvenster (op dronk eerst)', waarde:'Waarde'};
+const SORTS = {recent:'Recent toegevoegd', naam:'Naam', jaar:'Jaargang', venster:'Drinkvenster (op dronk eerst)', waarde:'Waarde', score:'Score (zelf genoteerd)'};
+/* eerste getal uit "92 Parker" of "8,5 Hamersma"; zonder score achteraan */
+const scoreNum = w => { const m = String(w.score||'').replace(',', '.').match(/\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : -1; };
 
 function wineCardHtml(w){
   const st = windowStatus(w);
@@ -1223,7 +1232,7 @@ function wineCardHtml(w){
     <button class="wtap" data-act="detail" data-id="${w.id}">
       <span class="wthumb">${bottleSvg}${w.photo?`<img data-photo="${w.id}" alt="">`:''}</span>
       <span class="wmain">
-        <span class="wname">${esc(w.name)}</span>
+        <span class="wname">${topMark(w)}${esc(w.name)}</span>
         <span class="wsub">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</span>
         <span class="wmeta">${dotHtml(w.type)}<span class="tlabel">${TYPES[w.type]?TYPES[w.type].l:''}</span><span class="badge ${st.cls}">${st.label}</span>${onTable(w.id)?'<span class="badge b-nu">🍷 op tafel</span>':''}</span>
       </span>
@@ -1293,6 +1302,149 @@ ACT.chipSort = () => {
 };
 ACT.pickSort = el => { UI.sort = el.dataset.s; closeSheet(); render(); };
 
+
+/* ================= plek in je kelder ================= */
+/* Relatief aan de eigen kelder, nooit absolute prijsklassen, en alleen naar
+   boven: wat onder de mediaan zit krijgt geen label. Een prijs zonder bron
+   (AI-schatting) levert hooguit "waarschijnlijk" op; "Je topfles" vraagt een
+   opgezochte, zelf ingevulde of betaalde prijs. */
+const vandaag = () => new Date().toISOString().slice(0,10);
+const KLASSEN = [
+  [/brunello/i, 'Brunello'], [/\bbarolo\b/i, 'Barolo'], [/barbaresco/i, 'Barbaresco'], [/amarone/i, 'Amarone'],
+  [/premier grand cru class/i, 'Premier Grand Cru Classé'], [/grand cru class/i, 'Grand Cru Classé'],
+  [/\bcru bourgeois\b/i, 'Cru Bourgeois'], [/\bcru class/i, 'Cru Classé'],
+  [/\bgrand cru\b/i, 'Grand Cru'], [/premier cru|1er cru/i, 'Premier Cru'],
+  [/gran reserva/i, 'Gran Reserva'], [/\briserva\b/i, 'Riserva'], [/\breserva\b/i, 'Reserva'],
+  [/vintage port/i, 'Vintage Port'], [/late bottled vintage|\bLBV\b/, 'LBV'],
+  [/grosse lage|grosses gew[aä]chs|\bGG\b/, 'Grosse Lage'], [/erste lage/i, 'Erste Lage'],
+  [/\bdocg\b/i, 'DOCG'],
+];
+function klasse(w){
+  const s = [w.appellation, w.name].filter(Boolean).join(' ');
+  for(const [re, lab] of KLASSEN) if(re.test(s)) return lab;
+  return null;
+}
+const waardeVan = w => Number(w.value ?? w.price) || 0;
+function kelderPrijzen(){
+  return S.wines.map(waardeVan).filter(v => v > 0).sort((a,b) => a-b);
+}
+function plekInKelder(w){
+  const v = waardeVan(w); if(!v) return null;
+  const ps = kelderPrijzen(); if(ps.length < 6) return null;
+  const med = ps[Math.floor(ps.length/2)];
+  const boven = ps.filter(p => p > v).length;
+  const topN = Math.max(3, Math.ceil(ps.length * 0.1)), hoogN = Math.ceil(ps.length * 0.25);
+  const zeker = !!w.valueSrc && w.valueSrc !== 'ai';
+  if(boven < topN && v >= med * 1.5) return {k:'top', zeker, max: boven === 0};
+  if(boven < hoogN && v >= med * 1.25) return {k:'hoog', zeker, max:false};
+  return null;
+}
+function plekLabel(p){
+  if(p.k === 'top') return p.zeker ? (p.max ? 'Je topfles' : 'Een van je topflessen') : 'Waarschijnlijk een topfles';
+  return p.zeker ? 'Een van je duurdere flessen' : 'Waarschijnlijk een van je duurdere flessen';
+}
+const hoofd = s => s.charAt(0).toUpperCase() + s.slice(1);
+/* Het antwoord op "is dit er een voor vanavond of om te bewaren", in één zin.
+   Gaat over de fles; de gelegenheid is aan de gebruiker. */
+function verdict(w){
+  const st = windowStatus(w), p = plekInKelder(w), n = w.qty || 0;
+  const lab = p ? plekLabel(p).toLowerCase() : '';
+  const f = w.drinkFrom, t = w.drinkTo;
+  if(st.k === 'jong') return `Bewaren. ${p ? hoofd(lab) + ', en pas' : 'Pas'} vanaf ${f} op dronk.`;
+  if(st.k === 'over') return `Open hem gauw, het venster liep in ${t} af.`;
+  if(st.k === 'nu') return `Binnenkort open, nog op dronk tot ${t}.${p ? ' Plan er een mooie avond voor.' : ''}`;
+  if(st.k === 'op'){
+    if(p) return `${hoofd(lab)}. Op dronk${t ? ' tot ' + t : ''}, dus geen haast: bewaar hem voor een moment.`;
+    return `Kan open. Op dronk${t ? ' tot ' + t : ''}${n > 1 ? ', en je hebt er ' + n : ''}.`;
+  }
+  return p ? `${hoofd(lab)}. Drinkvenster onbekend.` : '';
+}
+const topMark = w => { const p = plekInKelder(w); return p && p.k === 'top' ? `<span class="topdiamant" title="${p.zeker?'Je topfles':'Waarschijnlijk een topfles'}">${p.zeker?'◆':'◇'}</span>` : ''; };
+const topBadge = w => { const p = plekInKelder(w); return p && p.k === 'top' ? `<span class="badge b-top">${p.zeker?'◆':'◇'} ${plekLabel(p)}</span>` : ''; };
+function waardeSub(w){
+  const b = waardeVan(w); if(!b) return '';
+  const oud = w.vintage && (YR() - w.vintage) >= 8;
+  const marge = oud ? 0.3 : 0.2;
+  const lo = Number(w.valueLow) || Math.round(b * (1 - marge)), hi = Number(w.valueHigh) || Math.round(b * (1 + marge));
+  const dat = w.valueAt ? new Date(w.valueAt).toLocaleDateString('nl-NL', {month:'short', year:'numeric'}) : '';
+  let bron = '';
+  if(w.valueSrc === 'zoek' && w.valueBron){
+    const jr = w.valueBron.vintage && w.vintage && w.valueBron.vintage !== w.vintage ? `, jaargang ${w.valueBron.vintage}` : '';
+    const naam = esc(w.valueBron.name || 'opgezocht');
+    bron = (w.valueBron.url ? `<a href="${esc(w.valueBron.url)}" target="_blank" rel="noopener">${naam}</a>` : naam) + jr + (dat ? ', ' + dat : '');
+  } else if(w.valueSrc === 'eigen') bron = 'zelf ingevuld' + (dat ? ', ' + dat : '');
+  else if(w.value != null) bron = 'schatting' + (dat ? ' van ' + dat : '') + (oud ? ', bij oudere wijnen grof' : '');
+  return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>${bron ? `<div class="small">${bron}</div>` : ''}`;
+}
+function plekHtml(w){
+  const zin = verdict(w), p = plekInKelder(w), kl = klasse(w);
+  const chips = [];
+  if(p) chips.push(`<span class="badge b-top">${p.k === 'top' ? (p.zeker ? '◆' : '◇') : '·'} ${plekLabel(p)}</span>`);
+  if(kl) chips.push(`<span class="grape">${esc(kl)}</span>`);
+  if(w.score) chips.push(`<span class="grape">★ ${esc(w.score)}</span>`);
+  const zoek = w.valueSrc !== 'zoek' && aiReady()
+    ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">🔎 Prijs opzoeken${ownKey() ? '' : ' · tot 3 credits'}</button>` : '';
+  if(!zin && !chips.length && !zoek) return '';
+  return `<div class="eyebrow mb8">Plek in je kelder</div>${zin ? `<p class="verdict">${esc(zin)}</p>` : ''}
+    ${chips.length ? `<div class="grapes" style="margin-bottom:10px">${chips.join('')}</div>` : ''}${zoek ? `<div class="mb8" style="margin-bottom:12px">${zoek}</div>` : ''}`;
+}
+
+/* ---- zoekagent: echte prijs met bron en datum ---- */
+async function aiPrijs(w){
+  const wie = `${w.name}${w.producer && w.producer !== w.name ? ', ' + w.producer : ''}, jaargang ${w.vintage || 'NV'}, ${[w.appellation, w.region, w.country].filter(Boolean).join(', ') || 'herkomst onbekend'}`;
+  const prompt = `Zoek de actuele marktprijs in euro's van precies deze wijn en jaargang: ${wie}. Zoek bij Europese wijnhandels, veilingsites en prijsvergelijkers, Nederland en België eerst. Neem alleen prijzen van dezelfde jaargang; is die nergens te koop, neem dan de dichtstbijzijnde jaargang en zet die in vintage_found. Prijs per fles van 75 cl inclusief btw. Antwoord na het zoeken UITSLUITEND met geldig JSON, zonder andere tekst:
+{"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}
+Niets gevonden: {"value":null,"note":"reden"}.${STIJLREGELS}`;
+  const out = await callClaude([{type:'text', text:prompt}], 1500, 'prijs', null, {web:true, wine:{name:w.name, producer:w.producer, vintage:w.vintage}});
+  return parseJsonLoose(out);
+}
+function pasPrijsToe(w, r){
+  if(!r || r.value == null) return false;
+  w.value = Math.round(r.value);
+  w.valueLow = r.low != null ? Math.round(r.low) : null;
+  w.valueHigh = r.high != null ? Math.round(r.high) : null;
+  w.valueSrc = 'zoek'; w.valueAt = vandaag();
+  w.valueBron = { name: String(r.source || '').slice(0, 80), url: String(r.url || '').slice(0, 400),
+    vintage: r.vintage_found || null, conf: r.confidence || null, note: String(r.note || '').slice(0, 200), cached: !!r.cached };
+  return true;
+}
+/* Voor welke flessen loont opzoeken: oud, of aan de bovenkant van de kelder. */
+const prijsWaardig = w => (w.vintage && YR() - w.vintage >= 8) || !!plekInKelder(w);
+const prijsAutoMag = () => !!ownKey() || !!(quota && (quota.plan === 'plus' || quota.plan === 'unlimited'));
+async function prijsAchteraf(w){
+  try{
+    const r = await aiPrijs(w);
+    if(pasPrijsToe(findWine(w.id) || w, r)){ save(); render(); toast(`Prijs opgezocht: ${money(w.value)}${w.valueBron.name ? ' · ' + w.valueBron.name : ''}`, null, null, 5000); }
+  }catch(e){ /* stil: de schatting blijft staan */ }
+}
+ACT.prijsZoek = async el => {
+  const w = findWine(el.dataset.id); if(!w) return;
+  if(!aiReady()){ toast('Log in (Meer → Account) om prijzen op te zoeken'); return; }
+  el.textContent = 'Zoeken…'; el.style.pointerEvents = 'none';
+  try{
+    const r = await aiPrijs(w);
+    if(!pasPrijsToe(w, r)){ toast(r && r.note ? 'Geen prijs gevonden: ' + String(r.note).slice(0, 80) : 'Geen prijs gevonden'); el.textContent = '🔎 Prijs opzoeken'; el.style.pointerEvents = ''; return; }
+    save(); closeSheet(); render(); openDetail(w.id);
+    toast(`${money(w.value)}${w.valueBron.name ? ' · ' + w.valueBron.name : ''}${r.cached ? ' (uit de Caveau-prijstabel)' : ''}`, null, null, 5000);
+  }catch(e){ toast('Opzoeken mislukte: ' + String(e.message || e).slice(0, 90), null, null, 6000); el.textContent = '🔎 Prijs opzoeken'; el.style.pointerEvents = ''; }
+};
+ACT.prijsBulk = () => {
+  if(!aiReady()){ toast('Log in (Meer → Account) om prijzen op te zoeken'); return; }
+  const targets = S.wines.filter(w => (w.qty || 0) > 0 && w.valueSrc !== 'zoek' && prijsWaardig(w));
+  if(!targets.length){ toast('Niets op te zoeken: je oudere en duurdere flessen hebben al een opgezochte prijs'); return; }
+  const n = targets.length;
+  confirmSheet('Prijzen opzoeken?', `Voor <b>${n}</b> ${plur(n, 'fles', 'flessen')} (ouder dan acht jaar, of aan de bovenkant van je kelder) zoekt de sommelier de echte marktprijs op, met bron en datum.${ownKey() ? '' : ` Kost hoogstens ${n * 3} credits; staat een wijn al in de Caveau-prijstabel, dan is die gratis.`}`, 'Zoek op', async () => {
+    let ok = 0, i = 0;
+    toast(`Bezig: 0 van ${n}…`, null, null, 60000);
+    for(const w of targets){
+      i++;
+      try{ const r = await aiPrijs(w); if(pasPrijsToe(w, r)) ok++; }catch(e){ if(e && (e.status === 402 || e.status === 429)){ toast(e.message, null, null, 6000); break; } }
+      save(true); toast(`Bezig: ${i} van ${n}…`, null, null, 60000);
+    }
+    save(); render(); toast(`${ok} ${plur(ok, 'prijs', 'prijzen')} opgezocht`, null, null, 5000);
+  });
+};
+
 /* ================= DETAIL ================= */
 function findWine(id){ return S.wines.find(w => w.id === id); }
 
@@ -1316,9 +1468,10 @@ function openDetail(id){
         </div></div>
       <div class="dcell"><div class="k">Locatie</div><div class="v">${esc(w.location||'—')}</div></div>
       <div class="dcell"><div class="k">Aankoopprijs</div><div class="v tnum">${money(w.price)}</div></div>
-      <div class="dcell"><div class="k">Geschatte waarde</div><div class="v tnum">${money(w.value ?? w.price)}</div>${(()=>{const b=Number(w.value ?? w.price); if(!b) return ''; const lo=Number(w.valueLow)||Math.round(b*0.8), hi=Number(w.valueHigh)||Math.round(b*1.2); return `<div class="small tnum">${money(lo)} – ${money(hi)}</div>`;})()}</div>
+      <div class="dcell"><div class="k">${w.valueSrc==='zoek'?'Marktwaarde':'Geschatte waarde'}</div><div class="v tnum">${money(w.value ?? w.price)}</div>${waardeSub(w)}</div>
     </div>
     ${w.note?`<p style="font-size:13.5px;color:var(--ink2);margin:4px 0 10px">${esc(w.note)}</p>`:''}
+    ${plekHtml(w)}
     <div class="eyebrow mb8">Schenken</div>${serveHtml(w)}
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8 mt14">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     ${(()=>{ const recs=(S.recipeCache||[]).filter(r=>r.wineId===w.id); return recs.length?`<div class="eyebrow mb8">Opgeslagen recepten</div><div class="panel" style="margin-bottom:12px;padding:6px 15px">${recs.map(r=>`<button class="rowline" style="width:100%;text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}"><span class="a"><div class="t">📖 ${esc(r.recipe.title||r.dish)}</div><div class="u">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}</div></span><span class="z" style="color:var(--ink3)">›</span></button>`).join('')}</div>`:''; })()}
@@ -1483,6 +1636,7 @@ function formFields(w){
     <div class="field"><label>Aankoopprijs €</label><input class="inp tnum" id="f_price" inputmode="decimal" value="${w.price??''}"></div>
     <div class="field"><label>Waarde nu €</label><input class="inp tnum" id="f_value" inputmode="decimal" value="${w.value??''}" placeholder="= prijs"></div>
   </div>
+  <div class="field"><label>Score gezien (optioneel)</label><input class="inp" id="f_score" value="${esc(w.score||'')}" placeholder="bv. 92 Parker, 8,5 Hamersma"></div>
   <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec, zone boven">
     <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
     <div class="chiprow" style="padding:7px 0 0">${locOptions().slice(0,8).map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
@@ -1532,7 +1686,7 @@ function readForm(root){
     country:g('f_country').trim(), region:g('f_region').trim(), appellation:g('f_app').trim(),
     drinkFrom:yr('f_from'), drinkTo:yr('f_to'),
     price:num('f_price'), value:num('f_value'),
-    location:g('f_loc').trim(), note:g('f_note').trim()
+    location:g('f_loc').trim(), note:g('f_note').trim(), score:g('f_score').trim()
   };
 }
 ACT.wineNew = () => openWineForm(null);
@@ -1669,7 +1823,7 @@ async function doRecalc(el, silent){
         if(scan.stage === 'confirm' && scan.data) scan.data.pairing = r.pairing;
       }
       if(r.value_eur != null && d.value == null) setVal('f_value', Math.round(r.value_eur));
-      if(r.value_low != null && r.value_high != null) recalcValueRange = {low:Math.round(r.value_low), high:Math.round(r.value_high)};
+      if(r.value_low != null && r.value_high != null) recalcValueRange = {low:Math.round(r.value_low), high:Math.round(r.value_high), value:(r.value_eur!=null?Math.round(r.value_eur):null)};
       src = 'Sommelier-AI'; done = true;
     }catch(e){ /* val terug op regels */ }
   }
@@ -1720,13 +1874,15 @@ ACT.wineSave = el => {
   if(d.location) S.settings.lastLocation = d.location;
   if(!d.drinkFrom && !d.drinkTo){ const est = estimateWindow(d); d.drinkFrom = est.from; d.drinkTo = est.to; }
   const id = el.dataset.id;
-  if(id){ const w = findWine(id); if(!w) return; Object.assign(w, d);
+  if(id){ const w = findWine(id); if(!w) return; const vOud = w.value; Object.assign(w, d);
     if(recalcPairing) w.pairing = recalcPairing;
-    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
+    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; w.valueSrc = 'ai'; w.valueAt = vandaag(); w.valueBron = null; }
+    if(d.value != null && d.value !== vOud && !(recalcValueRange && d.value === recalcValueRange.value)){ w.valueSrc = 'eigen'; w.valueAt = vandaag(); w.valueBron = null; }
     save(); closeSheet(true); render(); toast('Bijgewerkt'); }
   else {
     const w = { id:uid(), ...d, qty:formQty, pairing:recalcPairing||[], photo:false, addedAt:Date.now() };
-    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
+    if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; w.valueSrc = 'ai'; w.valueAt = vandaag(); }
+    if(d.value != null && !(recalcValueRange && d.value === recalcValueRange.value)){ w.valueSrc = 'eigen'; w.valueAt = vandaag(); }
     S.wines.unshift(w); save(); closeSheet(true); UI.tab = 'kelder'; render();
     toast(`${formQty} ${plur(formQty,'fles','flessen')} toegevoegd`);
   }
@@ -1892,7 +2048,7 @@ function viewScan(){
     name:d.name||'', producer:d.producer||'', vintage:d.vintage||null,
     type:d.type?mapType(d.type):'rood', grapes:d.grapes||[], country:d.country||'', region:d.region||'',
     appellation:d.appellation||'', drinkFrom:d.drink_from||null, drinkTo:d.drink_to||null,
-    price:null, value:(d.value_eur!=null?Math.round(d.value_eur):null), location:(S.settings.lastLocation||''), note:d.note||''
+    price:null, value:(d.value_eur!=null?Math.round(d.value_eur):null), location:(S.settings.lastLocation||''), note:d.note||'', score:d.score_seen||''
   };
   return `${brandRow('')}
     <div class="btnrow" style="margin-bottom:10px">
@@ -1903,6 +2059,7 @@ function viewScan(){
     ${scan.busy ? `<div class="banner">${pourSvg}<span class="pulse" id="scanLive">De sommelier leest het etiket…</span></div>` : ''}
     ${scan.err ? `<div class="banner"><span>⚠️</span><span><b>Automatisch lezen lukte niet</b> (${esc(scan.err)}). Probeer het nog eens, of vul de velden (deels) zelf in en tik op "Herbereken". De foto blijft bewaard.<br><button class="btn sm ghost mt8" data-act="scanRetry">↻ Probeer opnieuw te lezen</button></span></div>` : ''}
     ${(!scan.busy && scan.data) ? `<div class="banner"><span>🍷</span><span><span class="srcchip">Sommelier-AI</span>${d.note?` ${esc(d.note)}`:''}${(d.pairing&&d.pairing.length)?`<br><b>Lekker bij:</b> ${esc(d.pairing.slice(0,4).join(' · '))}`:''}</span></div>` : ''}
+    ${(!scan.busy && scan.data && d.value_eur!=null && verdict({...pre, valueSrc:'ai', qty:formQty})) ? `<div class="banner"><span>◆</span><span>${esc(verdict({...pre, valueSrc:'ai', qty:formQty}))}</span></div>` : ''}
     ${(!scan.busy && scan.data && !d.vintage) ? `<div class="banner"><span>📅</span><span><b>Jaargang niet op het etiket gevonden</b>. Het venster hieronder is een grove schatting. Vul de jaargang in bij "Jaargang"; het drinkvenster rekent dan vanzelf bij. Geen jaargang (NV)? Laat het veld leeg.</span></div>` : ''}
     ${scan.match ? `<div class="matchbanner"><b>${esc(scan.match.name)} ${scan.match.vintage||''}</b> staat al in je kelder (×${scan.match.qty}). Flessen bijboeken, of juist één afboeken?</div>` : ''}
     ${scan.busy ? '' : `<div class="panel" style="padding:11px 13px;margin-bottom:12px"><div class="eyebrow mb8">Snel wegleggen</div>
@@ -2123,11 +2280,17 @@ ACT.scanAdd = async () => {
   if(scan.data && scan.data.value_low != null) w.valueLow = Math.round(scan.data.value_low);
   if(scan.data && scan.data.value_high != null) w.valueHigh = Math.round(scan.data.value_high);
   if(recalcValueRange){ w.valueLow = recalcValueRange.low; w.valueHigh = recalcValueRange.high; }
+  if(w.value != null){
+    const vanAI = (scan.data && scan.data.value_eur != null && w.value === Math.round(scan.data.value_eur)) || (recalcValueRange && w.value === recalcValueRange.value);
+    w.valueSrc = vanAI ? 'ai' : 'eigen'; w.valueAt = vandaag();
+  }
   if((document.getElementById('scanTonight')||{}).checked){ if(!S.tonight) S.tonight = []; S.tonight.push({wineId:w.id, at:Date.now()}); }
   S.wines.unshift(w); save();
   if(scan.thumb) await pSet(w.id, scan.thumb);
   const n = formQty; scanReset(); UI.tab = 'kelder'; render();
   toast(`${n} ${plur(n,'fles','flessen')} in de kelder gelegd`);
+  /* oude of dure fles: de echte prijs erbij zoeken, als het tegoed dat toelaat */
+  if(w.valueSrc === 'ai' && aiReady() && prijsAutoMag() && prijsWaardig(w)) prijsAchteraf(w);
 };
 ACT.scanMerge = async () => {
   const m = scan.match; if(!m) return;
@@ -2231,7 +2394,7 @@ async function runPair(dish, force){
       return `<div class="match"><div class="match-top"><div style="min-width:0">
         <div class="wname" style="font-size:16px">${esc(m.w.name)}</div>
         <div class="wsub">${esc([m.w.producer, m.w.vintage||'NV'].filter(Boolean).join(' · '))} · ×${m.w.qty}</div>
-        <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}${st.sub?' · '+st.sub:''}</span></div></div>
+        <div class="wmeta mt8">${dotHtml(m.w.type)}<span class="badge ${st.cls}">${st.label}${st.sub?' · '+st.sub:''}</span>${topBadge(m.w)}</div></div>
         <div class="mscore">${m.score}<small>/10</small></div></div>
         <div class="mreason">${esc(m.reason||'')}</div>
         ${urg?`<div class="mreason" style="color:var(--warn);font-weight:600">⏳ ${urg}</div>`:''}
@@ -2709,6 +2872,8 @@ function viewSettings(){
        <div class="small mt8">Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden, van jip-en-janneke tot sommeliers onder elkaar.</div></div>
       <hr class="sep">
       <div class="eyebrow mb8">Geavanceerd</div>
+      <button class="btn ghost" data-act="prijsBulk" style="margin-bottom:8px">🔎 Echte prijzen opzoeken voor je oudere en duurdere flessen</button>
+      <div class="small mb8">De sommelier zoekt per fles de marktprijs op bij wijnhandels en veilingen, met bron en datum. Voor flessen ouder dan acht jaar en voor de bovenkant van je kelder; daar zit het verschil tussen schatten en weten.</div>
       <button class="btn ghost" data-act="estValues">💶 Waardes inschatten voor flessen zonder waarde</button>
       <div class="small mt8">Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.</div>
       ${S.settings.devMode ? `<hr class="sep">
@@ -2746,7 +2911,7 @@ ACT.estValues = async el => {
     for(const v of (r.values||[])){
       const w = findWine(v.id);
       if(w && v.value != null){
-        w.value = Math.round(v.value);
+        w.value = Math.round(v.value); w.valueSrc = 'ai'; w.valueAt = vandaag(); w.valueBron = null;
         if(v.low != null) w.valueLow = Math.round(v.low);
         if(v.high != null) w.valueHigh = Math.round(v.high);
         n++;
@@ -3469,7 +3634,7 @@ function cloudDeletePhoto(id){
 }
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
-async function sbAI(content, maxTokens, kind, onText){
+async function sbAI(content, maxTokens, kind, onText, opts){
   if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in bij Meer → Account'); }
   const stream = !!onText && CAN_STREAM;
   let res;
@@ -3477,7 +3642,7 @@ async function sbAI(content, maxTokens, kind, onText){
     res = await fetch(SB_URL + '/functions/v1/ai', {
       method:'POST',
       headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
-      body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}] })
+      body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}], ...(opts && opts.web ? {web:true, wine:opts.wine||null} : {}) })
     });
   }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   if(res.ok && stream && res.body && (res.headers.get('content-type')||'').includes('event-stream'))

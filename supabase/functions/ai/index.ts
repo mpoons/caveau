@@ -1,7 +1,6 @@
-// Caveau AI-proxy (Fase 1 + Fase 2: gewogen credits)
-// Plaatsen via: Supabase dashboard → Edge Functions → Deploy new function
-//   → naam: ai   → deze code plakken → Deploy
-// Vereist secret: Edge Functions → Secrets → CAVEAU_ANTHROPIC_KEY = (aparte Anthropic-sleutel voor de server)
+// Caveau AI-proxy (Fase 1 + Fase 2: gewogen credits, plus de zoekagent voor prijzen)
+// Uitrollen: supabase functions deploy ai --project-ref dbzgrkipcoebglacsqwe
+// Vereist secret: CAVEAU_ANTHROPIC_KEY = (aparte Anthropic-sleutel voor de server)
 // "Verify JWT" laten aanstaan (standaard): alleen ingelogde Caveau-gebruikers kunnen deze functie aanroepen.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -12,9 +11,12 @@ const PLUS_CREDITS = 300   // Caveau Plus (€2,99/mnd)
 const DAY_CREDITS  = 60    // anti-misbruik per dag (geldt niet voor 'unlimited')
 
 // Wat een actie kost. Foto's bepalen de kosten: één beeld ≈ 2500 tokens bij een
-// kaartpagina (1568 px) tegen ≈ 1200 bij een etiket (1100 px).
+// kaartpagina (1568 px) tegen ≈ 1200 bij een etiket (1100 px). Een prijs opzoeken
+// doet tot vier webzoekopdrachten ($10 per duizend) plus de gelezen pagina's.
+// Moet gelijk blijven aan creditCost() in caveau.html.
 function creditsFor(kind: string, images: number): number {
   if (kind === 'wijnkaart') return Math.max(2, images * 2)   // wijnkaart + menukaart, per pagina
+  if (kind === 'prijs') return 3                             // zoekagent
   return Math.max(1, images)                                  // etiketscan = 1, tekstacties = 1
 }
 function countImages(messages: unknown): number {
@@ -32,6 +34,25 @@ function countImages(messages: unknown): number {
 // juist te zwak. Eén soort verplaatsen kan hieronder, bv. recept: 'claude-haiku-4-5'.
 const MODEL_DEFAULT = 'claude-sonnet-5'
 const MODEL_BY_KIND: Record<string, string> = {}
+
+// Prijstabel: een opgezochte prijs geldt drie maanden voor iedereen. Zo zoekt de
+// agent één keer per wijn en jaargang, en niet bij elke scan opnieuw.
+const PRIJS_TTL_MS = 90 * 24 * 3600 * 1000
+type Wijn = { name?: unknown; producer?: unknown; vintage?: unknown }
+function prijsSleutel(w: Wijn): string {
+  const n = (x: unknown) => String(x || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+  const jaar = Number(w.vintage) || 0
+  return `${n(w.producer)}|${n(w.name)}|${jaar || 'nv'}`
+}
+function tekstUit(data: { content?: { type?: string; text?: string }[] }): string {
+  return (data?.content || []).filter((b) => b.type === 'text').map((b) => b.text || '').join('')
+}
+function jsonUit(txt: string): Record<string, unknown> | null {
+  const a = txt.indexOf('{'), z = txt.lastIndexOf('}')
+  if (a < 0 || z <= a) return null
+  try { return JSON.parse(txt.slice(a, z + 1)) } catch { return null }
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +82,23 @@ Deno.serve(async (req) => {
     const kind = String(body.kind || 'ai').slice(0, 30)
     const units = creditsFor(kind, countImages(body.messages))
 
+    // zoekagent: alleen voor prijzen, en eerst kijken of de prijstabel hem al kent
+    const web = body.web === true && kind === 'prijs'
+    const wijn: Wijn | null = web && body.wine && typeof body.wine === 'object' ? body.wine : null
+    if (wijn) {
+      try {
+        const key = prijsSleutel(wijn)
+        const { data: row } = await supa.from('wine_prices').select('*').eq('key', key).maybeSingle()
+        if (row && row.value != null && Date.now() - new Date(row.updated_at).getTime() < PRIJS_TTL_MS) {
+          await supa.from('wine_prices').update({ hits: (row.hits || 0) + 1 }).eq('key', key)
+          const uit = { value: row.value, low: row.low, high: row.high, source: row.source, url: row.url,
+            vintage_found: row.vintage_found, confidence: row.confidence, note: row.note, cached: true, at: row.updated_at }
+          // gratis: geen credit, geen Anthropic-aanroep
+          return json({ content: [{ type: 'text', text: JSON.stringify(uit) }], usage: { input_tokens: 0, output_tokens: 0 }, cached: true }, 200)
+        }
+      } catch (_) { /* tabel nog niet aangemaakt: dan gewoon zoeken */ }
+    }
+
     // tegoed bepalen: credits, niet acties
     const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0)
     const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0)
@@ -83,14 +121,16 @@ Deno.serve(async (req) => {
     }
 
     // verzoek doorsturen — de server bepaalt model en instellingen
-    const wantStream = body.stream === true
-    const payload = {
+    const wantStream = body.stream === true && !web
+    const payload: Record<string, unknown> = {
       model: MODEL_BY_KIND[kind] || MODEL_DEFAULT,
       max_tokens: Math.min(Number(body.max_tokens) || 2000, 4000),
       thinking: { type: 'disabled' },
       messages: body.messages,
       ...(wantStream ? { stream: true } : {}),
     }
+    // de webzoekfunctie van de API zelf; het model zoekt, leest en antwoordt in één beurt
+    if (web) payload.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 }]
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -146,6 +186,23 @@ Deno.serve(async (req) => {
         tokens_in: data?.usage?.input_tokens || 0,
         tokens_out: data?.usage?.output_tokens || 0,
       })
+      // gevonden prijs in de prijstabel zetten, voor de volgende die deze fles scant
+      if (wijn) {
+        try {
+          const p = jsonUit(tekstUit(data))
+          if (p && p.value != null && Number(p.value) > 0) {
+            await supa.from('wine_prices').upsert({
+              key: prijsSleutel(wijn),
+              name: String(wijn.name || '').slice(0, 200), producer: String(wijn.producer || '').slice(0, 200),
+              vintage: Number(wijn.vintage) || null,
+              value: Number(p.value), low: p.low != null ? Number(p.low) : null, high: p.high != null ? Number(p.high) : null,
+              source: String(p.source || '').slice(0, 120), url: String(p.url || '').slice(0, 500),
+              vintage_found: Number(p.vintage_found) || null, confidence: String(p.confidence || '').slice(0, 10),
+              note: String(p.note || '').slice(0, 300), updated_at: new Date().toISOString(),
+            })
+          }
+        } catch (_) { /* tabel nog niet aangemaakt: de gebruiker krijgt zijn prijs toch */ }
+      }
     }
     return json(data, r.status)
   } catch (e) {
