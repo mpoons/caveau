@@ -1901,8 +1901,11 @@ function plekHtml(w){
   const oudPunt = w.valueSrc === 'zoek' && w.valueAt && (Date.now() - new Date(w.valueAt).getTime()) > 365 * 864e5;
   const zoek = (w.valueSrc !== 'zoek' || oudPunt) && aiReady()
     ? `<button class="linkbtn" data-act="prijsZoek" data-id="${w.id}" id="prijsBtn">${ik('zoek')} ${oudPunt ? 'Opnieuw opzoeken' : 'Precies opzoeken'}${ownKey() ? '' : ' · ' + creditCost('prijs') + ' credits'}</button>` : '';
-  if(!zin && !chips.length && !zoek) return '';
-  return `<div class="eyebrow mb8">Plek in je kelder</div>${zin ? `<p class="verdict">${esc(zin)}</p>` : ''}
+  /* staat hij op tafel, dan is "plek" letterlijk: waar ligt hij, zodat je hem kunt pakken */
+  const tafel = onTable(w.id);
+  if(!zin && !chips.length && !zoek && !tafel) return '';
+  const kop = tafel ? `Plek in je kelder: ${w.location ? esc(w.location) + (()=>{ const vk = rekVakken(w.location, w.id); return vk.length ? ' · ' + vakKort(vk) : ''; })() : 'geen locatie'}` : 'Plek in je kelder';
+  return `<div class="eyebrow mb8">${kop}</div>${zin ? `<p class="verdict">${esc(zin)}</p>` : ''}
     ${chips.length ? `<div class="grapes" style="margin-bottom:10px">${chips.join('')}</div>` : ''}${zoek ? `<div class="mb8" style="margin-bottom:12px">${zoek}</div>` : ''}`;
 }
 
@@ -1915,11 +1918,10 @@ function prijsSleutel(w){
 }
 async function prijzenUitTabel(wines){
   if(!wines.length || typeof loggedIn !== 'function' || !loggedIn()) return 0;
-  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) return 0; }
   let d = {};
   try{
-    const res = await fetch(SB_URL + '/functions/v1/ai', {
-      method:'POST', headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+    const res = await fnFetch('ai', {
+      method:'POST', headers:{ 'content-type':'application/json' },
       body: JSON.stringify({ kind:'prijscache', wines: wines.slice(0, 100).map(w => ({name:w.name, producer:w.producer, vintage:w.vintage})) })
     });
     if(!res.ok) return 0;
@@ -2580,6 +2582,7 @@ function openServe(id){
     <div class="wname" style="font-size:18px">${esc(w.name)}</div>
     <div class="wsub" style="font-size:14px">${esc([w.producer, w.vintage||'NV'].filter(Boolean).join(' · '))}</div>
     <div class="wmeta mb8" style="margin-top:8px">${typeHtml(w.type)}<span class="badge ${st.cls}">${st.label}</span></div>
+    <div class="small mb8">${ik('speld')} ${w.location ? `Ligt in <b>${esc(w.location)}</b>${(()=>{ const vk = rekVakken(w.location, w.id); return vk.length ? `, vak <b class="tnum">${vakKort(vk)}</b>` : ''; })()}` : 'Nog zonder plek in de kelder'}</div>
     ${serveHtml(w)}
     ${(w.pairing&&w.pairing.length)?`<div class="eyebrow mb8 mt14">Lekker bij</div><div class="grapes" style="margin-bottom:12px">${w.pairing.slice(0,4).map(p=>`<span class="grape">${esc(p)}</span>`).join('')}</div>`:''}
     <div class="btnrow mb8"><button class="btn soft" data-act="askSomm" data-id="${w.id}">${ik('chat')} Vraag</button>
@@ -2611,7 +2614,7 @@ function tonightBanner(){
     ${items.map(({w}) => { const a = serveAdvice(w);
       return `<div class="rowline"><button class="a" style="text-align:left" data-act="serveOpen" data-id="${w.id}">
         <div class="t">${esc(w.name)} ${w.vintage||''}</div>
-        <div class="u">${esc(a.temp)}${a.tips.length?' · tik voor schenkadvies':' · tik voor opties'}</div></button>
+        <div class="u">${w.location ? `${ik('speld')} ${esc(w.location)}${(()=>{ const vk = rekVakken(w.location, w.id); return vk.length ? ' · ' + vakKort(vk, 3) : ''; })()} · ` : ''}${esc(a.temp)}${a.tips.length?' · tik voor schenkadvies':' · tik voor opties'}</div></button>
       <span class="z" style="display:flex;gap:6px;align-items:center"><button class="btn sm" data-act="drinkOpen" data-id="${w.id}">Afstrepen</button><button class="btn sm plain" data-act="tafelAf" data-id="${w.id}" aria-label="Van tafel halen">✕</button></span></div>`; }).join('')}</div>`;
 }
 function updateBadge(){
@@ -4478,11 +4481,37 @@ function loggedIn(){ return CLOUD_OK && !!cloud().refresh; }
 
 /* Geen enkele fetch mag eeuwig hangen: op slechte wifi bleef de app anders 'bezig'. */
 const tijdslimiet = ms => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+/* Het toegangstoken leeft een uur. Wie de app langer open had kreeg daarna "Serverfout 401":
+   het token werd pas vernieuwd als het leeg was, nooit als het verlopen was. Nu kijken we
+   naar de vervaltijd in het token zelf en vernieuwen we een minuut van tevoren; komt er
+   toch een 401, dan één keer vernieuwen en opnieuw proberen. */
+function tokenVerlopen(t){
+  if(!t) return true;
+  try{ const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); return !p.exp || p.exp * 1000 < Date.now() + 60000; }catch(e){ return false; }
+}
+async function sbToken(){
+  if(!sbAccess || tokenVerlopen(sbAccess)){ const ok = await sbRefresh(); if(!ok) return null; }
+  return sbAccess;
+}
+/* Aanroep van een Edge Function met vers token en één herkansing bij 401. Netwerkfouten gooien. */
+async function fnFetch(name, init){
+  let token = await sbToken();
+  if(!token){ const e = new Error('Sessie verlopen. Log opnieuw in bij Meer → Account'); e.status = 401; e.sessie = true; throw e; }
+  const doe = () => fetch(SB_URL + '/functions/v1/' + name, {...init, headers:{...(init.headers||{}), 'authorization':'Bearer ' + token, 'apikey':SB_KEY}});
+  let res = await doe();
+  if(res.status === 401 && await sbRefresh()){ token = sbAccess; res = await doe(); }
+  return res;
+}
 async function sbFetch(path, opts, noAuth){
   opts = opts || {};
   const h = { 'apikey': SB_KEY, 'content-type': 'application/json', ...(opts.headers||{}) };
+  if(!noAuth && sbAccess && tokenVerlopen(sbAccess) && !/refresh_token/.test(path)) await sbRefresh();
   if(!noAuth && sbAccess) h['authorization'] = 'Bearer ' + sbAccess;
-  const res = await fetch(SB_URL + path, {signal: tijdslimiet(30000), ...opts, headers: h});
+  let res = await fetch(SB_URL + path, {signal: tijdslimiet(30000), ...opts, headers: h});
+  if(res.status === 401 && !noAuth && !/refresh_token/.test(path) && await sbRefresh()){
+    h['authorization'] = 'Bearer ' + sbAccess;
+    res = await fetch(SB_URL + path, {signal: tijdslimiet(30000), ...opts, headers: h});
+  }
   if(!res.ok){
     const t = await res.text().catch(()=> '');
     const e = new Error('HTTP ' + res.status + ' ' + t.slice(0,160)); e.status = res.status; throw e;
@@ -4637,7 +4666,7 @@ async function syncNow(interactive){
   if(syncBusy){ syncAgain = true; return; }
   syncBusy = true;
   try{
-    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
+    if(!sbAccess || tokenVerlopen(sbAccess)){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
     /* Eerst alleen het revisienummer (een paar bytes); het hele document (honderden KB)
        pas als er echt iets te vergelijken valt. */
     const kop = await pullRev();
@@ -4730,16 +4759,15 @@ function cloudDeletePhoto(id){
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
 async function sbAI(content, maxTokens, kind, onText, opts){
-  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in bij Meer → Account'); }
   const stream = !!onText && CAN_STREAM;
   let res;
   try{
-    res = await fetch(SB_URL + '/functions/v1/ai', {
+    res = await fnFetch('ai', {
       method:'POST', signal: tijdslimiet(120000),
-      headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
+      headers:{ 'content-type':'application/json' },
       body: JSON.stringify({ kind: kind||'ai', max_tokens: maxTokens||2000, stream, messages:[{role:'user', content}], ...(opts && opts.web ? {web:true, wine:opts.wine||null, refresh:!!opts.refresh} : {}) })
     });
-  }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
+  }catch(e){ if(e && e.sessie) throw e; throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   if(res.ok && stream && res.body && (res.headers.get('content-type')||'').includes('event-stream'))
     return readSSE(res, onText);
   const d = await res.json().catch(() => ({}));
@@ -4781,15 +4809,10 @@ function planBoxHtml(){
     <button class="btn" data-act="acUpgrade">Plus nemen</button></div>`;
 }
 async function sbFn(name, body){
-  if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen. Log opnieuw in'); }
   let res;
   try{
-    res = await fetch(SB_URL + '/functions/v1/' + name, {
-      method:'POST',
-      headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + sbAccess, 'apikey':SB_KEY },
-      body: JSON.stringify(body||{})
-    });
-  }catch(_){ throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
+    res = await fnFetch(name, { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify(body||{}) });
+  }catch(e){ if(e && e.sessie) throw e; throw new Error('Geen verbinding met de Caveau-server. Probeer het zo nog eens'); }
   const d = await res.json().catch(() => ({}));
   if(!res.ok) throw new Error(d.error || (res.status === 404 ? 'De betaalfunctie is nog niet geplaatst' : 'Serverfout ' + res.status));
   return d;
@@ -4850,7 +4873,7 @@ async function fetchQuota(){
   const el = document.getElementById('aiQuota');
   if(!el || !loggedIn()) return;
   try{
-    if(!sbAccess){ const ok = await sbRefresh(); if(!ok){ el.textContent = 'AI-tegoed: log opnieuw in'; return; } }
+    if(!sbAccess || tokenVerlopen(sbAccess)){ const ok = await sbRefresh(); if(!ok){ el.textContent = 'AI-tegoed: log opnieuw in'; return; } }
     const ms = new Date(); ms.setUTCDate(1); ms.setUTCHours(0,0,0,0);
     const [prof, used] = await Promise.all([
       sbFetch('/rest/v1/profiles?select=plan,bonus_credits,plan_status,plan_renews_at,mail_herinnering', {method:'GET'}),
@@ -4984,7 +5007,7 @@ ACT.acNieuwWachtwoord = async el => {
   if(a !== b){ toast('De twee wachtwoorden zijn niet gelijk'); return; }
   el.textContent = 'Opslaan…'; el.style.pointerEvents = 'none';
   try{
-    if(!sbAccess){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen, vraag een nieuwe herstel-link aan'); }
+    if(!sbAccess || tokenVerlopen(sbAccess)){ const ok = await sbRefresh(); if(!ok) throw new Error('Sessie verlopen, vraag een nieuwe herstel-link aan'); }
     await sbFetch('/auth/v1/user', {method:'PUT', body:JSON.stringify({password:a})});
     closeSheet(); toast('Wachtwoord gewijzigd. Je bent ingelogd', null, null, 5000);
     UI.tab = 'meer'; UI.meerPage = 'account'; render(); syncNow(true);
