@@ -2350,7 +2350,7 @@ function formFields(w, opts){
   <div class="field"><label>Score gezien (optioneel)</label><input class="inp" id="f_score" value="${esc(w.score||'')}" placeholder="bv. 92 Parker, 8,5 Hamersma"></div>
   <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec, zone boven" data-in="fLoc">
     <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
-    <div class="chiprow" style="padding:7px 0 0">${locOptions().slice(0,8).map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
+    <div class="chiprow" style="padding:7px 0 0">${locOptions().map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
   ${opts.rek ? `<div id="rekKies">${rekKiesHtml(w.location)}</div>` : ''}
   <div class="field"><label>Notitie</label><textarea class="inp" id="f_note" placeholder="karakter, advies, herinnering…">${esc(w.note||'')}</textarea></div>`;
 }
@@ -2529,7 +2529,7 @@ function openPlekGeven(id){
     <div class="wsub" style="font-size:14.5px;margin-bottom:8px">${esc(w.name)} · ${w.vintage||'NV'}${(w.qty||0) > 1 ? ' · ×' + w.qty : ''}</div>
     <div class="field"><label>Locatie</label><input class="inp" id="f_loc" list="locList" value="${esc(w.location||'')}" placeholder="bv. Vintec, zone boven" data-in="fLoc">
       <datalist id="locList">${locOptions().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
-      <div class="chiprow" style="padding:7px 0 0">${locOptions().slice(0,8).map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
+      <div class="chiprow" style="padding:7px 0 0">${locOptions().map(l=>`<button type="button" class="chip" data-act="fillLoc" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
     <div id="rekKies">${rekKiesHtml(w.location)}</div>
     <div class="btnrow mt8"><button class="btn plain" data-act="closeSheet">Later</button>
     <button class="btn" data-act="plekSave" data-id="${w.id}">Bewaren</button></div>`, {onClose: () => formVakReset(null)});
@@ -3540,15 +3540,16 @@ function viewOverzicht(){
   const ready = S.wines.filter(w => w.qty>0 && ['op','nu'].includes(windowStatus(w).k));
   const readyN = ready.reduce((n,w)=>n+w.qty,0);
   const thisYear = S.history.filter(h => !h.weg && (h.date||'').slice(0,4) == YR()).length;
-  const soon = S.wines.filter(w => w.qty>0 && ['nu','over'].includes(windowStatus(w).k))
-    .sort((a,b)=>URG[windowStatus(a).k]-URG[windowStatus(b).k] || (a.drinkTo||9999)-(b.drinkTo||9999)).slice(0,5);
+  const soonAlle = S.wines.filter(w => w.qty>0 && ['nu','over'].includes(windowStatus(w).k))
+    .sort((a,b)=>URG[windowStatus(a).k]-URG[windowStatus(b).k] || (a.drinkTo||9999)-(b.drinkTo||9999));
+  const soon = soonAlle.slice(0,5);
   const byType = Object.keys(TYPES).map(t => [TYPES[t].l, S.wines.filter(w=>w.type===t).reduce((n,w)=>n+(w.qty||0),0), t]).filter(p=>p[1]>0);
   const landC = {};
   S.wines.forEach(w => { const c=(w.country||'Onbekend'); landC[c]=(landC[c]||0)+(w.qty||0); });
-  const byLand = Object.entries(landC).filter(p=>p[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const byLand = Object.entries(landC).filter(p=>p[1]>0).sort((a,b)=>b[1]-a[1]);
   const jaarC = {};
   S.wines.forEach(w => { const j=w.vintage||'NV'; jaarC[j]=(jaarC[j]||0)+(w.qty||0); });
-  const byJaar = Object.entries(jaarC).filter(p=>p[1]>0).sort((a,b)=> (b[0]==='NV')?-1:(a[0]==='NV')?1:b[0]-a[0]).slice(0,8);
+  const byJaar = Object.entries(jaarC).filter(p=>p[1]>0).sort((a,b)=> (b[0]==='NV')?-1:(a[0]==='NV')?1:b[0]-a[0]);
   const locC = {};
   S.wines.forEach(w => { const l = w.location||'Zonder locatie'; locC[l]=(locC[l]||0)+(w.qty||0); });
   const byLoc = Object.entries(locC).filter(p=>p[1]>0).sort((a,b)=>b[1]-a[1]);
@@ -3567,10 +3568,10 @@ function viewOverzicht(){
       <div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div></div>
     </div>
     ${soon.length?`<div class="sect"><div class="eyebrow mb8">Drink binnenkort</div><div class="panel">${soon.map(w=>{const st=windowStatus(w);
-      return `<button class="rowline" style="width:100%;text-align:left" data-act="detail" data-id="${w.id}"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">×${w.qty}${w.location?' · '+esc(w.location):''}</div></span><span class="z"><span class="badge ${st.cls}">${st.sub||st.label}</span></span></button>`;}).join('')}</div></div>`:''}
+      return `<button class="rowline" style="width:100%;text-align:left" data-act="detail" data-id="${w.id}"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">×${w.qty}${w.location?' · '+esc(w.location):''}</div></span><span class="z"><span class="badge ${st.cls}">${st.sub||st.label}</span></span></button>`;}).join('')}</div>${soonAlle.length > soon.length ? `<div class="center mt8"><button class="linkbtn" data-act="soonAlle">Alle ${soonAlle.length} in de lijst →</button></div>` : ''}</div>`:''}
     ${byType.length?`<div class="sect"><div class="eyebrow mb8">Per type <span class="small" style="text-transform:none;letter-spacing:0">· tik voor de lijst</span></div><div class="panel">${barRows(byType,true,'filterType')}</div></div>`:''}
-    ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand,false,'filterLand')}</div></div>`:''}
-    ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar,false,'filterJaar')}</div></div>`:''}
+    ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${ovStaven('land', byLand, false, 'filterLand')}</div></div>`:''}
+    ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${ovStaven('jaar', byJaar, false, 'filterJaar')}</div></div>`:''}
     ${byLoc.length?`<div class="sect"><div class="eyebrow mb8">Per locatie</div><div class="panel">${byLoc.map(p=>{
       const e = p[0]==='Zonder locatie' ? null : locEntry(p[0]);
       return `<button class="brow" style="width:100%" data-act="filterLoc" data-l="${p[0]==='Zonder locatie'?'::none':esc(p[0])}">
@@ -3583,6 +3584,17 @@ function viewOverzicht(){
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.fovertijd=false; UI.ftype=null; render(); };
+/* Lange verdelingen (jaargangen, landen) stonden afgekapt op acht rijen zonder dat je het zag:
+   wie oudere wijnen had miste ze gewoon. Nu de eerste acht, met een regel "Alle N tonen". */
+const OV_TOON = 8;
+UI.ovOpen = {};
+function ovStaven(key, pairs, dot, act){
+  const alles = UI.ovOpen[key] || pairs.length <= OV_TOON;
+  return barRows(alles ? pairs : pairs.slice(0, OV_TOON), dot, act)
+    + (alles ? '' : `<div class="center" style="padding:6px 0 2px"><button class="linkbtn" data-act="ovAlles" data-k="${key}">Alle ${pairs.length} tonen ▾</button></div>`);
+}
+ACT.ovAlles = el => { UI.ovOpen[el.dataset.k] = true; render(); };
+ACT.soonAlle = () => { naarLijst({}); UI.sort = 'venster'; render(); };
 /* vanuit het overzicht naar de lijst: precies dit ene filter, de rest schoon */
 function naarLijst(f){ UI.tab='kelder'; UI.q=''; UI.ftype=null; UI.fstatus=false; UI.fovertijd=false; UI.floc=null; UI.fland=null; UI.fjaar=null; Object.assign(UI, f); render(); }
 ACT.tileAll = () => naarLijst({});
@@ -4090,7 +4102,7 @@ function viewImportReview(){
         <input class="inp" id="impLoc" list="locList" placeholder="bv. Vintec, zone boven" style="flex:1;min-width:0">
         <button class="btn sm" data-act="impLocAll" style="flex:none">Zetten</button></div>
       <datalist id="locList">${plekken.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
-      ${plekken.length ? `<div class="chiprow" style="padding:7px 0 0">${plekken.slice(0,8).map(l=>`<button type="button" class="chip" data-act="impLocChip" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div>` : ''}
+      ${plekken.length ? `<div class="chiprow" style="padding:7px 0 0">${plekken.map(l=>`<button type="button" class="chip" data-act="impLocChip" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div>` : ''}
       <div class="small mt8">Komt alles van één factuur maar gaat het naar twee plekken? Zet hier de plek van de meeste, en pas de rest per wijn aan.</div>
     </div>
     <div class="menu">${rijen}</div>
