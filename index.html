@@ -2985,8 +2985,8 @@ let liveMode = 'etiket';
 let photoTarget = 'etiket';
 /* iOS vraagt elke keer om de camera, tenzij de gebruiker dat in Safari vastzet. Of het venster
    verscheen kunnen we niet zien; wel hoe vaak de camera openging op dít apparaat. Bij de 3e, 4e,
-   8e, 9e en 15e keer één wenk met de instelling, daarna nooit meer. */
-const CAM_WENK_BIJ = [3, 4, 8, 9, 15];
+   8e, 10e en 15e keer één wenk met de instelling, daarna nooit meer. */
+const CAM_WENK_BIJ = [3, 4, 8, 10, 15];
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let camWenk = false;
 function camGeteld(){
