@@ -52,7 +52,7 @@ const STIJL = ' Schrijf in gewone zinnen met komma\'s en punten. Gebruik geen ge
 
 // Prijstabel: een opgezochte prijs blijft staan, met datum; de app toont "gegevens van <maand>".
 // Wie een ouder datapunt wil verversen stuurt refresh:true mee.
-type Wijn = { name?: unknown; producer?: unknown; vintage?: unknown; appellation?: unknown; region?: unknown; country?: unknown }
+type Wijn = { name?: unknown; producer?: unknown; vintage?: unknown; appellation?: unknown; region?: unknown; country?: unknown; est?: unknown }
 const tekstVeld = (x: unknown, n = 120) => String(x ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n)
 function prijsSleutel(w: Wijn): string {
   const n = (x: unknown) => String(x || '').toLowerCase().normalize('NFD')
@@ -259,8 +259,14 @@ Deno.serve(async (req) => {
       const goed = !!p && Number.isFinite(v) && v > 0 && v < 100000 && ['hoog', 'middel'].includes(String(p.confidence || ''))
       // logboek zonder gebruikers-id, en oude regels opruimen
       try {
-        await supa.from('wine_price_log').insert({ key: prijsSleutel(wijn), model, status: r.status, text: txt.slice(0, 6000),
-          value: goed ? v : null, error: p ? null : 'geen JSON', tokens_in: data?.usage?.input_tokens || 0, tokens_out: data?.usage?.output_tokens || 0 })
+        const logRij = { key: prijsSleutel(wijn), model, status: r.status, text: txt.slice(0, 6000),
+          value: goed ? v : null, error: p ? null : 'geen JSON', tokens_in: data?.usage?.input_tokens || 0, tokens_out: data?.usage?.output_tokens || 0 }
+        // Meting: wat de scanner schatte naast wat de zoekagent vond. Zolang de kolom `schatting`
+        // nog niet bestaat (SQL in supabase/sql/schatting-3sep.sql) valt de insert terug op de oude rij.
+        const est = Number(wijn.est)
+        const schatting = Number.isFinite(est) && est > 0 && est < 100000 ? est : null
+        const { error: logErr } = await supa.from('wine_price_log').insert({ ...logRij, schatting })
+        if (logErr) await supa.from('wine_price_log').insert(logRij)
         await supa.from('wine_price_log').delete().lt('created_at', new Date(Date.now() - 30 * 864e5).toISOString())
       } catch (_) { /* logboek is bijzaak */ }
       // gevonden prijs delen, alleen na controle: echt getal, geloofwaardige zekerheid, bron op een bekende site

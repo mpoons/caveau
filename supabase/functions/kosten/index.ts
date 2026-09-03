@@ -51,6 +51,17 @@ Deno.serve(async (req) => {
   const { count: prijzenTotaal } = await supa.from('wine_prices').select('*', { count: 'exact', head: true })
   const { count: zoekMissers } = await supa.from('wine_price_log').select('*', { count: 'exact', head: true }).gte('created_at', sinds).is('value', null)
   const { count: profielen } = await supa.from('profiles').select('*', { count: 'exact', head: true })
+  // Hoe scheef zit de scanner? Verhouding schatting/gevonden prijs over de week, mediaan.
+  let schattingRegel = '', schattingMeting: { n: number; mediaan: number | null; teLaag: number } | null = null
+  try {
+    const { data: paren } = await supa.from('wine_price_log').select('schatting, value').gte('created_at', sinds).not('value', 'is', null).not('schatting', 'is', null)
+    const ratios = (paren || []).map((r: { schatting: number; value: number }) => Number(r.schatting) / Number(r.value)).filter((x: number) => Number.isFinite(x) && x > 0).sort((a: number, b: number) => a - b)
+    if (ratios.length) {
+      const mediaan = ratios[Math.floor(ratios.length / 2)], teLaag = ratios.filter((x: number) => x < 0.8).length
+      schattingMeting = { n: ratios.length, mediaan, teLaag }
+      schattingRegel = `<p>Scanner tegenover zoekagent: bij ${ratios.length} ${ratios.length === 1 ? 'fles' : 'flessen'} was de schatting mediaan <b>${Math.round(mediaan * 100)}%</b> van de gevonden prijs; ${teLaag} keer meer dan 20% te laag.</p>`
+    }
+  } catch (_) { /* kolom schatting nog niet aangemaakt */ }
   const { count: plus } = await supa.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'plus')
 
   const soorten = Object.entries(perSoort).sort((a, b) => b[1].usd - a[1].usd)
@@ -65,11 +76,12 @@ Deno.serve(async (req) => {
     <table cellpadding="6" style="border-collapse:collapse;font-size:14px"><tr style="color:#8E867D;text-transform:uppercase;font-size:11px;letter-spacing:.06em"><td>Soort</td><td align="right">Acties</td><td align="right">Credits</td><td align="right">Kosten</td></tr>${regels || '<tr><td colspan="4">Geen acties deze week.</td></tr>'}</table>
     <p>Tokens: ${d.tokensIn.toLocaleString('nl-NL')} in, ${d.tokensOut.toLocaleString('nl-NL')} uit.</p>
     <p>Prijstabel: <b>${prijzenNieuw || 0}</b> nieuwe prijzen deze week, ${prijzenTotaal || 0} in totaal. Zoekagent zonder resultaat: ${zoekMissers || 0} keer.</p>
+    ${schattingRegel}
     <p>Accounts: ${profielen || 0}, waarvan ${plus || 0} Plus.</p>
     <p style="color:#8E867D;font-size:13px">Automatisch verstuurd op maandagochtend door de Edge Function <code>kosten</code>. Tarieven: Sonnet 5 $2/$10 per miljoen tokens, Haiku 4.5 $1/$5 plus zoekopdrachten.</p>
   </div>`
 
-  const samenvatting = { week: d, vorige: v, perSoort, perCreditUsd, prijzenNieuw, prijzenTotaal, zoekMissers, profielen, plus }
+  const samenvatting = { week: d, vorige: v, perSoort, perCreditUsd, prijzenNieuw, prijzenTotaal, zoekMissers, schatting: schattingMeting, profielen, plus }
   const resendKey = Deno.env.get('RESEND_API_KEY'), from = Deno.env.get('MAIL_FROM'), to = Deno.env.get('KOSTEN_MAIL_TO')
   if (!resendKey || !from || !to) {
     return new Response(JSON.stringify({ verstuurd: false, reden: 'RESEND_API_KEY, MAIL_FROM of KOSTEN_MAIL_TO ontbreekt', onderwerp, samenvatting }, null, 1), { status: 200, headers: { 'content-type': 'application/json' } })
