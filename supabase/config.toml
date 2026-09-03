@@ -11,3 +11,8 @@ verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Herinnering per mail: aangeroepen door pg_cron, niet door een gebruiker. De header
+# x-cron-secret is de toegangscontrole (zie supabase/functions/herinnering/index.ts).
+[functions.herinnering]
+verify_jwt = false
