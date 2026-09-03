@@ -2554,11 +2554,11 @@ function serveAdvice(w){
     if(licht) tips.push('Kelderkoud is beter dan kamertemperatuur. Een half uur in de koelkast doet wonderen.');
     if(groot || licht === false){
       if(age !== null && age >= 15) tips.push('Decanteren: voorzichtig overschenken zodat het bezinksel in de fles blijft, en pas kort van tevoren, want oude wijn kan snel omvallen.');
-      else if(age !== null && age <= 7) tips.push('Karafferen, dus lucht geven in een karaf: een uur of twee. Jong en stevig, hij heeft het nodig.');
-      else if(age !== null) tips.push('Karafferen: een half uur in de karaf is genoeg.');
+      else if(age !== null && age <= 7) tips.push('Geef hem wat lucht in een karaf, een uur of twee. Jong en stevig, hij heeft het nodig.');
+      else if(age !== null) tips.push('Een half uur in een karaf is genoeg.');
     }
   }
-  if(st.k === 'jong') tips.push('Nog aan de jonge kant. Extra tijd in de karaf helpt.');
+  if(st.k === 'jong') tips.push('Nog aan de jonge kant. Wat extra tijd in de karaf helpt.');
   if(st.k === 'over') tips.push('Over zijn venster: open hem voorzichtig en drink hem dezelfde avond op.');
   return { temp, glass, tips: tips.slice(0,2) };
 }
@@ -2954,12 +2954,28 @@ ACT.liveTorch = async el => {
 let liveMode = 'etiket';
 /* waar een gekozen/gemaakte foto heen gaat: 'etiket' (fles) of 'kaart' (wijnkaart) */
 let photoTarget = 'etiket';
+/* iOS vraagt elke keer om de camera, tenzij de gebruiker dat in Safari vastzet. Of het venster
+   verscheen kunnen we niet zien; wel hoe vaak de camera openging op dít apparaat. Bij de 3e, 4e,
+   8e, 9e en 15e keer één wenk met de instelling, daarna nooit meer. */
+const CAM_WENK_BIJ = [3, 4, 8, 9, 15];
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let camWenk = false;
+function camGeteld(){
+  if(!isIOS()) return;
+  let n = 0; try{ n = (parseInt(localStorage.getItem('caveau_cam'), 10) || 0) + 1; localStorage.setItem('caveau_cam', String(n)); }catch(e){ return; }
+  camWenk = CAM_WENK_BIJ.includes(n);
+}
+function camWenkToon(){
+  if(!camWenk) return; camWenk = false;
+  toast('Telkens toestemming voor de camera? Zet hem vast: Instellingen → Safari → Camera → Toestaan', null, null, 9000);
+}
 async function openLiveScan(mode){
   liveMode = mode || 'etiket'; photoTarget = liveMode;
   if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ document.getElementById('fCam').click(); return; }
   try{
     liveStream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}, audio:false });
   }catch(e){ document.getElementById('fCam').click(); return; } /* geweigerd of geen camera → systeemcamera */
+  camGeteld();
   const kaart = liveMode === 'kaart' || liveMode === 'menu';
   const div = document.createElement('div'); div.className = 'livewrap'; div.id = 'liveScan';
   div.innerHTML = `<video autoplay playsinline muted></video>
@@ -3115,7 +3131,7 @@ async function handlePhoto(file){
   }catch(e){ toast('Foto kon niet worden gelezen'); return; }
   scan.stage = 'confirm'; scan.data = null; scan.err = null; scan.match = null; scanTouched = new Set();
   scan.busy = aiReady(); vensterAuto = true;
-  UI.tab = 'scan'; render(); showScanImg();
+  UI.tab = 'scan'; render(); showScanImg(); camWenkToon();
   if(scan.busy){
     try{ await scanLezen(); }catch(e){ scan.err = leesFout(e); }
     scan.busy = false; render(); showScanImg();
