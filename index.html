@@ -588,7 +588,7 @@ const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
 const PLUS_TE_KOOP = false;
 const AANBIEDER = 'Max Ponsen';
 const CONTACT_MAIL = 'max.ponsen@gmail.com';
-const LEGAL_DATUM = '1 september 2026';
+const LEGAL_DATUM = '3 september 2026';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -4039,11 +4039,14 @@ function viewPrivacy(){
     <p>Laat je een etiket of wijnkaart lezen, of vraag je om een pairing, dan gaat die foto of vraag naar <b>Anthropic</b> in de Verenigde Staten, die het antwoord maakt. Anthropic gebruikt wat er via deze weg binnenkomt niet om modellen mee te trainen. Caveau bewaart het antwoord in jouw kelder en verder alleen de telling van je verbruik.</p>
     <p>Foto's van een <b>wijnkaart in een restaurant</b> zijn een uitzondering: die blijven in het geheugen van je telefoon zolang je ernaar kijkt en worden nooit opgeslagen, op je apparaat niet en in de cloud niet.</p>
 
+    <h3>Prijzen opzoeken</h3>
+    <p>Vraag je om de prijs van een fles precies op te zoeken, dan zoekt de sommelier op internet bij wijnhandels en veilingsites. Daarvoor gaat alleen de naam, de producent en de jaargang van die fles naar Anthropic, dat de zoekopdracht uitvoert; niet wie het vraagt en niet wat er verder in je kelder ligt. Een gevonden prijs bewaren we in een gedeelde prijstabel (naam, jaargang, prijs, bron en datum), zodat de volgende die dezelfde fles scant hem gratis krijgt. Wie een prijs opzocht, staat er alleen bij als intern kenmerk, om misbruik te kunnen herleiden; het is voor niemand zichtbaar. Van elke zoekopdracht bewaren we dertig dagen het letterlijke antwoord van het model, zonder gebruikersgegevens, om fouten te kunnen opsporen.</p>
+
     <h3>Betalen</h3>
     <p>Betalingen lopen via <b>Stripe</b>. Je kaartgegevens gaan rechtstreeks naar Stripe; Caveau ziet ze niet en bewaart ze niet. Wat wij wél bewaren is een klantnummer van Stripe en de status van je abonnement, zodat we weten hoeveel tegoed je hebt.</p>
 
     <h3>Wat we níét doen</h3>
-    <p>Geen advertenties. Geen volgcookies, geen bezoekersstatistieken, geen partij die meekijkt. We verkopen of delen je gegevens met niemand, en we lezen niet mee in je kelder.</p>
+    <p>Geen advertenties. Geen volgcookies, geen bezoekersstatistieken, geen partij die meekijkt. We verkopen of delen je gegevens met niemand, en we lezen niet mee in je kelder. De gedeelde prijstabel bevat alleen wijnen en prijzen, geen kelders en geen namen van mensen.</p>
 
     <h3>Hoe lang, en hoe je het weghaalt</h3>
     <p>Je gegevens blijven staan zolang je een account hebt. In de app kun je zelf alles wissen (Instellingen → Alles wissen; met sync aan haalt dat ook de cloudversie weg) en op elk moment een volledige back-up downloaden.</p>
@@ -4682,7 +4685,7 @@ function viewAccount(){
       <button class="btn" data-act="acLogin" style="margin-bottom:9px">Inloggen</button>
       <button class="btn ghost" data-act="acSignup">Account aanmaken</button>
       <div class="center mt8"><button class="linkbtn" data-act="acVergeten">Wachtwoord vergeten?</button></div>
-      <p class="small mt8">Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Je AI-sleutel en foto's van etiketten blijven van jou; alleen jíj kunt bij je kelder.</p>`;
+      <p class="small mt8">Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Alleen jíj kunt bij je kelder; dat is op databaseniveau afgedwongen.</p>`;
   }
   const last = c.lastSync ? new Date(c.lastSync).toLocaleString('nl-NL', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'nog niet';
   return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync actief</h2>
