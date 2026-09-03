@@ -67,11 +67,12 @@ function prijsPrompt(w: Wijn): string {
   const wie = `${naam}${prod && prod !== naam ? ', ' + prod : ''}, jaargang ${jaar || 'NV'}, ${[tekstVeld(w.appellation), tekstVeld(w.region), tekstVeld(w.country)].filter(Boolean).join(', ') || 'herkomst onbekend'}`
   const zoek = [prod, naam, jaar].filter(Boolean).join(' ')
   return `Zoek de actuele marktprijs in euro's van deze wijn: ${wie}.
-Zo werk je: zoek eerst met de zoekfunctie op "${zoek} prijs". Levert dat geen prijs op, zoek dan op "${[prod, naam].filter(Boolean).join(' ')} prijs" zonder jaargang. Een prijs die in een zoekresultaat staat telt, je hoeft de pagina niet te openen. Let op de flesmaat: Quarts de Chaume, Sauternes, Tokaji en veel zoete wijnen worden vaak per 50 cl of 37,5 cl verkocht. Zet de maat die je bij de prijs zag in size_seen en reken de prijs om naar 75 cl (50 cl × 1,5; 37,5 cl × 2; magnum ÷ 2), inclusief btw. Zie je geen maat, ga dan uit van 75 cl.
+Zo werk je: zoek eerst met de zoekfunctie op "${zoek} prix" (Franse en Nederlandse handels tonen euro's). Levert dat geen prijs op, zoek dan op "${[prod, naam].filter(Boolean).join(' ')} prijs" zonder jaargang, en als laatste op "${zoek} price". Een prijs die in een zoekresultaat staat telt, je hoeft de pagina niet te openen. Let op de flesmaat: Quarts de Chaume, Sauternes, Tokaji en veel zoete wijnen worden vaak per 50 cl of 37,5 cl verkocht. Zet de maat die je bij de prijs zag in size_seen en reken de prijs om naar 75 cl (50 cl × 1,5; 37,5 cl × 2; magnum ÷ 2), inclusief btw. Zie je geen maat, ga dan uit van 75 cl.
 Regels voor het antwoord, in deze volgorde:
 1. Vind je een prijs van precies jaargang ${jaar || 'NV'}: geef die, confidence "hoog".
 2. Vind je alleen andere jaargangen van dezelfde wijn: geef VERPLICHT de prijs van de dichtstbijzijnde jaargang, zet die jaargang in vintage_found en confidence "middel". Dit is geen mislukking, dit is het gewenste antwoord. Nooit value null zolang je van deze wijn een prijs van welke jaargang dan ook hebt gezien.
-3. Alleen als je van deze wijn helemaal geen enkele prijs vindt: {"value":null,"note":"reden"}.
+3. Vind je alleen een prijs in dollars, ponden of franken: gebruik die, reken om naar euro (1 USD = 0,92 EUR, 1 GBP = 1,17 EUR, 1 CHF = 1,05 EUR), zet de oorspronkelijke prijs en munt in note en confidence "middel". Een Amerikaanse prijs is beter dan geen prijs.
+4. Alleen als je van deze wijn helemaal geen enkele prijs vindt, in welke munt dan ook: {"value":null,"note":"reden"}.
 Antwoord als allerlaatste met alleen dit JSON-object, zonder tekst ervoor of erna en zonder codeblok:
 {"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"size_seen":"75cl|50cl|37.5cl|magnum|onbekend","confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt, met de flesmaat als die geen 75 cl was"}${STIJL}`
 }
