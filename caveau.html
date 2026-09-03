@@ -3335,10 +3335,15 @@ function viewMeer(){
       <button class="mitem" data-act="meerGo" data-p="settings">${ic('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>')}<span class="grow">Instellingen & back-up</span><span class="chev">›</span></button>
       <button class="mitem" data-act="overSheet">${ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>')}<span class="grow">Over Caveau</span><span class="chev">›</span></button>
       <button class="mitem" data-act="installSheet">${ic('<rect x="6.5" y="2.8" width="11" height="18.4" rx="2.4"/><path d="M11 18.6h2"/>')}<span class="grow">Caveau op je beginscherm</span><span class="cnt">${isStandalone()?'':'<span class="todo">nog niet</span>'}</span><span class="chev">›</span></button>
+      <button class="mitem" data-act="feedback">${ic('<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Z"/>')}<span class="grow">Iets werkt niet, of een idee?</span><span class="cnt">mail</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="voorwaarden">${ic('<path d="M6 3.5h8.5L19 8v12.5H6z"/><path d="M14 3.5V8h5"/><path d="M9 12.5h7M9 16h5"/>')}<span class="grow">Voorwaarden</span><span class="chev">›</span></button>
       <button class="mitem" data-act="meerGo" data-p="privacy">${ic('<path d="M12 3.2l6.5 2.6v5.4c0 4.2-2.7 7.4-6.5 8.6-3.8-1.2-6.5-4.4-6.5-8.6V5.8z"/><path d="M9.4 12.1l1.9 1.9 3.4-3.6"/>')}<span class="grow">Privacy</span><span class="chev">›</span></button>
     </div>`;
 }
+ACT.feedback = () => {
+  const info = `${bottleCount()} flessen, ${loggedIn() ? 'ingelogd' : 'zonder account'}, ${isStandalone() ? 'op het beginscherm' : 'in de browser'}, ${navigator.userAgent.slice(0, 80)}`;
+  location.href = `mailto:${CONTACT_MAIL}?subject=${encodeURIComponent('Caveau: ')}&body=${encodeURIComponent('\n\n\n(Laat dit staan, dan weet Max wat je gebruikt: ' + info + ')')}`;
+};
 ACT.meerGo = el => { UI.meerPage = el.dataset.p; render(); if(el.dataset.p === 'account' && typeof fetchQuota === 'function') fetchQuota(); };
 const backRow = `<button class="backrow" data-act="meerBack">‹ Terug</button>`;
 ACT.meerBack = () => { UI.meerPage='menu'; render(); };
@@ -4072,7 +4077,7 @@ function viewVoorwaarden(){
 }
 
 ACT.overSheet = () => openSheet(`${sheetHead('Over Caveau')}
-  <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen, of andersom. Je gegevens blijven op je eigen apparaat; deel de link gerust, iedereen krijgt z'n eigen kelder.</p>
+  <p style="font-size:14px;color:var(--ink2);line-height:1.65">Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen, of andersom. Zonder account blijft alles op je eigen apparaat; met een account synct je kelder tussen je apparaten. Deel de link gerust, iedereen krijgt zijn eigen kelder.</p>
   <p class="small mt14">Drinkvensters en pairing zijn schattingen. Jouw smaak wint altijd. Santé!</p>`);
 
 /* export / import / wissen */

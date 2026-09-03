@@ -16,3 +16,6 @@ verify_jwt = false
 # x-cron-secret is de toegangscontrole (zie supabase/functions/herinnering/index.ts).
 [functions.herinnering]
 verify_jwt = false
+
+[functions.kosten]
+verify_jwt = false
