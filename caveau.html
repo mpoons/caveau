@@ -1289,11 +1289,12 @@ function cellarLines(dish){
   return cellarIdx.map((w, i) => wineLine(w, i + 1)).join('\n');
 }
 
-async function aiDish(dish){
+async function aiDish(dish, stuur){
   const prompt = `Je bent mijn sommelier. Dit is een voorselectie uit mijn wijnkelder (nummer | naam | producent | jaargang | type | druiven | herkomst | drinkstatus):
 ${cellarLines(dish)}
 
-Ik ga dit eten: "${dish}".${smaakPrompt()}
+Ik ga dit eten: "${dish}".${smaakPrompt()}${stuur ? `
+Mijn bijsturing op je vorige advies: "${stuur}". Dat weegt zwaar; kies daarnaar en zeg in de redenen kort hoe je eraan tegemoetkomt.` : ''}
 Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
 {"matches":[{"id":"nummer uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
@@ -3218,7 +3219,8 @@ function viewPairing(){
     return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je (ongeveer) eten?</h2>${toggle}
       <p class="small mb8">Vaag mag: "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
       <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-        <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="" aria-label="Gerecht"></div>
+        <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="${esc(UI.pairDish||'')}" aria-label="Gerecht"></div>
+      ${(()=>{ const r = pairRecent(); return r.length ? `<div class="eyebrow mb8" style="margin-top:6px">Onlangs</div><div class="chiprow">${r.map(c => `<button class="chip" data-act="pairRecent" data-d="${esc(c.dish)}" data-s="${esc(c.stuur||'')}">${esc(c.dish)}${c.stuur ? ` <span style="opacity:.65">· ${esc(c.stuur)}</span>` : ''}</button>`).join('')}</div>` : ''; })()}
       <div class="chiprow">${chips}</div>
       <button class="btn" data-act="pairGo">Zoek de beste fles in mijn kelder</button>
       <div id="pairOut" class="mt14">${pairOut}</div>`;
@@ -3234,13 +3236,28 @@ function viewPairing(){
       <span class="wmeta">${typeHtml(w.type)}</span></span></button>`).join('')}</div>`;
 }
 ACT.pairMode = el => { UI.pairMode = el.dataset.m; pairOut=''; render(); if(UI.pairMode==='wine') fillPhotos(); };
+/* Wat je eerder invulde, nieuwste eerst: één tik en het opgeslagen advies staat er weer. */
+function pairRecent(){
+  const seen = new Set(), uit = [];
+  for(const c of (S.pairCache||[]).slice().sort((a, b) => (b.at||0) - (a.at||0))){
+    if(!c.dish || seen.has(c.key)) continue; seen.add(c.key);
+    uit.push(c); if(uit.length >= 6) break;
+  }
+  return uit;
+}
+ACT.pairRecent = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d; runPair(el.dataset.d, false, el.dataset.s || ''); };
+/* Bijsturen: hetzelfde gerecht, met een wens erbij ("liever wit", "niet de Barolo"). Altijd vers aan de AI. */
+ACT.pairStuur = el => { const stuur = ((document.getElementById('pairStuur')||{}).value||'').trim(); if(!stuur){ toast('Zeg wat er anders moet, bv. liever wit'); return; } runPair(el.dataset.d, true, stuur); };
+ACT.pairStuurQuick = el => { const i = document.getElementById('pairStuur'); if(i) i.value = el.dataset.s; runPair(el.dataset.d, true, el.dataset.s); };
 ACT.pairQuick = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d; ACT.pairGo(); };
 ACT.pairGo = () => runPair(((document.getElementById('pairDish')||{}).value||'').trim(), false);
 ACT.pairFresh = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d||''; runPair(el.dataset.d||'', true); };
-async function runPair(dish, force){
+async function runPair(dish, force, stuur){
   if(!dish){ toast('Vertel eerst wat je gaat eten'); return; }
   const out = document.getElementById('pairOut'); if(!out) return;
-  const key = norm(dish);
+  stuur = (stuur || '').trim().slice(0, 120);
+  UI.pairDish = dish;
+  const key = norm(dish) + (stuur ? ' | ' + norm(stuur) : '');
   let html = '', src = 'Kelderregels', matches = null, buyTip = null, cachedAt = null;
   /* eerder opgeslagen resultaat? (alleen wijnen die nog op voorraad zijn) */
   if(!force){
@@ -3254,12 +3271,12 @@ async function runPair(dish, force){
     out.innerHTML = `<div class="banner">${pourSvg}<span class="pulse">De sommelier proeft in gedachten…</span></div>`;
     if(aiReady()){
       try{
-        const r = await aiDish(dish);
+        const r = await aiDish(dish, stuur);
         matches = (r.matches||[]).map(m => ({w:findWine(m.id), score:Math.round(m.score), reason:m.reason})).filter(m => m.w);
         buyTip = r.buy_tip || null; src = 'Sommelier-AI';
         if(matches.length){
           S.pairCache = (S.pairCache||[]).filter(c => c.key !== key);
-          S.pairCache.unshift({key, dish, at:Date.now(), matches:matches.map(m => ({id:m.w.id, score:m.score, reason:m.reason})), buyTip});
+          S.pairCache.unshift({key, dish, stuur: stuur || undefined, at:Date.now(), matches:matches.map(m => ({id:m.w.id, score:m.score, reason:m.reason})), buyTip});
           S.pairCache = S.pairCache.slice(0, 30);
           save();
         }
@@ -3272,7 +3289,7 @@ async function runPair(dish, force){
     }
   }
   if(matches.length){
-    const meta = src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src;
+    const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
     html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
@@ -3288,6 +3305,10 @@ async function runPair(dish, force){
         <div class="mt8" style="display:flex;gap:16px;flex-wrap:wrap"><button class="linkbtn" data-act="${onTable(m.w.id)?'tafelAf':'tafelOp'}" data-id="${m.w.id}">${onTable(m.w.id)?'✓ Op tafel':'✓ Deze kies ik'}</button><button class="linkbtn" data-act="detail" data-id="${m.w.id}">Bekijk fles →</button><button class="linkbtn" data-act="askSomm" data-id="${m.w.id}" data-dish="${esc(dish)}">${ik('chat')} Vraag</button></div></div>`;
     }).join('');
     if(buyTip) html += `<div class="banner"><span>${ik('winkel')}</span><span>${esc(buyTip)}</span></div>`;
+    /* na het advies: bijsturen, alleen als de AI het kan opvolgen (de kelderregels kennen geen "liever wit") */
+    if(aiReady()) html += `<div class="panel" style="padding:11px 13px;margin-top:12px"><div class="eyebrow mb8">Stuur het advies bij</div>
+      <div style="display:flex;gap:8px"><input class="inp" id="pairStuur" placeholder="bv. liever wit, iets lichter, niet de Barolo" value="${esc(stuur||'')}" style="flex:1;min-width:0" aria-label="Bijsturing"><button class="btn sm" data-act="pairStuur" data-d="${esc(dish)}" style="flex:none">Opnieuw</button></div>
+      <div class="chiprow" style="padding-top:8px">${['Liever wit','Liever rood','Iets lichter','Iets specialer','Een eenvoudigere fles','Niet de eerste'].map(q => `<button class="chip" data-act="pairStuurQuick" data-d="${esc(dish)}" data-s="${esc(q)}">${q}</button>`).join('')}</div></div>`;
   } else {
     html = `<div class="empty"><div class="big">Geen goede match</div><p>${buyTip?esc(buyTip):'Probeer het gerecht anders te omschrijven.'}</p></div>`;
   }
