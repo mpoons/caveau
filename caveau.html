@@ -1439,7 +1439,7 @@ function resizeImg(file, maxW, q, opts){
 <script>
 'use strict';
 /* ================= UI-status & dispatcher ================= */
-const UI = { tab:'kelder', q:'', ftype:null, fstatus:false, fovertijd:false, floc:null, sort:'recent',
+const UI = { tab:'kelder', q:'', ftype:null, fstatus:false, fovertijd:false, floc:null, fland:null, fjaar:null, sort:'recent',
              pairMode:'dish', pairBusy:false, meerPage:'menu' };
 
 const INP = {};
@@ -1477,6 +1477,8 @@ const IK = {
   wolk:'<path d="M7 18h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.6 1.5A3.3 3.3 0 0 0 7 18Z"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".4" fill="currentColor"/>',
   waarschuwing:'<path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".4" fill="currentColor"/>',
+  speld:'<path d="M12 21.5s-6.5-5.6-6.5-11.3a6.5 6.5 0 0 1 13 0C18.5 15.9 12 21.5 12 21.5Z"/><circle cx="12" cy="10" r="2.3"/>',
+  prullenbak:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.2A1.5 1.5 0 0 0 8.8 20.6h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 10.5v6.5M14 10.5v6.5"/>',
   druif:'<circle cx="9" cy="11" r="2.2"/><circle cx="15" cy="11" r="2.2"/><circle cx="12" cy="15.5" r="2.2"/><circle cx="12" cy="8" r="2.2"/><path d="M12 5.8V3M12 3c1.5 0 2.5-.5 3.5-1.5"/>',
 };
 const ik = (n, size) => `<svg class="ik" width="${size||15}" height="${size||15}" viewBox="0 0 24 24" aria-hidden="true">${IK[n]||''}</svg>`;
@@ -1508,6 +1510,8 @@ function filteredWines(){
   if(UI.fstatus) a = a.filter(w => ['op','nu'].includes(windowStatus(w).k));
   if(UI.fovertijd) a = a.filter(w => windowStatus(w).k === 'over');
   if(UI.floc) a = a.filter(w => UI.floc === '::none' ? !w.location : (w.location||'') === UI.floc);
+  if(UI.fland) a = a.filter(w => (w.country||'Onbekend') === UI.fland);
+  if(UI.fjaar) a = a.filter(w => String(w.vintage||'NV') === UI.fjaar);
   const by = {
     recent: (x,y) => (y.addedAt||0) - (x.addedAt||0),
     naam:   (x,y) => (x.name||'').localeCompare(y.name||'', 'nl'),
@@ -1552,6 +1556,9 @@ function viewKelder(){
     `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">${ik('zandloper')} Over tijd</button>`,
     ...typesZichtbaar(UI.ftype).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
     locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
+    /* land en jaargang komen uit het overzicht; de chip laat zien wat er actief is en haalt het met één tik weg */
+    UI.fland ? `<button class="chip on" data-act="chipLand">${esc(UI.fland)} ✕</button>` : '',
+    UI.fjaar ? `<button class="chip on" data-act="chipJaar">${esc(UI.fjaar)} ✕</button>` : '',
   ].join('');
   const bc = bottleCount(), val = cellarValue();
   let body;
@@ -1587,6 +1594,8 @@ function viewKelder(){
 INP.q = el => { UI.q = el.value; refreshList(); };
 function refreshList(){ if(UI.tab==='kelder') { render(true); } }
 ACT.chipType = el => { UI.ftype = el.dataset.t || null; render(); };
+ACT.chipLand = () => { UI.fland = null; render(); };
+ACT.chipJaar = () => { UI.fjaar = null; render(); };
 ACT.chipStatus = () => { UI.fstatus = !UI.fstatus; if(UI.fstatus) UI.fovertijd = false; render(); };
 ACT.chipOver = () => { UI.fovertijd = !UI.fovertijd; if(UI.fovertijd) UI.fstatus = false; render(); };
 ACT.chipLoc = () => {
@@ -2332,8 +2341,29 @@ function locOptions(){
 }
 function locSelectOptions(sel){
   return `<option value=""${!sel?' selected':''}>geen locatie</option>` +
-    locOptions().map(l => `<option value="${esc(l)}"${l===sel?' selected':''}>${esc(l)}</option>`).join('');
+    locOptions().map(l => `<option value="${esc(l)}"${l===sel?' selected':''}>${esc(l)}</option>`).join('') +
+    `<option value="::nieuw">+ Nieuwe plek…</option>`;
 }
+/* Eén klein venster voor een nieuwe plek; wie hem aanroept zegt wat er daarna moet gebeuren. */
+let nieuwLocCb = null;
+function openNieuweLoc(cb){
+  nieuwLocCb = cb || null;
+  openSheet(`${sheetHead('Nieuwe plek')}
+    <div class="field"><label>Naam</label><input class="inp" id="nieuwLocNaam" placeholder="bv. Kast onder de trap, Vintec links" maxlength="60" autocomplete="off"></div>
+    <p class="small mb8">Later kun je er in Meer → Locaties een foto bij zetten of vakjes van maken.</p>
+    <div class="btnrow"><button class="btn plain" data-act="closeSheet">Annuleer</button><button class="btn" data-act="nieuwLocSave">Bewaren</button></div>`);
+  setTimeout(() => { const i = document.getElementById('nieuwLocNaam'); if(i) i.focus(); }, 350);
+}
+ACT.nieuwLocSave = () => {
+  const naam = ((document.getElementById('nieuwLocNaam')||{}).value||'').trim().slice(0, 60);
+  if(!naam){ toast('Geef de plek een naam'); return; }
+  const bestond = locOptions().some(l => norm(l) === norm(naam));
+  locEntry(naam, true); save();
+  closeSheet();
+  const cb = nieuwLocCb; nieuwLocCb = null;
+  if(cb) cb(naam);
+  toast(bestond ? `${naam} bestond al, gekozen` : `Plek ${naam} toegevoegd`);
+};
 ACT.fillLoc = el => {
   const f = document.getElementById('f_loc'); if(f) f.value = el.dataset.l;
   const q = document.getElementById('quickLoc'); if(q) q.value = el.dataset.l;
@@ -2523,9 +2553,9 @@ function serveAdvice(w){
     glass = has(['pinot','nebbiolo']) ? 'een bourgogneglas (bolle kelk)' : groot ? 'een ruim bordeauxglas' : 'een tulpvormig wijnglas';
     if(licht) tips.push('Kelderkoud is beter dan kamertemperatuur. Een half uur in de koelkast doet wonderen.');
     if(groot || licht === false){
-      if(age !== null && age >= 15) tips.push('Karafferen: voorzichtig overschenken om het bezinksel achter te laten, en kort, want oude wijn kan snel omvallen.');
-      else if(age !== null && age <= 7) tips.push('Karafferen: een uur of twee. Jong en stevig, hij heeft lucht nodig.');
-      else if(age !== null) tips.push('Karafferen: een half uur is genoeg.');
+      if(age !== null && age >= 15) tips.push('Decanteren: voorzichtig overschenken zodat het bezinksel in de fles blijft, en pas kort van tevoren, want oude wijn kan snel omvallen.');
+      else if(age !== null && age <= 7) tips.push('Karafferen, dus lucht geven in een karaf: een uur of twee. Jong en stevig, hij heeft het nodig.');
+      else if(age !== null) tips.push('Karafferen: een half uur in de karaf is genoeg.');
     }
   }
   if(st.k === 'jong') tips.push('Nog aan de jonge kant. Extra tijd in de karaf helpt.');
@@ -3019,7 +3049,19 @@ ACT.scanDrinkNow = () => {
   const d = readForm();
   openDrinkExtern({name:d.name, producer:d.producer, vintage:d.vintage, type:d.type}, scan.thumb);
 };
-INP.quickLoc = el => { const f = document.getElementById('f_loc'); if(f) f.value = el.value; rekRefresh(); };
+INP.quickLoc = el => {
+  if(el.value === '::nieuw'){
+    const vorige = (document.getElementById('f_loc')||{}).value || '';
+    el.value = vorige;   /* bij annuleren blijft de oude keuze staan */
+    openNieuweLoc(naam => {
+      const f = document.getElementById('f_loc'); if(f) f.value = naam;
+      const q = document.getElementById('quickLoc'); if(q){ q.innerHTML = locSelectOptions(naam); q.value = naam; }
+      rekRefresh();
+    });
+    return;
+  }
+  const f = document.getElementById('f_loc'); if(f) f.value = el.value; rekRefresh();
+};
 
 /* venster ontbreekt in het scanresultaat → altijd alvast een regels-schatting invullen */
 function ensureWindow(d){
@@ -3408,14 +3450,16 @@ function menuGuideHtml(dish, primary){
 }
 
 /* ================= OVERZICHT ================= */
-function barRows(pairs, dot){
+/* Met `act` wordt elke rij een knop die de kelderlijst op die waarde filtert, net als bij de locaties. */
+function barRows(pairs, dot, act){
   const mx = Math.max(1, ...pairs.map(p => p[1]));
   return pairs.map(p => {
     /* bij een typeverdeling krijgt de staaf de kleur van het type, net als het bolletje */
     const cls = (dot && TYPES[p[2]]) ? ' ' + TYPES[p[2]].c : '';
-    return `<div class="brow"><span class="l">${dot?dotHtml(p[2]):''}${esc(p[0])}</span>
+    const open = act ? `<button class="brow" style="width:100%" data-act="${act}" data-v="${esc(dot ? p[2] : p[0])}">` : '<div class="brow">';
+    return `${open}<span class="l">${dot?dotHtml(p[2]):''}${esc(p[0])}</span>
     <span class="track"><span class="fill${cls}" style="width:${Math.max(4, p[1]/mx*100)}%"></span></span>
-    <span class="v tnum">${p[1]}</span></div>`;
+    <span class="v tnum">${p[1]}</span>${act ? '</button>' : '</div>'}`;
   }).join('');
 }
 function viewOverzicht(){
@@ -3455,9 +3499,9 @@ function viewOverzicht(){
     </div>
     ${soon.length?`<div class="sect"><div class="eyebrow mb8">Drink binnenkort</div><div class="panel">${soon.map(w=>{const st=windowStatus(w);
       return `<button class="rowline" style="width:100%;text-align:left" data-act="detail" data-id="${w.id}"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">×${w.qty}${w.location?' · '+esc(w.location):''}</div></span><span class="z"><span class="badge ${st.cls}">${st.sub||st.label}</span></span></button>`;}).join('')}</div></div>`:''}
-    ${byType.length?`<div class="sect"><div class="eyebrow mb8">Per type</div><div class="panel">${barRows(byType,true)}</div></div>`:''}
-    ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand)}</div></div>`:''}
-    ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar)}</div></div>`:''}
+    ${byType.length?`<div class="sect"><div class="eyebrow mb8">Per type <span class="small" style="text-transform:none;letter-spacing:0">· tik voor de lijst</span></div><div class="panel">${barRows(byType,true,'filterType')}</div></div>`:''}
+    ${byLand.length?`<div class="sect"><div class="eyebrow mb8">Per land</div><div class="panel">${barRows(byLand,false,'filterLand')}</div></div>`:''}
+    ${byJaar.length?`<div class="sect"><div class="eyebrow mb8">Per jaargang</div><div class="panel">${barRows(byJaar,false,'filterJaar')}</div></div>`:''}
     ${byLoc.length?`<div class="sect"><div class="eyebrow mb8">Per locatie</div><div class="panel">${byLoc.map(p=>{
       const e = p[0]==='Zonder locatie' ? null : locEntry(p[0]);
       return `<button class="brow" style="width:100%" data-act="filterLoc" data-l="${p[0]==='Zonder locatie'?'::none':esc(p[0])}">
@@ -3470,8 +3514,13 @@ function viewOverzicht(){
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.fovertijd=false; UI.ftype=null; render(); };
-ACT.tileAll = () => { UI.tab='kelder'; UI.fstatus=false; UI.fovertijd=false; UI.ftype=null; UI.floc=null; UI.q=''; render(); };
-ACT.filterLoc = el => { UI.tab='kelder'; UI.floc=el.dataset.l||null; UI.ftype=null; UI.fstatus=false; UI.fovertijd=false; render(); };
+/* vanuit het overzicht naar de lijst: precies dit ene filter, de rest schoon */
+function naarLijst(f){ UI.tab='kelder'; UI.q=''; UI.ftype=null; UI.fstatus=false; UI.fovertijd=false; UI.floc=null; UI.fland=null; UI.fjaar=null; Object.assign(UI, f); render(); }
+ACT.tileAll = () => naarLijst({});
+ACT.filterLoc = el => naarLijst({floc: el.dataset.l||null});
+ACT.filterType = el => naarLijst({ftype: el.dataset.v||null});
+ACT.filterLand = el => naarLijst({fland: el.dataset.v||null});
+ACT.filterJaar = el => naarLijst({fjaar: el.dataset.v||null});
 ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
 
 /* ================= MEER ================= */
@@ -3619,12 +3668,12 @@ function viewLocs(){
   const counts = {};
   S.wines.forEach(w => { if(w.location) counts[w.location] = (counts[w.location]||0) + (w.qty||0); });
   const body = !locs.length
-    ? `<div class="empty"><div class="big">Nog geen locaties</div><p>Geef flessen een locatie bij het toevoegen of bewerken. Dan verschijnen je rekken en plekken hier.</p></div>`
+    ? `<div class="empty"><div class="big">Nog geen locaties</div><p>Geef flessen een locatie bij het toevoegen of bewerken, of maak hier alvast een plek aan.</p><button class="btn ghost" data-act="locNieuw" style="max-width:280px">+ Nieuwe plek</button></div>`
     : `<div class="menu">${locs.map(n => { const e = locEntry(n); const heeft = e && e.photo; const rek = rekVan(n);
         const bezet = rek ? Object.keys(rek.vakken||{}).filter(k => findWine(rek.vakken[k])).length : 0;
         return `<div class="mitem" style="cursor:default">
           ${heeft?`<img data-photo="${e.id}" style="width:42px;height:42px;border-radius:9px;object-fit:cover;flex:none" alt="Foto van ${esc(n)}">`
-                 :`<span style="width:42px;height:42px;border-radius:9px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none">📍</span>`}
+                 :`<span style="width:42px;height:42px;border-radius:9px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none">${ik('speld', 20)}</span>`}
           <button class="grow" style="text-align:left" data-act="filterLoc" data-l="${esc(n)}">
             <div style="font-weight:600">${esc(n)}</div>
             <div class="small">${counts[n]||0} ${plur(counts[n]||0,'fles','flessen')}${rek?` · ${rek.rijen}×${rek.kolommen} vakken, ${bezet} bezet`:''} · tik voor de lijst</div>
@@ -3632,8 +3681,9 @@ function viewLocs(){
           <button class="btn sm plain" data-act="rekOpen" data-n="${esc(n)}" aria-label="${rek?'Rek bekijken':'Vakken instellen'}" style="flex:none;${rek?'color:var(--acc-ink)':''}">${REK_ICOON}</button>
           <button class="btn sm plain" data-act="locPhoto" data-n="${esc(n)}" aria-label="Foto toevoegen of wijzigen" style="flex:none">${ik('camera')}</button>
           ${heeft?`<button class="btn sm plain" data-act="locPhotoDel" data-n="${esc(n)}" aria-label="Foto verwijderen" style="flex:none">✕</button>`:''}
-          <button class="btn sm plain" data-act="locDel" data-n="${esc(n)}" aria-label="Locatie verwijderen" style="flex:none">🗑</button>
+          <button class="btn sm plain" data-act="locDel" data-n="${esc(n)}" aria-label="Locatie verwijderen" style="flex:none">${ik('prullenbak', 17)}</button>
         </div>`; }).join('')}</div>
+      <div class="center mt8"><button class="linkbtn" data-act="locNieuw">+ Nieuwe plek toevoegen</button></div>
       <p class="small mt8">Heeft een locatie vakjes, zoals een wijnrek? Tik op ${REK_ICOON} en geef rijen en kolommen op. Daarna kies je bij het toevoegen of bewerken per fles een vak. Een foto per locatie is optioneel, handig om te zien welk rek of welke kast bedoeld wordt.</p>`;
   return `${brandRow('')}${backRow}<div class="eyebrow">Locaties</div><h2 class="h2">Rekken &amp; plekken</h2>${body}`;
 }
@@ -3684,6 +3734,7 @@ ACT.locPhotoDel = el => {
   const e = locEntry(el.dataset.n);
   if(e){ pDel(e.id); if(typeof cloudDeletePhoto === 'function') cloudDeletePhoto(e.id); e.photo = false; save(); render(); }
 };
+ACT.locNieuw = () => openNieuweLoc(() => render());
 ACT.locDel = el => {
   const name = el.dataset.n;
   const wijnen = S.wines.filter(w => w.location === name);
