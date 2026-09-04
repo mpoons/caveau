@@ -1580,16 +1580,19 @@ function wineCardHtml(w){
 function viewKelder(){
   const list = filteredWines();
   const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
-  const chips = [
-    `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`,
-    `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`,
-    `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">${ik('zandloper')} Over tijd</button>`,
-    ...typesZichtbaar(UI.ftype).map(t => `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`),
-    locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : '',
+  /* Volgorde: Locatie altijd vooraan, dan wat er aan staat (anders scrolt een actief filter
+     uit beeld), dan de rest. Elk item: [aan, html]. */
+  const rij = [
+    [!!UI.floc, locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : ''],
+    [!UI.ftype, `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`],
+    [UI.fstatus, `<button class="chip ${UI.fstatus?'on':''}" data-act="chipStatus">Op dronk</button>`],
+    [UI.fovertijd, `<button class="chip ${UI.fovertijd?'on':''}" data-act="chipOver">${ik('zandloper')} Over tijd</button>`],
+    ...typesZichtbaar(UI.ftype).map(t => [UI.ftype===t, `<button class="chip ${UI.ftype===t?'on':''}" data-act="chipType" data-t="${t}"><span class="tdot ${TYPES[t].c}"></span>${TYPES[t].l}</button>`]),
     /* land en jaargang komen uit het overzicht; de chip laat zien wat er actief is en haalt het met één tik weg */
-    UI.fland ? `<button class="chip on" data-act="chipLand">${esc(UI.fland)} ✕</button>` : '',
-    UI.fjaar ? `<button class="chip on" data-act="chipJaar">${esc(UI.fjaar)} ✕</button>` : '',
-  ].join('');
+    [true, UI.fland ? `<button class="chip on" data-act="chipLand">${esc(UI.fland)} ✕</button>` : ''],
+    [true, UI.fjaar ? `<button class="chip on" data-act="chipJaar">${esc(UI.fjaar)} ✕</button>` : ''],
+  ].filter(x => x[1]);
+  const chips = [rij[0][1], ...rij.slice(1).filter(x => x[0]).map(x => x[1]), ...rij.slice(1).filter(x => !x[0]).map(x => x[1])].join('');
   const bc = bottleCount(), val = cellarValue();
   let body;
   if(!S.wines.length){
