@@ -1580,8 +1580,8 @@ function wineCardHtml(w){
 function viewKelder(){
   const list = filteredWines();
   const locs = [...new Set(S.wines.map(w => w.location).filter(Boolean))];
-  /* Volgorde: Locatie altijd vooraan, dan wat er aan staat (anders scrolt een actief filter
-     uit beeld), dan de rest. Elk item: [aan, html]. */
+  /* Volgorde: Locatie altijd vooraan, de rest op een vaste plek (verspringen bleek storender
+     dan scrollen). Elk item: [aan, html]; 'aan' blijft staan voor wie de volgorde ooit wil wegen. */
   const rij = [
     [!!UI.floc, locs.length ? `<button class="chip ${UI.floc?'on':''}" data-act="chipLoc">${UI.floc?(UI.floc==='::none'?'Zonder locatie':esc(UI.floc)):'Locatie'} ▾</button>` : ''],
     [!UI.ftype, `<button class="chip ${!UI.ftype?'on':''}" data-act="chipType" data-t="">Alle</button>`],
@@ -1592,7 +1592,7 @@ function viewKelder(){
     [true, UI.fland ? `<button class="chip on" data-act="chipLand">${esc(UI.fland)} ✕</button>` : ''],
     [true, UI.fjaar ? `<button class="chip on" data-act="chipJaar">${esc(UI.fjaar)} ✕</button>` : ''],
   ].filter(x => x[1]);
-  const chips = [rij[0][1], ...rij.slice(1).filter(x => x[0]).map(x => x[1]), ...rij.slice(1).filter(x => !x[0]).map(x => x[1])].join('');
+  const chips = rij.map(x => x[1]).join('');
   const bc = bottleCount(), val = cellarValue();
   let body;
   if(!S.wines.length){
@@ -2659,8 +2659,20 @@ function updateBadge(){
 
 /* Herbereken drinkvenster + pairing op basis van wat er nu in het formulier staat
    (bv. na het zelf invullen van jaargang of druiven). AI indien beschikbaar, anders kelderregels. */
-async function doRecalc(el, silent){
+/* Is de waarde in het veld nog de schatting van de AI (of leeg)? Dan mag een herberekening hem
+   overschrijven. Een zelf getypte of opgezochte waarde blijft altijd staan. */
+function waardeIsSchatting(v){
+  if(v == null) return true;
+  if(scan.stage === 'confirm' && scan.data && scan.data.value_eur != null && v === Math.round(scan.data.value_eur)) return true;
+  if(recalcValueRange && v === recalcValueRange.value) return true;
+  if(formVakWine && formVakWine.valueSrc === 'ai' && v === formVakWine.value) return true;
+  return false;
+}
+async function doRecalc(el, silent, opts){
+  opts = opts || {};
   const d = readForm();
+  /* automatisch na een jaargangwijziging: het venster alleen bijrekenen zolang het een schatting is */
+  const venster = !opts.auto || vensterAuto;
   if(!d.name && !(d.grapes||[]).length && !d.region && !d.appellation){
     if(!silent) toast('Vul eerst minstens een naam, druif of regio in');
     return;
@@ -2673,25 +2685,36 @@ async function doRecalc(el, silent){
   if(!silent && aiReady()){
     try{
       const r = await aiRecalc(d);
-      if(r.drink_from) setVal('f_from', r.drink_from);
-      if(r.drink_to) setVal('f_to', r.drink_to);
+      if(venster && r.drink_from) setVal('f_from', r.drink_from);
+      if(venster && r.drink_to) setVal('f_to', r.drink_to);
       if(!(d.grapes||[]).length && Array.isArray(r.grapes) && r.grapes.length) setVal('f_grapes', r.grapes.join(', '));
       if(!d.note && r.note) setVal('f_note', r.note);
       if(Array.isArray(r.pairing) && r.pairing.length){
         recalcPairing = r.pairing;
         if(scan.stage === 'confirm' && scan.data) scan.data.pairing = r.pairing;
       }
-      if(r.value_eur != null && d.value == null && r.value_confidence !== 'laag') setVal('f_value', Math.round(r.value_eur));
-      if(r.value_low != null && r.value_high != null && r.value_confidence !== 'laag') recalcValueRange = {low:Math.round(r.value_low), high:Math.round(r.value_high), value:(r.value_eur!=null?Math.round(r.value_eur):null)};
+      /* de waarde hoort bij een jaargang: een schatting wordt overschreven, eigen of opgezochte cijfers niet */
+      if(waardeIsSchatting(d.value)){
+        const fv = document.getElementById('f_value');
+        if(r.value_eur != null && r.value_confidence !== 'laag'){
+          if(fv) fv.value = Math.round(r.value_eur);
+          recalcValueRange = {low:(r.value_low!=null?Math.round(r.value_low):null), high:(r.value_high!=null?Math.round(r.value_high):null), value:Math.round(r.value_eur)};
+          if(scan.stage === 'confirm' && scan.data) scan.data.prijs_onzeker = false;
+        } else if(r.value_confidence === 'laag'){
+          if(fv) fv.value = ''; recalcValueRange = null;
+          if(scan.stage === 'confirm' && scan.data) scan.data.prijs_onzeker = true;
+        }
+      }
       src = 'Sommelier-AI'; done = true;
     }catch(e){ /* val terug op regels */ }
   }
-  if(!done){
+  if(!done && venster){
     const est = estimateWindow(d);
     setVal('f_from', est.from); setVal('f_to', est.to);
   }
   if(el){ el.innerHTML = orig; el.style.pointerEvents = ''; }
-  toast(`Drinkvenster bijgewerkt (${src})`);
+  if(opts.auto && done) toast(`Waarde${venster ? ' en venster' : ''} bijgerekend voor ${d.vintage || 'NV'}${ownKey() ? '' : ' · 1 credit'}`);
+  else if(!opts.auto || venster) toast(`Drinkvenster bijgewerkt (${src})`);
 }
 ACT.recalc = el => doRecalc(el, false);
 
@@ -2707,8 +2730,15 @@ document.addEventListener('input', e => {
 });
 /* jaargang ingevuld of gewijzigd → venster automatisch bijrekenen zolang het een schatting is */
 document.addEventListener('change', e => {
-  if(!e.target || e.target.id !== 'f_vintage' || !vensterAuto) return;
-  doRecalc(document.getElementById('recalcBtn'), true);
+  if(!e.target || e.target.id !== 'f_vintage') return;
+  if(scan.stage === 'confirm' && scan.busy) return;   /* de scan loopt nog; scanLezen rekent straks zelf bij */
+  const d = readForm(), btn = document.getElementById('recalcBtn');
+  /* De waarde hoort bij een jaargang. Was hij door de AI geschat (of leeg), dan rekent de AI
+     opnieuw mét de nieuwe jaargang (1 credit). Opgezocht of zelf ingevuld blijft staan. */
+  if(aiReady() && d.name && waardeIsSchatting(d.value)){ doRecalc(btn, false, {auto:true}); return; }
+  const b = formVakWine && formVakWine.valueSrc === 'zoek' ? formVakWine.valueBron : null;
+  if(b && b.vintage && d.vintage && b.vintage !== d.vintage) toast(`De opgezochte prijs gold voor jaargang ${b.vintage}. Zoek in het detail opnieuw op`, null, null, 6000);
+  if(vensterAuto) doRecalc(btn, true);
 });
 function openWineForm(w){
   formQty = 1; recalcPairing = null; recalcValueRange = null; proefRating = null; vensterAuto = !w || (!w.drinkFrom && !w.drinkTo);
@@ -3147,6 +3177,10 @@ async function scanLezen(){
   behoudEigenInvoer(d);
   scan.data = d;
   scan.match = matchWine({name:d.name, producer:d.producer, vintage:d.vintage});
+  /* typte de gebruiker intussen een andere jaargang dan de AI las, dan hoort de waarde daarbij */
+  const f = readForm();
+  if(scanTouched.has('f_vintage') && f.vintage && f.vintage !== d.vintage && aiReady() && d.name)
+    setTimeout(() => { if(scan.stage === 'confirm' && !scan.busy) doRecalc(document.getElementById('recalcBtn'), false, {auto:true}); }, 400);
 }
 ACT.scanRetry = async () => {
   if(!scan.photo || scan.busy) return;
@@ -3571,7 +3605,7 @@ function viewOverzicht(){
       <button class="tile" data-act="tileAll"><div class="k">Flessen</div><div class="n">${bc}</div><div class="s">tik voor de lijst</div></button>
       <div class="tile"><div class="k">Kelderwaarde</div><div class="n">${val?money(val):'—'}</div>${val?`<div class="s tnum">${money(totLow)} – ${money(totHigh)}</div>`:''}</div>
       <button class="tile" data-act="tileDronk"><div class="k">Nu op dronk</div><div class="n" style="color:var(--ok)">${readyN}</div><div class="s">tik voor de lijst</div></button>
-      <div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div></div>
+      ${thisYear ? `<button class="tile" data-act="tileGedronken"><div class="k">Gedronken in ${YR()}</div><div class="n">${thisYear}</div><div class="s">tik voor de lijst</div></button>` : `<div class="tile"><div class="k">Gedronken in ${YR()}</div><div class="n">0</div></div>`}
     </div>
     ${soon.length?`<div class="sect"><div class="eyebrow mb8">Drink binnenkort</div><div class="panel">${soon.map(w=>{const st=windowStatus(w);
       return `<button class="rowline" style="width:100%;text-align:left" data-act="detail" data-id="${w.id}"><span class="a"><div class="t">${esc(w.name)} ${w.vintage||''}</div><div class="u">×${w.qty}${w.location?' · '+esc(w.location):''}</div></span><span class="z"><span class="badge ${st.cls}">${st.sub||st.label}</span></span></button>`;}).join('')}</div>${soonAlle.length > soon.length ? `<div class="center mt8"><button class="linkbtn" data-act="soonAlle">Alle ${soonAlle.length} in de lijst →</button></div>` : ''}</div>`:''}
@@ -3589,6 +3623,16 @@ function viewOverzicht(){
       `<div class="rowline"><span class="a"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${h.extern?ik('bord')+' ':''}${esc(h.date)}${h.note?' · '+esc(h.note.slice(0,42)):''}</div></span><span class="z starmini">${starsText(h.rating)}</span></div>`).join('')}
       <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div></div></div>`:''}`;
 }
+/* Wat er dit jaar open ging, in een venster binnen het overzicht; een rij opent de notitie. */
+ACT.tileGedronken = () => {
+  const jaar = YR(), items = S.history.filter(h => !h.weg && (h.date||'').slice(0,4) == jaar);
+  openSheet(`${sheetHead('Gedronken in ' + jaar)}
+    <div class="small mb8">${items.length} ${plur(items.length, 'fles', 'flessen')}, nieuwste eerst.</div>
+    <div class="panel" style="padding:2px 13px">${items.map(h => `<button class="rowline" style="width:100%;text-align:left" data-act="histOpen" data-id="${h.id}">
+      <span class="a" style="min-width:0"><div class="t">${esc(h.name)} ${h.vintage||''}</div><div class="u">${esc(h.date)}${h.extern?' · '+ik('bord')+' '+esc(h.place||'buiten de kelder'):''}${h.proef?' · '+ik('druif')+' '+proefLabel(h):''}${h.note?' · '+esc(h.note.slice(0,40))+(h.note.length>40?'…':''):''}</div></span>
+      <span class="z starmini">${starsText(h.rating)}</span></button>`).join('')}</div>
+    <div class="center mt8"><button class="linkbtn" data-act="goHistory">Bekijk hele historie →</button></div>`);
+};
 ACT.tileDronk = () => { UI.tab='kelder'; UI.fstatus=true; UI.fovertijd=false; UI.ftype=null; render(); };
 /* Lange verdelingen (jaargangen, landen) stonden afgekapt op acht rijen zonder dat je het zag:
    wie oudere wijnen had miste ze gewoon. Nu de eerste acht, met een regel "Alle N tonen". */
@@ -3608,7 +3652,7 @@ ACT.filterLoc = el => naarLijst({floc: el.dataset.l||null});
 ACT.filterType = el => naarLijst({ftype: el.dataset.v||null});
 ACT.filterLand = el => naarLijst({fland: el.dataset.v||null});
 ACT.filterJaar = el => naarLijst({fjaar: el.dataset.v||null});
-ACT.goHistory = () => { UI.tab='meer'; UI.meerPage='history'; render(); };
+ACT.goHistory = () => { closeSheet(true); UI.tab='meer'; UI.meerPage='history'; render(); };
 
 /* ================= MEER ================= */
 function viewMeer(){
