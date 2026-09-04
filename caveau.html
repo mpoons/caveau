@@ -3220,10 +3220,13 @@ function viewPairing(){
       <p class="small mb8">Vaag mag: "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
       <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
         <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="${esc(UI.pairDish||'')}" aria-label="Gerecht"></div>
-      ${(()=>{ const r = pairRecent(); return r.length ? `<div class="eyebrow mb8" style="margin-top:6px">Onlangs</div><div class="chiprow">${r.map(c => `<button class="chip" data-act="pairRecent" data-d="${esc(c.dish)}" data-s="${esc(c.stuur||'')}">${esc(c.dish)}${c.stuur ? ` <span style="opacity:.65">· ${esc(c.stuur)}</span>` : ''}</button>`).join('')}</div>` : ''; })()}
       <div class="chiprow">${chips}</div>
       <button class="btn" data-act="pairGo">Zoek de beste fles in mijn kelder</button>
-      <div id="pairOut" class="mt14">${pairOut}</div>`;
+      <div id="pairOut" class="mt14">${pairOut}</div>
+      ${(()=>{ const r = pairRecent(); return r.length ? `<div class="sect mt14"><div class="eyebrow mb8">Eerder gevraagd <span class="small" style="text-transform:none;letter-spacing:0">· tik voor hetzelfde advies, zonder credit</span></div>
+        <div class="panel" style="padding:2px 13px">${r.map(c => `<button class="rowline" style="width:100%;text-align:left;padding:8px 0" data-act="pairRecent" data-d="${esc(c.dish)}" data-s="${esc(c.stuur||'')}">
+          <span class="a" style="min-width:0"><span style="font-size:14px">${esc(c.dish)}</span>${c.stuur ? `<span class="small"> · ${esc(c.stuur)}</span>` : ''}</span>
+          <span class="z small tnum">${c.at ? new Date(c.at).toLocaleDateString('nl-NL', {day:'numeric', month:'short'}) : ''}</span></button>`).join('')}</div></div>` : ''; })()}`;
   }
   /* wijn → gerecht */
   const list = S.wines.slice().sort((a,b)=>(b.addedAt||0)-(a.addedAt||0));
@@ -3241,7 +3244,7 @@ function pairRecent(){
   const seen = new Set(), uit = [];
   for(const c of (S.pairCache||[]).slice().sort((a, b) => (b.at||0) - (a.at||0))){
     if(!c.dish || seen.has(c.key)) continue; seen.add(c.key);
-    uit.push(c); if(uit.length >= 6) break;
+    uit.push(c); if(uit.length >= 8) break;
   }
   return uit;
 }
