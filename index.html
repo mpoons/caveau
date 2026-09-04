@@ -1324,7 +1324,8 @@ ${cellarLines(dish)}
 
 Ik ga dit eten: "${dish}".${smaakPrompt()}${stuur ? `
 Mijn bijsturing op je vorige advies: "${stuur}". Dat weegt zwaar; kies daarnaar en zeg in de redenen kort hoe je eraan tegemoetkomt.` : ''}
-Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
+${leeftijdNote()}
+Kies de 3 of 4 beste flessen UIT DEZE LIJST, hou rekening met de drinkstatus en de leeftijd. Wijnen met status "Drink binnenkort" of "Over de piek?" verdienen bij gelijke geschiktheid voorrang, want die moeten toch op; benoem dat dan kort in de reden. Antwoord UITSLUITEND met geldig JSON:
 {"matches":[{"id":"nummer uit de lijst","score":1 tot 10,"reason":"maximaal 2 zinnen Nederlands, concreet over waarom deze wijn bij dit gerecht past"}],"buy_tip":"korte kooptip als de kelder niets ideaals heeft, anders null"}
 De redenen in deze stijl: ${styleNote()}`;
   const out = await callClaude([{type:'text', text:prompt}], 3000, 'pairing');
@@ -1360,6 +1361,7 @@ Budget: ongeveer maximaal €${budget} per fles. Blijf daaronder, tenzij één f
 Ik drink liever per glas: geef voorrang aan wijnen die per glas op de kaart staan.`:''}${taste?`
 Wijnen die ik eerder hoog beoordeelde: ${taste}`:''}${smaakPrompt()}
 
+${leeftijdNote()}
 Lees de wijnkaart zo nauwkeurig mogelijk: naam, producent, jaargang, streek en prijs. Kies daarna de 3 of 4 beste wijnen DIE ECHT OP DEZE WIJNKAART STAAN bij dit eten. Verzin nooit wijnen die er niet op staan, en neem prijzen exact over. Let ook op prijs-kwaliteit: restaurantmarges verschillen sterk per fles, benoem welke fles relatief goed geprijsd is.
 Bij meerdere gangen of gerechten: kies bij voorkeur één fles die het hele menu draagt, en geef daarnaast alleen dáár een tweede fles of een glas-advies waar dat écht beter is. Zet bij elke wijn voor welke gang of welk gerecht hij bedoeld is.
 
@@ -1382,6 +1384,7 @@ async function aiAsk(w, dish, question){
   const prompt = `Je bent mijn sommelier. Context:
 Wijn: ${w.name}, ${w.producer||''} ${w.vintage||'NV'}, ${TYPES[w.type]?TYPES[w.type].l:w.type}, druiven: ${(w.grapes||[]).join(', ')||'onbekend'}, herkomst: ${[w.appellation,w.region,w.country].filter(Boolean).join(', ')||'onbekend'}, drinkvenster ${w.drinkFrom||'?'}–${w.drinkTo||'?'}.${dish?`
 Gerecht waar het om gaat: ${dish}.`:''}
+${leeftijdNote()}
 Vraag: ${question}${smaakPrompt()}
 Antwoord kort en praktisch in het Nederlands (2 tot 5 zinnen), gewone tekst, geen JSON. ${styleNote()}`;
   return await callClaude([{type:'text', text:prompt}], 1000, 'vraag');
@@ -1771,6 +1774,9 @@ function smaakWink(){
   setTimeout(() => toast(`${NOTITIES_STAP} nieuwe proefnotities. De sommelier kan er je smaak uit lezen`, ownKey() ? 'Lees' : 'Lees · 1 credit', () => smaakUitNotities(), 8000), 4800);
 }
 ACT.smaakLees = () => smaakUitNotities();
+/* De AI weet niet welk jaar het is; zonder dit leest hij "2006" als een getal in plaats van als
+   twintig jaar oud. En dezelfde druif vraagt op twee jaar en op twintig jaar ander eten. */
+const leeftijdNote = () => `Het is nu ${YR()}. Weeg de leeftijd van elke fles mee: dezelfde druif is jong fruitig, stevig en fris, en na vijftien of twintig jaar zacht, ontwikkeld en kwetsbaar. Een jonge Primitivo wil een stevig, kruidig gerecht; een oude vraagt zachter, umami-rijk eten en verdient een eigen reden.`;
 const smaakPrompt = () => { const n = smaakNote(); return n ? `\nMijn smaak: ${n}. Weeg dat mee, maar het gerecht gaat voor.` : ''; };
 
 function viewSmaak(){
