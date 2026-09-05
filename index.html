@@ -594,6 +594,9 @@ const LEGAL_DATUM = '3 september 2026';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Taal van de app: 'nl' of 'en'. De teksten in de code blijven Nederlands; het vertaalblok onderaan vertaalt het scherm. */
+const taal = () => (typeof S !== 'undefined' && S && S.settings && S.settings.taal === 'en') ? 'en' : 'nl';
+const LOCALE = () => taal() === 'en' ? 'en-GB' : 'nl-NL';
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 /* ---- alles wat van buiten komt (AI, back-up, cloud) eerst normaliseren ---- */
 const safeUrl = u => { try{ const x = new URL(String(u || '')); return /^https?:$/.test(x.protocol) ? x.href.slice(0, 500) : ''; }catch(e){ return ''; } };
@@ -666,7 +669,7 @@ function schoonLoc(e){
 }
 const schoonLijst = (arr, f) => Array.isArray(arr) ? arr.map(f) : [];
 const vandaagISO = () => new Date().toISOString().slice(0, 10);
-const money = n => (n==null||n===''||isNaN(n)) ? '—' : '€ '+Number(n).toLocaleString('nl-NL',{maximumFractionDigits:0});
+const money = n => (n==null||n===''||isNaN(n)) ? '—' : '€ '+Number(n).toLocaleString(LOCALE(),{maximumFractionDigits:0});
 const plur = (n,e,m) => n===1?e:m;
 
 /* wijntypes */
@@ -1125,8 +1128,10 @@ function styleNote(){
     ? 'Schrijf alle uitlegteksten in eenvoudige taal zonder wijnjargon, kort en praktisch, alsof je het aan een beginner uitlegt.'
     : s === 'sommelier'
     ? 'Schrijf als sommeliers onder elkaar: vaktermen zijn welkom (tannine, zuurgraad, terroir, structuur), wees precies over stijl en waarom iets werkt.'
-    : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.') + STIJLREGELS;
+    : 'Schrijf helder voor een liefhebber: toegankelijk, maar met inhoud en een reden.') + STIJLREGELS + taalNote();
 }
+/* Engelse stand: alles wat de gebruiker leest in het Engels, ook waar de prompt om Nederlands vraagt; JSON-sleutels en vaste waarden blijven zoals opgegeven. */
+const taalNote = () => taal() === 'en' ? ' Write every text meant for the user in English, even where these instructions ask for Dutch ("Nederlands"); keep JSON keys and fixed enum values exactly as specified.' : '';
 
 /* Wat een AI-actie kost aan tegoed. Moet gelijk blijven aan creditsFor() in
    supabase/functions/ai/index.ts: foto's bepalen de kosten, en een kaartpagina (1568 px)
@@ -1889,7 +1894,7 @@ function waardeSub(w){
   const oud = w.vintage && (YR() - w.vintage) >= 8;
   const marge = oud ? 0.3 : 0.2;
   const lo = Number(w.valueLow) || Math.round(b * (1 - marge)), hi = Number(w.valueHigh) || Math.round(b * (1 + marge));
-  const dat = w.valueAt ? new Date(w.valueAt).toLocaleDateString('nl-NL', {month:'short', year:'numeric'}) : '';
+  const dat = w.valueAt ? new Date(w.valueAt).toLocaleDateString(LOCALE(), {month:'short', year:'numeric'}) : '';
   let bron = '';
   if(w.valueSrc === 'zoek' && w.valueBron){
     const jr = w.valueBron.vintage && w.vintage && w.valueBron.vintage !== w.vintage ? `, jaargang ${w.valueBron.vintage}` : '';
@@ -1916,7 +1921,7 @@ function schaalHtml(w){
 /* De waarde als het grootste getal op het scherm, met bron en datum eronder. */
 function waardeBlok(w){
   const b = waardeVan(w);
-  const dat = w.valueAt ? new Date(w.valueAt).toLocaleDateString('nl-NL', {month:'short', year:'numeric'}) : '';
+  const dat = w.valueAt ? new Date(w.valueAt).toLocaleDateString(LOCALE(), {month:'short', year:'numeric'}) : '';
   const koop = w.price ? `gekocht voor ${money(w.price)}` : '';
   if(!b) return `<div class="waarde"><span>Nog geen waarde bekend${koop ? ', ' + koop : ''}.</span></div>`;
   const oud = w.vintage && (YR() - w.vintage) >= 8;
@@ -2812,7 +2817,7 @@ async function runWineDishes(w, richting, force){
   const key = norm(richting||'') || '_';
   const cached = !force && w.dishCache && w.dishCache[key];
   if(cached && cached.list && cached.list.length){
-    const dt = new Date(cached.at).toLocaleDateString('nl-NL', {day:'numeric', month:'short'});
+    const dt = new Date(cached.at).toLocaleDateString(LOCALE(), {day:'numeric', month:'short'});
     renderDishes(out, w, richting, cached.list, `Opgeslagen · ${dt}`, true);
     return;
   }
@@ -3298,7 +3303,7 @@ function viewPairing(){
       ${(()=>{ const r = pairRecent(); return r.length ? `<div class="sect mt14"><div class="eyebrow mb8">Eerder gevraagd <span class="small" style="text-transform:none;letter-spacing:0">· tik voor hetzelfde advies, zonder credit</span></div>
         <div class="panel" style="padding:2px 13px">${r.map(c => `<button class="rowline" style="width:100%;text-align:left;padding:8px 0" data-act="pairRecent" data-d="${esc(c.dish)}" data-s="${esc(c.stuur||'')}">
           <span class="a" style="min-width:0"><span style="font-size:14px">${esc(c.dish)}</span>${c.stuur ? `<span class="small"> · ${esc(c.stuur)}</span>` : ''}</span>
-          <span class="z small tnum">${c.at ? new Date(c.at).toLocaleDateString('nl-NL', {day:'numeric', month:'short'}) : ''}</span></button>`).join('')}</div></div>` : ''; })()}`;
+          <span class="z small tnum">${c.at ? new Date(c.at).toLocaleDateString(LOCALE(), {day:'numeric', month:'short'}) : ''}</span></button>`).join('')}</div></div>` : ''; })()}`;
   }
   /* wijn → gerecht */
   const list = S.wines.slice().sort((a,b)=>(b.addedAt||0)-(a.addedAt||0));
@@ -3364,7 +3369,7 @@ async function runPair(dish, force, stuur){
     }
   }
   if(matches.length){
-    const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
+    const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
     html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
@@ -3768,7 +3773,7 @@ function viewHistory(){
   const groups = {};
   for(const h of S.history){ const k = (h.date||'').slice(0,7) || '????'; (groups[k] = groups[k]||[]).push(h); }
   const keys = Object.keys(groups).sort().reverse();
-  const mName = k => { try{ return new Date(k+'-01').toLocaleDateString('nl-NL',{month:'long',year:'numeric'}); }catch(e){ return k; } };
+  const mName = k => { try{ return new Date(k+'-01').toLocaleDateString(LOCALE(),{month:'long',year:'numeric'}); }catch(e){ return k; } };
   return `${brandRow('')}${backRow}<div class="eyebrow">Historie</div><h2 class="h2">Gedronken</h2>
     <div style="margin:-4px 0 6px"><button class="linkbtn" data-act="histAdd">+ Proefnotitie (buiten de kelder)</button></div>
     ${keys.map(k => `<div class="sect"><div class="eyebrow mb8">${esc(mName(k))}</div><div class="panel">
@@ -3906,7 +3911,7 @@ function viewRecipes(){
     : `<div class="menu">${recs.map(r => `<div class="mitem" style="cursor:default">
         <button class="grow" style="text-align:left" data-act="recipeOpen" data-k="${esc(r.key)}">
           <div style="font-weight:600">${ik('boek')} ${esc(r.recipe.title||r.dish)}</div>
-          <div class="small">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}${r.wineName?' · '+ik('glas')+' '+esc(r.wineName):''} · ${new Date(r.at).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
+          <div class="small">${r.persons} personen${r.recipe.time?' · '+esc(r.recipe.time):''}${r.wineName?' · '+ik('glas')+' '+esc(r.wineName):''} · ${new Date(r.at).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}</div>
         </button>
         <button class="btn sm plain" data-act="recipeDel" data-k="${esc(r.key)}" aria-label="Recept verwijderen" style="flex:none">✕</button>
       </div>`).join('')}</div>
@@ -3951,6 +3956,7 @@ function viewSettings(){
     <div class="field"><label>Naam van je kelder</label><input class="inp" value="${esc(S.settings.cellarName)}" data-in="setName"></div>
     <div class="field"><label>Weergave</label><div class="seg" id="themeSeg">${[['','Volgt je telefoon'],['light','Licht'],['dark','Donker']].map(([v,l]) => `<button type="button" class="${(S.settings.theme||'')===v?'on':''}" data-act="setTheme" data-v="${v}">${l}</button>`).join('')}</div>
       <div class="small mt8">Licht is ivoor met lijnen, donker is de kelder met etiketten. Kies er een als je wilt zien hoe de andere kant eruitziet.</div></div>
+    <div class="field"><label>Taal / Language</label><div class="seg" id="taalSeg">${[['nl','Nederlands'],['en','English']].map(([v,l]) => `<button type="button" class="${taal()===v?'on':''}" data-act="setTaal" data-v="${v}">${l}</button>`).join('')}</div></div>
     <hr class="sep"><div class="eyebrow mb8">Sommelier-AI</div>${ai}
     <hr class="sep"><div class="eyebrow mb8">Herinnering per mail</div>
     ${(typeof loggedIn === 'function' && loggedIn())
@@ -3968,7 +3974,7 @@ function viewSettings(){
       try{ const q=JSON.parse(localStorage.getItem('caveau_backup_prev2')||'null'); if(q&&q.data) rows.push({k:'caveau_backup_prev2', l:'Die daarvóór', at:q.at, n:(q.data.wines||[]).length}); }catch(e){}
       if(!rows.length) return '';
       return `<hr class="sep"><div class="eyebrow mb8">Automatische reservekopieën (dit apparaat)</div>
-        <div class="panel">${rows.map(r=>`<div class="rowline"><span class="a"><div class="t" style="font-family:var(--sans);font-size:13.5px">${r.l}</div><div class="u tnum">${r.n} wijnen · ${new Date(r.at).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></span><span class="z"><button class="btn sm plain" data-act="restoreBackup" data-k="${r.k}">Terugzetten</button></span></div>`).join('')}</div>`; })()}
+        <div class="panel">${rows.map(r=>`<div class="rowline"><span class="a"><div class="t" style="font-family:var(--sans);font-size:13.5px">${r.l}</div><div class="u tnum">${r.n} wijnen · ${new Date(r.at).toLocaleString(LOCALE(),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></span><span class="z"><button class="btn sm plain" data-act="restoreBackup" data-k="${r.k}">Terugzetten</button></span></div>`).join('')}</div>`; })()}
     <hr class="sep"><button class="btn danger" data-act="wipe">Alles wissen</button>
     <p class="small center mt14">Caveau v1 · ${bottleCount()} flessen · gemaakt met Claude</p>`;
 }
@@ -4016,7 +4022,7 @@ ACT.restoreBackup = el => {
   let b = null; try{ b = JSON.parse(localStorage.getItem(el.dataset.k)||'null'); }catch(e){}
   if(!b || !b.data){ toast('Reservekopie niet leesbaar'); return; }
   const n = (b.data.wines||[]).length;
-  confirmSheet('Reservekopie terugzetten?', `Je huidige kelder wordt vervangen door deze reservekopie (<b>${n}</b> wijnen, ${new Date(b.at).toLocaleString('nl-NL',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}). Je huidige stand wordt eerst zelf als reservekopie bewaard; de teruggezette versie synct daarna naar de cloud.`, 'Zet terug', () => {
+  confirmSheet('Reservekopie terugzetten?', `Je huidige kelder wordt vervangen door deze reservekopie (<b>${n}</b> wijnen, ${new Date(b.at).toLocaleString(LOCALE(),{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}). Je huidige stand wordt eerst zelf als reservekopie bewaard; de teruggezette versie synct daarna naar de cloud.`, 'Zet terug', () => {
     if(typeof snapshotLocal === 'function') snapshotLocal('caveau_backup_prev');
     const d = b.data;
     S.wines = d.wines||[]; S.history = d.history||[]; S.wishlist = d.wishlist||[];
@@ -4345,7 +4351,9 @@ ACT.impAdd = async () => {
 };
 
 /* ================= privacy & voorwaarden ================= */
-function viewPrivacy(){
+function legalNote(html){ return taal() === 'en' ? html.replace('</h2>', `</h2><div class="banner"><span>${ik('info')}</span><span>De juridische teksten hieronder zijn in het Nederlands; die versie is bindend. Vragen? Mail gerust.</span></div>`) : html; }
+function viewPrivacy(){ return legalNote(viewPrivacyNL()); }
+function viewPrivacyNL(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Privacy</div><h2 class="h2">Wat Caveau van je bewaart</h2>
   <div class="legal">
     <p>Caveau wordt aangeboden door ${esc(AANBIEDER)}. Vragen of een verzoek over je gegevens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>.</p>
@@ -4385,7 +4393,8 @@ function viewPrivacy(){
   </div>`;
 }
 
-function viewVoorwaarden(){
+function viewVoorwaarden(){ return legalNote(viewVoorwaardenNL()); }
+function viewVoorwaardenNL(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Voorwaarden</div><h2 class="h2">De afspraken</h2>
   <div class="legal">
     <p>Caveau is een app om je eigen wijnkelder bij te houden, aangeboden door ${esc(AANBIEDER)}. Door hem te gebruiken ga je met het onderstaande akkoord.</p>
@@ -4904,7 +4913,7 @@ function planBoxHtml(){
   if(!quota) return '';
   if(quota.plan === 'unlimited') return `<div class="banner"><span>∞</span><span>Onbeperkt tegoed op dit account.</span></div>`;
   if(quota.plan === 'plus'){
-    const t = quota.renews ? new Date(quota.renews).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) : null;
+    const t = quota.renews ? new Date(quota.renews).toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'}) : null;
     /* 'canceling' = zelf opgezegd, loopt netjes uit; elke andere niet-actieve status
        is een betaalprobleem. Die twee verschillen mogen niet door elkaar lopen. */
     const stopt = quota.status === 'canceling';
@@ -5036,7 +5045,7 @@ function viewAccount(){
       <div class="center mt8"><button class="linkbtn" data-act="acVergeten">Wachtwoord vergeten?</button></div>
       <p class="small mt8">Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Alleen jíj kunt bij je kelder; dat is op databaseniveau afgedwongen.</p>`;
   }
-  const last = c.lastSync ? new Date(c.lastSync).toLocaleString('nl-NL', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'nog niet';
+  const last = c.lastSync ? new Date(c.lastSync).toLocaleString(LOCALE(), {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'nog niet';
   return `${brandRow('')}${backRow}<div class="eyebrow">Account</div><h2 class="h2">Cloud-sync actief</h2>
     <div class="panel"><div class="rowline"><span class="a">
       <div class="t" style="font-family:var(--sans)">${esc(c.email||'')}</div>
@@ -5142,6 +5151,427 @@ ACT.acNieuwWachtwoord = async el => {
   }catch(e){}
 })();
 if(loggedIn()){ syncNow(); setTimeout(() => { prijsTabelRonde().catch(() => {}); }, 6000); }
+</script>
+<script>
+/* ================= ENGELS: de vertaallaag =================
+   De code blijft Nederlands; dit blok vertaalt wat er op het scherm komt.
+   EN is een woordenboek op de exacte (getrimde) tekst van een tekstknoop of attribuut;
+   EN_RE vangt teksten met een getal of naam erin. Een MutationObserver vertaalt alles
+   wat de app rendert (view, vensters, toasts, camerahints). Wat niet in het woordenboek
+   staat blijft Nederlands staan, dus er breekt nooit iets. Nieuwe zichtbare tekst:
+   hier een regel bij. */
+const EN = {
+  /* navigatie en koppen */
+  'Kelder':'Cellar', 'Overzicht':'Overview', 'Meer':'More', 'Scan':'Scan', 'Pairing':'Pairing', 'Hoofdnavigatie':'Main navigation',
+  'Spijs & wijn':'Food & wine', 'Wat past waarbij?':'What goes with what?', 'Wat ga je (ongeveer) eten?':'What are you (roughly) eating?',
+  'Kies een wijn':'Pick a wine', 'Mijn gerecht':'My dish', 'Mijn wijn':'My wine', 'Uit eten':'Eating out', 'Wijnkaart':'Wine list',
+  'Instellingen':'Settings', 'Instellingen & back-up':'Settings & backup', 'Account':'Account', 'Account & cloud-sync':'Account & cloud sync',
+  'Locaties':'Locations', 'Locaties & rekken':'Locations & racks', 'Rekken & plekken':'Racks & places', 'Historie':'History', 'Drink-historie':'Drinking history',
+  'Verlanglijst':'Wishlist', 'Op de verlanglijst':'On the wishlist', 'Nog te kopen':'Still to buy', 'Recepten':'Recipes', 'Receptenboek':'Recipe book',
+  'Jouw smaak':'Your taste', 'Waar je van houdt':'What you love', 'Over Caveau':'About Caveau', 'Voorwaarden':'Terms', 'Privacy':'Privacy',
+  'Caveau als app':'Caveau as an app', 'Caveau op je beginscherm':'Caveau on your home screen', 'Meerdere tegelijk':'Several at once', 'Meerdere flessen tegelijk':'Several bottles at once',
+  'Etiket scannen':'Scan a label', 'Scan etiket':'Scan label', 'Scan een fles':'Scan a bottle', 'Scan je eerste fles':'Scan your first bottle',
+  'Geavanceerd':'Advanced', 'Ontwikkelaarsstand':'Developer mode', 'Weergave':'Appearance', 'Stijl':'Style', 'Kleur':'Colour', 'Streken':'Regions', 'Druiven':'Grapes',
+  '‹ Terug':'‹ Back', '‹ Annuleer':'‹ Cancel', 'Terug':'Back', 'Sluiten':'Close', 'Annuleer':'Cancel', 'Later':'Later', 'Verder':'Continue', 'Bewaren':'Save', 'Bewerken':'Edit',
+  'Verwijderen':'Delete', 'verwijder':'delete', 'Toon':'Show', 'Minder':'Less', 'Kies':'Choose', 'Zetten':'Set', 'Opnieuw':'Again', 'Nog een keer':'Once more', 'Vervangen':'Replace', 'Samenvoegen':'Merge',
+  'Bijwerken':'Update', 'Bijgewerkt':'Updated', 'Voeg toe':'Add', '+ Toevoegen':'+ Add', 'Inlezen':'Import', 'Zoeken':'Search', 'Sorteren':'Sort', 'Vraag':'Ask', 'Alle':'All',
+  /* kelderlijst en kaarten */
+  'Zoek op naam, druif, regio, of typ een gerecht…':'Search by name, grape, region, or type a dish…', 'Op dronk':'Ready to drink', 'Over tijd':'Past its window',
+  'Locatie':'Location', 'Filter op locatie':'Filter by location', 'Alle locaties':'All locations', 'Zonder locatie':'No location', 'geen locatie':'no location',
+  'Je kelder is nog leeg':'Your cellar is still empty', 'Scan het etiket van een fles om te beginnen, of vul hem handmatig in.':'Scan a bottle label to begin, or enter one by hand.',
+  'Handmatig toevoegen':'Add by hand', '+ Handmatig toevoegen':'+ Add by hand', 'Lijst of doos inlezen':'Import a list or a case', 'Bekijk met voorbeeldflessen':'Try it with sample bottles',
+  'Niets gevonden':'Nothing found', 'Geen flessen die aan deze filters voldoen.':'No bottles match these filters.', 'Drink een fles':'Drink a bottle',
+  'Nog te jong':'Too young still', 'Drink binnenkort':'Drink soon', 'Over de piek?':'Past its peak?', 'Venster onbekend':'Window unknown', 'op dronk':'ready from', 'was op dronk':'was ready',
+  'Rood':'Red', 'Wit':'White', 'Rosé':'Rosé', 'Mousserend':'Sparkling', 'Zoet':'Sweet', 'Versterkt':'Fortified', 'Oranje':'Orange', 'NV':'NV',
+  'Recent toegevoegd':'Recently added', 'Naam':'Name', 'Jaargang':'Vintage', 'Drinkvenster (op dronk eerst)':'Drinking window (ready first)', 'Waarde':'Value', 'Score (zelf genoteerd)':'Score (your own notes)',
+  'Topfles':'Top bottle', 'Mogelijk topfles':'Possibly a top bottle', 'Past bij je smaak':'Matches your taste', 'op tafel':'on the table',
+  /* detail */
+  'Voorraad':'Stock', 'Fles eraf':'One bottle fewer', 'Fles erbij':'One bottle more', 'Bekijk rek ›':'View rack ›', 'Schenken':'Serving', 'Lekker bij':'Goes well with', 'Lekker bij:':'Goes well with:',
+  'Opgeslagen recepten':'Saved recipes', 'Wat past erbij?':'What goes with it?', 'Zet op tafel voor vanavond':'Put on the table for tonight', 'Op tafel':'On the table',
+  '✓ Staat op tafel, haal eraf':'✓ On the table, take it off', 'Van tafel halen':'Take off the table', 'Elders geproefd? Proefnotitie zonder af te boeken':'Tasted elsewhere? Add a note without removing a bottle',
+  'Plek in je kelder':'Place in your cellar', 'Je topfles':'Your top bottle', 'Een van je topflessen':'One of your top bottles', 'Waarschijnlijk een topfles':'Probably a top bottle',
+  'Een van je duurdere flessen':'One of your pricier bottles', 'Waarschijnlijk een van je duurdere flessen':'Probably one of your pricier bottles',
+  'Precies opzoeken':'Look up exact price', 'Opnieuw opzoeken':'Look up again', 'Prijs opzoeken':'Look up price', 'Zoeken bij wijnhandels en veilingen…':'Searching merchants and auctions…',
+  'Klaar om te schenken':'Ready to serve', 'Afstrepen, hij is open':'Tick it off, it is open', 'Afstrepen':'Tick off', 'Andere fles':'Another bottle', 'Bekijk fles':'View bottle', 'Bekijk fles →':'View bottle →',
+  'Nog zonder plek in de kelder':'No place in the cellar yet', 'Deze fles':'This bottle', 'Deze fles ligt niet meer in je kelder.':'This bottle is no longer in your cellar.',
+  'Vraag de sommelier':'Ask the sommelier', 'bv. past dit bij paddenstoelen?':'e.g. does this go with mushrooms?', 'Moet deze gekoeld?':'Should this be chilled?', 'Decanteren?':'Decant it?', 'Hoe lang van tevoren open?':'How long before opening?',
+  'Typ eerst je vraag':'Type your question first', 'De sommelier denkt na…':'The sommelier is thinking…', 'Richting (optioneel)':'Direction (optional)', 'bv. Aziatisch, vegetarisch, licht & zomers':'e.g. Asian, vegetarian, light & summery',
+  'Recept tonen':'Show recipe', 'Recept':'Recipe', 'Recept schrijven…':'Writing the recipe…', 'Recept verwijderen':'Delete recipe', 'Recept verwijderd':'Recipe deleted', 'Voor hoeveel personen?':'For how many people?',
+  'Ingrediënten':'Ingredients', 'Bereiding':'Method', 'Nog geen recepten':'No recipes yet', 'Bekijk fles in kelder':'View bottle in cellar', 'niet meer in je kelder':'no longer in your cellar',
+  /* afboeken, proeven */
+  'Fles afboeken':'Remove a bottle', 'Gedronken':'Drunk', 'Cadeau':'Gift', 'Verkocht':'Sold', 'Kapot':'Broken', 'Weggegeven':'Given away', 'Gebroken of kurk':'Broken or corked',
+  'Beoordeling':'Rating', 'Tik een ster (nogmaals dezelfde = 0 sterren)':'Tap a star (same star again = 0 stars)', 'Tik een ster, of sla over':'Tap a star, or skip',
+  'Tik een ster. Linkerhelft is een halve ster, nogmaals dezelfde maakt er nul van':'Tap a star. The left half is half a star, the same star again makes it zero',
+  '0 van 5, die was niks':'0 out of 5, that was nothing', 'Datum':'Date', 'Proefnotitie (optioneel)':'Tasting note (optional)', 'Notitie (optioneel)':'Note (optional)', 'Proefnotitie':'Tasting note', 'Notitie':'Note',
+  'Hoe smaakte hij? Bij welk gerecht?':'How did it taste? With which dish?', 'Aan wie, of wat er gebeurde':'To whom, or what happened', 'Proost, leg vast':'Cheers, save it', 'Afboeken':'Remove',
+  'Genoteerd. Santé!':'Noted. Cheers!', 'Ongedaan':'Undo', 'Elders geproefd':'Tasted elsewhere', 'Waar? (optioneel)':'Where? (optional)', 'bv. restaurant, bij vrienden, op het domaine':'e.g. restaurant, at friends, at the estate',
+  'Leg vast':'Save', 'Geef sterren of schrijf een notitie':'Give stars or write a note', 'Proefnotitie vastgelegd':'Tasting note saved', 'Proefnotitie vastgelegd. Santé!':'Tasting note saved. Cheers!',
+  'Al geproefd?':'Tasted already?', 'Op het domaine, in de winkel of bij vrienden. Je oordeel telt meteen mee in je smaakprofiel; overslaan mag.':'At the estate, in the shop or at friends. Your verdict counts towards your taste profile right away; feel free to skip.',
+  'waar geproefd, bv. op het domaine (optioneel)':'where tasted, e.g. at the estate (optional)', 'hoe was hij? (optioneel)':'how was it? (optional)',
+  '+ Proefnotitie (buiten de kelder)':'+ Tasting note (outside the cellar)', 'Proefnotitie buiten de kelder':'Tasting note outside the cellar', 'Drink nu, buiten de kelder om':'Drinking now, outside the cellar',
+  'Wijn *':'Wine *', 'Producent':'Producer', 'Type':'Type', 'Land':'Country', 'Regio':'Region', 'Nog niets gedronken':'Nothing drunk yet',
+  'Boek je eerste fles af via een fles in je kelder, of leg een proefnotitie vast van een wijn buiten de deur.':'Remove your first bottle from a bottle in your cellar, or save a tasting note for a wine you had out.',
+  'geproefd bij aankoop':'tasted at purchase', 'geproefd elders':'tasted elsewhere', 'buiten de kelder':'outside the cellar', 'Bekijk hele historie →':'View full history →', 'Onlangs gedronken':'Recently drunk',
+  /* formulier */
+  'Fles toevoegen':'Add a bottle', 'Naam van de wijn *':'Name of the wine *', 'bv. Château Talbot':'e.g. Château Talbot', 'domaine / château':'domaine / château',
+  'bv. merlot, cabernet franc':'e.g. merlot, cabernet franc', 'Frankrijk':'France', 'Bordeaux':'Bordeaux', 'Appellation / classificatie':'Appellation / classification', 'bv. Saint-Julien Grand Cru Classé':'e.g. Saint-Julien Grand Cru Classé',
+  'Op dronk van':'Ready from', 'Op dronk tot':'Ready until', '↻ Herbereken venster & pairing uit deze velden':'↻ Recalculate window & pairing from these fields', 'Herberekenen…':'Recalculating…',
+  'Aankoopprijs €':'Purchase price €', 'Waarde nu €':'Value now €', '= prijs':'= price', 'Score gezien (optioneel)':'Score seen (optional)', 'bv. 92 Parker, 8,5 Hamersma':'e.g. 92 Parker, 17/20 Jancis',
+  'bv. Vintec, zone boven':'e.g. Vintec, top zone', 'karakter, advies, herinnering…':'character, advice, a memory…', 'Aantal flessen':'Number of bottles', 'doos van 6':'case of 6', 'doos van 12':'case of 12',
+  'Laat het drinkvenster leeg om het automatisch te laten schatten.':'Leave the drinking window empty to have it estimated.', 'Geef de wijn een naam':'Give the wine a name', 'Geef de wijn minstens een naam':'Give the wine at least a name',
+  'Kies eerst het type: rood, wit, rosé…':'Choose the type first: red, white, rosé…', 'Vul eerst minstens een naam, druif of regio in':'Enter at least a name, grape or region first',
+  'Kelderregels':'Cellar rules', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
+  '+ Nieuwe plek…':'+ New place…', '+ Nieuwe plek toevoegen':'+ Add a new place', 'bv. Kast onder de trap, Vintec links':'e.g. Cupboard under the stairs, Vintec left', 'Geef de plek een naam':'Give the place a name',
+  'Later kun je er in Meer → Locaties een foto bij zetten of vakjes van maken.':'Later you can add a photo or slots under More → Locations.', 'Nog zonder plek':'Still without a place',
+  'Volgende vrije vak':'Next free slot', 'Vakken weghalen':'Remove slots', 'Vakken weggehaald':'Slots removed', 'Rek aanpassen':'Adjust rack', 'Rijen':'Rows', 'Kolommen':'Columns', 'bv. 6':'e.g. 6', 'bv. 8':'e.g. 8',
+  'Geef op hoeveel rijen en kolommen dit rek heeft. Daarna kies je per fles een vak.':'Enter how many rows and columns this rack has. Then pick a slot per bottle.', 'Laat staan:':'Leave in place:', 'Verplaats de flessen naar':'Move the bottles to',
+  'Pak de fles uit vak':'Take the bottle from slot', 'Verwijder locatie':'Delete location', 'Locatie verwijderen':'Delete location', 'Foto toevoegen of wijzigen':'Add or change photo', 'Foto verwijderen':'Delete photo',
+  'Foto bij locatie bewaard':'Photo saved for location', 'Foto kon niet worden gelezen':'The photo could not be read', 'Nog geen locaties':'No locations yet',
+  'Geef flessen een locatie bij het toevoegen of bewerken, of maak hier alvast een plek aan.':'Give bottles a location when adding or editing, or create a place here first.',
+  'tik voor de lijst':'tap for the list', '· tik voor de lijst':'· tap for the list', 'Vak in':'Slot in',
+  /* scannen */
+  'Richt je camera op de fles':'Point your camera at the bottle', 'Herkennen, toevoegen, info bekijken of afboeken: de foto is genoeg.':'Recognise, add, view details or remove: the photo is enough.',
+  'Open camera':'Open camera', 'Kies foto':'Choose photo', 'Kies een foto':'Choose a photo', 'Maak foto':'Take photo', 'Nieuwe foto':'New photo', 'Fotografeer':'Take a photo', 'galerij':'gallery', 'zaklamp':'torch',
+  'Houd het etiket in het kader, hij vangt vanzelf':'Keep the label in the frame, it captures by itself', 'Hele pagina in beeld, tik op de knop':'Whole page in view, tap the button',
+  'Nog te donker, houd hem dichterbij':'Still too dark, bring it closer', 'Te donker, zet de zaklamp aan of zoek licht':'Too dark, switch on the torch or find some light',
+  'Weinig licht, dit duurt soms even. Of tik op de knop':'Low light, this can take a moment. Or tap the button', 'Iets dichterbij, of even scherpstellen…':'A little closer, or let it focus…',
+  'Houd stil, bij weinig licht duurt het iets langer…':'Hold still, low light takes a little longer…', 'Houd stil…':'Hold still…', 'Vasthouden…':'Hold it…', 'De zaklamp lukt niet op dit toestel':'The torch does not work on this device',
+  'De sommelier leest het etiket…':'The sommelier is reading the label…', 'Het antwoord kwam gehavend aan, ik lees het nog een keer…':'The answer arrived damaged, reading it once more…',
+  'Automatisch lezen lukte niet':'Automatic reading failed', '↻ Probeer opnieuw te lezen':'↻ Try reading again', '↻ Probeer opnieuw':'↻ Try again', 'Begin opnieuw':'Start over', 'Opnieuw beginnen':'Start over',
+  'Gescand etiket':'Scanned label', 'Snel wegleggen':'Quick store', '+ Kelder in':'+ Into the cellar', 'In de kelder leggen':'Put in the cellar', 'Vanavond drinken, herinner me om af te strepen':'Drinking tonight, remind me to tick it off',
+  'Staat al in je kelder':'Already in your cellar', 'Als nieuwe bewaren':'Save as new', 'Bijschrijven':'Add to stock', 'Drink / haal er één uit de kelder':'Drink / take one out of the cellar',
+  'Zet hem ook op mijn verlanglijst':'Also put it on my wishlist', 'Op verlanglijst':'On wishlist', 'Op je verlanglijst gezet':'Added to your wishlist', '☆ Verlanglijst':'☆ Wishlist',
+  'Jaargang niet op het etiket gevonden':'Vintage not found on the label', 'Kleur niet van het etiket af te leiden.':'Colour cannot be told from the label.', 'Kies hieronder het type; venster en pairing rekenen dan mee.':'Choose the type below; window and pairing then follow.',
+  'Waarde onzeker.':'Value uncertain.', 'De sommelier kent deze wijn niet goed genoeg voor een schatting. Vul de aankoopprijs in als je die weet, of zoek hem na het wegleggen precies op.':'The sommelier does not know this wine well enough for an estimate. Enter the purchase price if you know it, or look it up after storing.',
+  'Waarde onzeker, de sommelier kent deze wijn niet goed. Precies opzoeken?':'Value uncertain, the sommelier does not know this wine well. Look up the exact price?',
+  'Plek geven':'Give a place', 'Zoek op':'Look up', 'AI-scannen staat hier uit. Vul de velden in en gebruik Herbereken':'AI scanning is off here. Fill in the fields and use Recalculate',
+  'Etiket-lezen met AI staat uit':'AI label reading is off', 'Log in en de sommelier leest je etiketten':'Log in and the sommelier reads your labels', 'Log in bij Meer → Account':'Log in under More → Account', 'Meer → Account':'More → Account',
+  'Telkens toestemming voor de camera? Zet hem vast: Instellingen → Safari → Camera → Toestaan':'Asked for camera permission every time? Fix it: Settings → Safari → Camera → Allow',
+  'het antwoord kwam twee keer onvolledig aan':'the answer arrived incomplete twice',
+  /* pairing */
+  'Nog geen flessen op voorraad':'No bottles in stock yet', 'Vul je kelder, dan zoekt de sommelier de beste match bij je gerecht.':'Fill your cellar and the sommelier will find the best match for your dish.',
+  'Vaag mag: "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.':'Vague is fine: "something with chicken" or "Asian" will do. The sommelier picks the best bottles from your own cellar and explains why.',
+  "bv. 'iets met kip' of 'hertenbiefstuk'":"e.g. 'something with chicken' or 'venison steak'", 'Gerecht':'Dish', 'Zoek de beste fles in mijn kelder':'Find the best bottle in my cellar',
+  'Biefstuk':'Steak', 'Wild':'Game', 'Witte vis':'White fish', 'Schaaldieren':'Shellfish', 'Sushi':'Sushi', 'Pasta met tomaat':'Pasta with tomato', 'Risotto':'Risotto', 'Kip uit de oven':'Roast chicken',
+  'Kaasplank':'Cheese board', 'Thaise curry':'Thai curry', 'BBQ':'BBQ', 'Chocolade':'Chocolate', 'Eerder gevraagd':'Asked before', '· tik voor hetzelfde advies, zonder credit':'· tap for the same advice, no credit',
+  'Vertel eerst wat je gaat eten':'Tell me first what you are eating', 'De sommelier proeft in gedachten…':'The sommelier is tasting in their mind…', 'Geen goede match':'No good match',
+  'Probeer het gerecht anders te omschrijven.':'Try describing the dish differently.', 'Deze kies ik':'I choose this one', '✓ Deze kies ik':'✓ I choose this one', '✓ Op tafel':'✓ On the table',
+  'Moet toch binnenkort op, vanavond is een mooi excuus.':'Needs drinking soon anyway; tonight is a fine excuse.', "Over z'n venster heen. Juist nú opdrinken, niet langer bewaren.":'Past its window. Drink it now rather than keep it.',
+  'Stuur het advies bij':'Steer the advice', 'bv. liever wit, iets lichter, niet de Barolo':'e.g. rather white, something lighter, not the Barolo', 'Bijsturing':'Steering',
+  'Liever wit':'Rather white', 'Liever rood':'Rather red', 'Iets lichter':'Something lighter', 'Iets specialer':'Something more special', 'Een eenvoudigere fles':'A simpler bottle', 'Niet de eerste':'Not the first one',
+  'Zeg wat er anders moet, bv. liever wit':'Say what should change, e.g. rather white', 'Tik een fles aan voor gerechten die erbij passen.':'Tap a bottle for dishes that go with it.',
+  'Zoek een andere fles. De eerste blijft op tafel staan tot je hem eraf haalt':'Find another bottle. The first stays on the table until you take it off',
+  'Dit gerecht kan ik zonder AI niet plaatsen. Omschrijf het wat gewoner ("iets met kip", "witte vis"), of log in, dan leest de sommelier de kaart écht.':'I cannot place this dish without AI. Describe it more plainly ("something with chicken", "white fish"), or log in and the sommelier reads the list for real.',
+  'Geen suggesties gevonden. Vul type of druiven aan.':'No suggestions found. Add the type or grapes.', 'Kaartgids · kelderregels':'List guide · cellar rules', 'Druiven die hier bijna altijd werken:':'Grapes that nearly always work here:',
+  'zoek je op de kaart naar':'look on the list for', 'Geen idee wat te kiezen? Vraag om':'No idea what to pick? Ask for',
+  /* wijnkaart */
+  '1 · De wijnkaart':'1 · The wine list', '2 · Wat ga je eten?':'2 · What are you eating?', '3 · Budget':'3 · Budget', 'De wijnkaart lezen':'Read the wine list', 'Menu fotograferen':'Photograph the menu',
+  'Fotografeer de kaart, zeg wat je eet. De sommelier kiest de beste flessen ván die kaart, met een oordeel over de prijs.':'Photograph the list and say what you are eating. The sommelier picks the best bottles from that list, with a view on price.',
+  'Proefmenu of dagmenu? Fotografeer de menukaart. De sommelier leest de gangen en kiest er één fles bij (of per gang een glas).':'Tasting menu or set menu? Photograph the menu. The sommelier reads the courses and picks one bottle (or a glass per course).',
+  "of typ het: 'gebraden parelhoen met knolselderij'":"or type it: 'roast guinea fowl with celeriac'", 'geen budget':'no budget', 'tot € 40':'up to € 40', 'tot € 60':'up to € 60', 'tot € 80':'up to € 80', 'tot € 120':'up to € 120',
+  'ook per glas':'by the glass too', 'Lees de kaart en kies':'Read the list and choose', 'Maak eerst een foto van de wijnkaart':'Take a photo of the wine list first', 'De sommelier leest de kaart…':'The sommelier is reading the list…',
+  'De kaart lezen lukte niet':'Reading the list failed', 'Van het menu gelezen':'Read from the menu', 'Per glas:':'By the glass:', 'Deze bestel ik':'I will order this', 'Uit eten? Scan de wijnkaart →':'Eating out? Scan the wine list →',
+  'Prijzen en namen komen van de foto. Controleer ze even bij de bediening.':'Prices and names come from the photo. Do check them with the staff.', 'Vertel wat je gaat eten, of fotografeer het menu':'Say what you are eating, or photograph the menu',
+  'Even opletten':'Take note', 'Gevonden':'Found', 'Gevonden:':'Found:', 'per glas':'per glass', 'per fles':'per bottle', 'wijnkaart in een restaurant':'a wine list in a restaurant',
+  /* overzicht */
+  'Nog niets te zien':'Nothing to see yet', 'Zodra er flessen in je kelder liggen zie je hier voorraad, waarde, drinkvensters en je historie.':'Once there are bottles in your cellar you will see stock, value, drinking windows and your history here.',
+  'Flessen':'Bottles', 'Kelderwaarde':'Cellar value', 'Nu op dronk':'Ready now', 'Per type':'By type', 'Per land':'By country', 'Per jaargang':'By vintage', 'Per locatie':'By location', 'Onbekend':'Unknown',
+  /* meer */
+  'Handmatig':'By hand', 'Gekocht → kelder':'Bought → cellar', 'Op mijn beginscherm zetten':'Put on my home screen', 'Iets werkt niet, of een idee?':'Something not working, or an idea?', 'mail':'email',
+  'Zet hier wijnen op die je wilt kopen, ook via de scanner in de winkel.':'Put wines here that you want to buy, also via the scanner in the shop.', 'Nog niets op je lijstje':'Nothing on your list yet', 'Op het lijstje':'On the list',
+  'Richtprijs €':'Target price €', 'waar gezien?':'where seen?', 'Gekocht':'Bought', 'Verwijderd uit je kelder':'Removed from your cellar',
+  'Heb je je flessen al ergens staan? Plak de lijst hieronder, of fotografeer hem. Ook een doos of plank met flessen die rechtop staan werkt, zolang de etiketten leesbaar zijn. Flessen die in een rek liggen laten alleen hun bodem zien, dus daar haalt hij niets uit.':'Already have your bottles listed somewhere? Paste the list below, or photograph it. A case or shelf of upright bottles works too, as long as the labels are readable. Bottles lying in a rack only show their bases, so nothing comes from those.',
+  'Lijst plakken':'Paste a list', 'Lijst met flessen':'List of bottles', 'Bijvoorbeeld een kolom uit een spreadsheet, een notitie of de bevestiging van je wijnhandel. Eén fles per regel werkt het beste.':'For example a spreadsheet column, a note or your wine merchant’s confirmation. One bottle per line works best.',
+  'Of een CSV-bestand':'Or a CSV file', 'Gratis en zonder AI. Je koppelt eerst de kolommen, daarna zie je dezelfde controlelijst als bij een foto, met drinkvensters erbij als ze in het bestand staan.':'Free and without AI. You map the columns first, then you see the same check list as with a photo, with drinking windows if the file has them.',
+  '📄 CSV kiezen (CellarTracker, Vivino of spreadsheet)':'📄 Choose CSV (CellarTracker, Vivino or spreadsheet)', 'Kolommen koppelen':'Map columns', 'Kies de kolom met de naam van de wijn':'Choose the column with the wine name',
+  'Geen tabel gevonden in dit bestand':'No table found in this file', 'Geen wijnen gevonden in deze kolommen':'No wines found in these columns', 'Dit is geen Caveau-back-up':'This is not a Caveau backup',
+  'De sommelier leest je lijst…':'The sommelier is reading your list…', 'Je ziet eerst wat hij gevonden heeft. Pas als jij aanvinkt gaat er iets je kelder in.':'You see what was found first. Nothing enters your cellar until you tick it.',
+  'Vink aan wat klopt en corrigeer het aantal. Tik op een wijn om jaargang, type of locatie bij te werken. Wat je overslaat verdwijnt gewoon.':'Tick what is right and correct the count. Tap a wine to update vintage, type or location. Whatever you skip simply disappears.',
+  'Locatie voor de aangevinkte':'Location for the ticked ones', 'Komt alles van één factuur maar gaat het naar twee plekken? Zet hier de plek van de meeste, en pas de rest per wijn aan.':'All from one invoice but going to two places? Set the place for most of them here and adjust the rest per wine.',
+  'Vink eerst wijnen aan':'Tick some wines first', 'bijboeken bij bestaande':'add to existing', 'Tik om bij te werken':'Tap to update', 'Voor hoeveel':'For how many',
+  'Nog geen duidelijke lijn; dat komt met meer beoordelingen.':'No clear pattern yet; that comes with more ratings.', 'Een druif of streek waar je van houdt.':'A grape or region you love.',
+  'De sommelier weegt dit mee bij "Vanavond", op de wijnkaart en bij vragen. Het gerecht gaat altijd voor. Alles hieronder is optioneel.':'The sommelier weighs this in for "Tonight", on the wine list and with questions. The dish always comes first. Everything below is optional.',
+  'In het midden laten betekent geen voorkeur.':'Leaving it in the middle means no preference.', 'Geen voorkeur':'No preference', 'Wat we van je merken':'What we notice about you', 'Uit je proefnotities':'From your tasting notes',
+  'Lees mijn notities':'Read my notes', 'Opnieuw lezen':'Read again', 'De sommelier leest je notities…':'The sommelier is reading your notes…', 'Geen samenvatting gekregen':'No summary received',
+  'Smaakprofiel bijgewerkt uit je notities':'Taste profile updated from your notes', 'Zo gaat het naar de sommelier':'This is what the sommelier gets', 'Hoog:':'High:', 'Laag:':'Low:',
+  'Licht & fris':'Light & fresh', 'Vol & rijk':'Full & rich', 'Droog':'Dry', 'Zoetig':'Sweetish', 'Weinig hout':'Little oak', 'Veel hout':'Lots of oak', 'Fruitig':'Fruity', 'Aards':'Earthy', 'Zacht':'Soft', 'Stevig':'Firm',
+  /* instellingen en account */
+  'Naam van je kelder':'Name of your cellar', 'Volgt je telefoon':'Follows your phone', 'Licht':'Light', 'Donker':'Dark',
+  'Licht is ivoor met lijnen, donker is de kelder met etiketten. Kies er een als je wilt zien hoe de andere kant eruitziet.':'Light is ivory with lines, dark is the cellar with labels. Pick one to see what the other side looks like.',
+  'Antwoordstijl sommelier':'Sommelier answer style', 'Bepaalt de toon van pairing-redenen, karakterschetsen en antwoorden, van jip-en-janneke tot sommeliers onder elkaar.':'Sets the tone of pairing reasons, character sketches and answers, from plain language to sommeliers among themselves.',
+  'Eenvoudig':'Simple', 'Kenner':'Connoisseur', 'Sommelier':'Sommelier', 'Herinnering per mail':'Reminder by email', 'Mail mij als een fles op dronk komt':'Email me when a bottle comes ready',
+  'Log in bij Meer → Account en zet hier aan dat je een mail krijgt als een fles op dronk komt. Hoogstens één per week, alleen als er iets te melden is.':'Log in under More → Account and switch on an email when a bottle comes ready. At most one a week, only when there is something to say.',
+  'Prijzen opzoeken':'Look up prices', 'De sommelier zoekt per fles de marktprijs op bij wijnhandels en veilingen, met bron en datum. Voor flessen ouder dan acht jaar en voor de bovenkant van je kelder; daar zit het verschil tussen schatten en weten.':'The sommelier looks up the market price per bottle at merchants and auctions, with source and date. For bottles over eight years old and the top of your cellar; that is where estimating and knowing differ.',
+  'Echte prijzen opzoeken voor je oudere en duurdere flessen':'Look up real prices for your older and pricier bottles', 'Niets op te zoeken: je oudere en duurdere flessen hebben al een opgezochte prijs':'Nothing to look up: your older and pricier bottles already have a looked-up price',
+  'Waardes inschatten voor flessen zonder waarde':'Estimate values for bottles without one', 'Eén AI-aanroep schat de winkelwaarde (met bandbreedte) voor alle flessen die nog geen waarde hebben. Handmatig ingevulde waardes blijven staan.':'One AI call estimates the retail value (with a range) for all bottles without one. Values you entered yourself stay.',
+  'Alle flessen hebben al een waarde':'All bottles already have a value', 'Inschatten…':'Estimating…', 'Back-up & exporteren':'Backup & export', 'Back-up (met foto\'s)':'Backup (with photos)', 'Zonder foto\'s':'Without photos',
+  'Back-up inlezen':'Import backup', 'Back-up inlezen…':'Importing backup…', 'Back-up ingelezen':'Backup imported', 'Back-up gedownload':'Backup downloaded', 'Back-up opgeslagen':'Backup saved', 'Back-up staat op je klembord':'Backup is on your clipboard',
+  'Back-up maken lukte niet':'Making the backup failed', 'Downloaden lukte niet. De back-up staat op je klembord':'Download failed. The backup is on your clipboard', 'Geen geldig back-upbestand':'Not a valid backup file',
+  'Er staat nog een download open. Probeer het zo weer':'A download is still open. Try again shortly', 'Samenvoegen slaat flessen over die er al staan.':'Merging skips bottles that are already there.',
+  'Je kelder staat alleen op dit apparaat. Maak regelmatig een back-up; op een ander apparaat lees je die weer in.':'Your cellar lives only on this device. Make a backup regularly; import it on another device.',
+  'Automatische reservekopieën (dit apparaat)':'Automatic safety copies (this device)', 'Dagelijkse reservekopie':'Daily safety copy', 'Die daarvóór':'The one before', 'Vóór laatste sync-overname':'Before last sync takeover',
+  'Terugzetten':'Restore', 'Reservekopie teruggezet':'Safety copy restored', 'Reservekopie niet leesbaar':'Safety copy unreadable', 'nog niet':'not yet',
+  'Alles wissen':'Erase everything', 'Alles wissen?':'Erase everything?', 'Alles gewist':'Everything erased', 'Dit kan niet ongedaan worden.':'This cannot be undone.',
+  'Eigen Anthropic API-sleutel':'Own Anthropic API key', 'Model (bij eigen sleutel)':'Model (with own key)', 'Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)':'This needs the AI key (enter your key above)',
+  'Draait op je eigen Anthropic-tegoed en gaat vóór het Caveau-tegoed. Blijft op dit apparaat: nooit in een back-up, nooit naar de cloud. Zet je de ontwikkelaarsstand uit, dan wordt hij gewist.':'Runs on your own Anthropic balance and takes precedence over Caveau credits. Stays on this device: never in a backup, never to the cloud. Switching developer mode off erases it.',
+  '6 voorbeeldflessen geladen. Wissen kan via Instellingen':'6 sample bottles loaded. Erase them under Settings', 'Opslaan mislukt. Is de opslag vol?':'Saving failed. Is storage full?',
+  'Cloud-sync':'Cloud sync', 'Cloud-sync aanzetten':'Switch on cloud sync', 'Cloud-sync actief':'Cloud sync active', 'Nu synchroniseren':'Sync now', 'Gesynchroniseerd ✓':'Synced ✓', 'Ingelogd, synchroniseren…':'Logged in, syncing…', 'Ingelogd:':'Logged in:',
+  'Log in en je kelder synchroniseert automatisch tussen al je apparaten. Nog geen account? Kies een wachtwoord en tik op "Account aanmaken".':'Log in and your cellar syncs automatically across all your devices. No account yet? Choose a password and tap "Create account".',
+  'E-mail':'Email', 'jij@voorbeeld.nl':'you@example.com', 'Wachtwoord':'Password', 'minimaal 8 tekens':'at least 8 characters', 'Inloggen':'Log in', 'Account aanmaken':'Create account', 'account aanmaken':'create account',
+  'Wachtwoord vergeten?':'Forgot your password?', 'Uitloggen op dit apparaat':'Log out on this device', 'Uitgelogd':'Logged out', 'Vul een geldig e-mailadres in':'Enter a valid email address',
+  'Gebruik een wachtwoord van minimaal 8 tekens':'Use a password of at least 8 characters', 'Onjuiste inloggegevens':'Incorrect login details', 'Vul eerst je e-mailadres in, dan sturen we een herstel-link':'Enter your email address first, then we send a reset link',
+  'Als dit adres bekend is, ligt er nu een mail met een herstel-link. Open die op dit apparaat':'If this address is known, an email with a reset link is on its way. Open it on this device',
+  'Bijna klaar: open de mail die we je stuurden en tik op de bevestigingslink, op dit apparaat':'Almost done: open the email we sent you and tap the confirmation link, on this device',
+  'Nieuw wachtwoord':'New password', 'Wachtwoord opslaan':'Save password', 'Wachtwoord gewijzigd. Je bent ingelogd':'Password changed. You are logged in', 'De twee wachtwoorden zijn niet gelijk':'The two passwords do not match',
+  'Je bent ingelogd via de herstel-link. Kies nu een nieuw wachtwoord; laat je telefoon het in de sleutelhanger bewaren.':'You are logged in via the reset link. Choose a new password now; let your phone keep it in the keychain.',
+  'Deze link is verlopen of al gebruikt. Vraag een nieuwe aan':'This link has expired or was already used. Request a new one', 'Sessie verlopen. Log opnieuw in bij Meer → Account':'Session expired. Log in again under More → Account',
+  'Sessie verlopen. Log opnieuw in':'Session expired. Log in again', 'Geen verbinding met de Caveau-server. Probeer het zo nog eens':'No connection to the Caveau server. Try again shortly', 'Hiervoor moet je ingelogd zijn':'You need to be logged in for this',
+  'Log eerst in bij Meer → Account':'Log in first under More → Account', 'Log in (Meer → Account) om prijzen op te zoeken':'Log in (More → Account) to look up prices', 'Lukte niet, probeer het straks nog eens':'That failed, try again later',
+  'Andere gebruiker: de vorige kelder staat als reservekopie in Instellingen':'Different user: the previous cellar is kept as a safety copy under Settings',
+  'Laat je telefoon het wachtwoord in de sleutelhanger bewaren, dan is het eenmalig. Alleen jíj kunt bij je kelder; dat is op databaseniveau afgedwongen.':'Let your phone keep the password in the keychain, then it is a one-off. Only you can reach your cellar; that is enforced at database level.',
+  'Elke wijziging gaat een paar seconden later automatisch naar de cloud; bij het openen wordt de nieuwste versie opgehaald. Uitloggen verwijdert niets.':'Every change goes to the cloud automatically a few seconds later; on opening, the latest version is fetched. Logging out deletes nothing.',
+  'Doe dit bij voorkeur vóór je flessen toevoegt: op de iPhone bewaart de app op je beginscherm zijn gegevens soms apart van Safari. Log je in, dan maakt het niet uit, want dan staat je kelder in de cloud.':'Preferably do this before adding bottles: on iPhone the home-screen app sometimes keeps its data apart from Safari. If you log in it does not matter, because your cellar is then in the cloud.',
+  'Je tegoed':'Your credits', 'AI-tegoed: laden…':'AI credits: loading…', 'AI-tegoed: log opnieuw in':'AI credits: log in again', 'Onbeperkt tegoed op dit account.':'Unlimited credits on this account.', 'Caveau Plus':'Caveau Plus', 'Plus nemen':'Get Plus',
+  'Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Maandelijks opzegbaar.':'A label scan or pairing costs 1 credit; a wine list 2 per photographed page. Cancel monthly.',
+  'Een etiketscan of pairing kost 1 credit; een wijnkaart 2 per gefotografeerde pagina. Kom je tekort? Laat het even weten, dan zet ik je tegoed hoger.':'A label scan or pairing costs 1 credit; a wine list 2 per photographed page. Running short? Let me know and I will raise your credits.',
+  'Abonnement beheren':'Manage subscription', 'Opzeggen':'Cancel subscription', 'Betalen':'Pay', 'Naar de betaling':'To payment', 'Welkom bij Caveau Plus. Je tegoed staat klaar':'Welcome to Caveau Plus. Your credits are ready',
+  'Zet eerst het vinkje, dat hoort bij een abonnement dat meteen ingaat':'Tick the box first; that goes with a subscription that starts right away', 'Ik ga akkoord met de':'I agree to the', 'voorwaarden':'terms', 'privacyverklaring':'privacy statement', 'en de':'and the',
+  'Afgebroken, er is niets afgeschreven':'Cancelled, nothing was charged', 'Staat onder Meer als je hem toch wilt':'It is under More if you want it after all', 'Niet meer tonen':'Do not show again',
+  'App installeren':'Install app', 'Toevoegen aan startscherm':'Add to home screen', 'Zet op beginscherm':'Put on home screen', 'Je browser kan Caveau in één tik installeren.':'Your browser can install Caveau in one tap.',
+  'Je browser biedt dit nu niet aan':'Your browser does not offer this right now', 'Zet Caveau eerst op je beginscherm':'Put Caveau on your home screen first', 'deel-icoon':'share icon',
+  'Tik onderin Safari op het':'In Safari, tap the', ', het vierkantje met het pijltje omhoog.':', the square with the arrow pointing up.', 'Scroll in dat menu naar':'Scroll in that menu to', 'Bevestigen.':'Confirm.',
+  'Open het menu van je browser (de drie puntjes).':'Open your browser menu (the three dots).', 'Tik rechtsboven op':'Tap top right on', 'Hoe?':'How?',
+  'Caveau is een website die zich als app gedraagt. Zet je hem op je beginscherm, dan krijg je een eigen icoon, geen adresbalk, en blijft je kelder ook zonder bereik gewoon werken, handig in een kelder of een restaurant.':'Caveau is a website that behaves like an app. Put it on your home screen and you get its own icon, no address bar, and your cellar keeps working without signal, handy in a cellar or a restaurant.',
+  'Lukt het niet? Dan sta je waarschijnlijk in een andere browser dan Safari. Op de iPhone kan alleen Safari dit.':'Not working? Then you are probably in a browser other than Safari. On iPhone only Safari can do this.',
+  'Caveau is je persoonlijke wijnkelder: scan etiketten, houd voorraad en locaties bij, zie wanneer elke fles op dronk is, en laat de sommelier het perfecte glas bij je gerecht kiezen, of andersom. Zonder account blijft alles op je eigen apparaat; met een account synct je kelder tussen je apparaten. Deel de link gerust, iedereen krijgt zijn eigen kelder.':'Caveau is your personal wine cellar: scan labels, track stock and locations, see when each bottle is ready, and let the sommelier pick the perfect glass for your dish, or the other way round. Without an account everything stays on your own device; with an account your cellar syncs across your devices. Share the link freely, everyone gets their own cellar.',
+  'Drinkvensters en pairing zijn schattingen. Jouw smaak wint altijd. Santé!':'Drinking windows and pairings are estimates. Your taste always wins. Cheers!',
+  'Taal / Language':'Language',
+  'De juridische teksten hieronder zijn in het Nederlands; die versie is bindend. Vragen? Mail gerust.':'The legal text below is in Dutch; that version is binding. Questions? Do email.',
+
+  /* aanvulling na de dekkingsmeting */
+  'Simpel':'Simple', 'Naam *':'Name *', 'bv. Barolo Bussia':'e.g. Barolo Bussia', 'bv. Wijnrek':'e.g. Wine rack', 'bv. restaurant, bij vrienden':'e.g. restaurant, at friends', 'naam van de wijn':'name of the wine',
+  'Glas':'Glass', 'Schenken op':'Serve at', 'Eend':'Duck', 'Varken':'Pork', 'Lam':'Lamb', 'Blauwe kaas':'Blue cheese', 'Geitenkaas':'Goat cheese',
+  'Rundvlees & steak':'Beef & steak', 'Kip & gevogelte':'Chicken & poultry', 'Zalm & tonijn':'Salmon & tuna', 'Schaal- & schelpdieren':'Shellfish', 'Sushi & sashimi':'Sushi & sashimi',
+  'Pasta met tomaat & pizza':'Pasta with tomato & pizza', 'Romige pasta & risotto':'Creamy pasta & risotto', 'Paddenstoelen & truffel':'Mushrooms & truffle', 'Groenten & salades':'Vegetables & salads',
+  'Aziatisch & pittig':'Asian & spicy', 'BBQ & gerookt':'BBQ & smoked', 'Borrel & aperitief':'Drinks & aperitif', 'Zoete desserts':'Sweet desserts',
+  'een stevige Syrah, Malbec of Bordeaux-blend':'a firm Syrah, Malbec or Bordeaux blend', 'een Nebbiolo of gerijpte Bourgogne':'a Nebbiolo or mature Burgundy', 'een soepele Pinot Noir of Barbera':'a supple Pinot Noir or Barbera',
+  'een Chianti Classico of Barbera':'a Chianti Classico or Barbera', 'een Sancerre of Pouilly-Fumé':'a Sancerre or Pouilly-Fumé', 'een Chablis, Albariño of Muscadet':'a Chablis, Albariño or Muscadet',
+  'een Champagne of Muscadet sur lie':'a Champagne or Muscadet sur lie', 'een Bourgogne blanc of soepele Pinot Noir':'a white Burgundy or supple Pinot Noir', 'een rijke rosé of lichte Pinot Noir':'a rich rosé or light Pinot Noir',
+  'een Soave Classico of Bourgogne blanc':'a Soave Classico or white Burgundy', 'een gerijpte Pinot Noir, Nebbiolo of noordelijke Rhône':'a mature Pinot Noir, Nebbiolo or northern Rhône',
+  'een Grüner Veltliner of Provence-rosé':'a Grüner Veltliner or Provence rosé', 'een (off-dry) Riesling of Gewürztraminer':'an (off-dry) Riesling or Gewürztraminer', 'een Zinfandel, Malbec of zuidelijke Rhône':'a Zinfandel, Malbec or southern Rhône',
+  'een Crémant of droge Fino sherry':'a Crémant or dry Fino sherry', 'een Chenin, rijpe Comté-partner als Jura, of Tawny Port':'a Chenin, a Jura as ripe Comté partner, or Tawny Port', 'een Sauternes of late-harvest Riesling':'a Sauternes or late-harvest Riesling',
+  'een Banyuls, Maury of Ruby Port':'a Banyuls, Maury or Ruby Port', 'een Sauternes of Vintage Port':'a Sauternes or Vintage Port', 'een rijpe Pinot Noir of Madiran':'a ripe Pinot Noir or Madiran', 'een droge Riesling of Grüner Veltliner':'a dry Riesling or Grüner Veltliner',
+  'Recepten vergen de AI-sleutel (Meer → Instellingen)':'Recipes need the AI key (More → Settings)', 'Vragen stellen vergt de AI-sleutel (Meer → Instellingen)':'Asking questions needs the AI key (More → Settings)',
+  'Log in via Meer → Account':'Log in via More → Account', 'Log in bij':'Log in under', 'Met een account':'With an account', 'Je hebt nog':'You have', 'deze maand. Elke maand begint de teller opnieuw.':'left this month. The counter restarts every month.',
+  'deze maand. Met Plus krijg je er':'left this month. With Plus you get', 'Wat credits kosten':'What credits cost', 'Gratis, en Plus':'Free, and Plus', 'Bedenktijd':'Cooling-off period', 'Je bestaande kelder erin':'Your existing cellar in',
+  'Hoe preciezer, hoe beter het advies: saus, bereiding en bijgerecht sturen de keuze vaak meer dan het stuk vlees of vis zelf.':'The more precise, the better the advice: sauce, preparation and side dish often steer the choice more than the meat or fish itself.',
+  'Sync is niet beschikbaar in deze omgeving. Gebruik de app via':'Sync is not available in this environment. Use the app via', 'AI-scannen in deze omgeving:':'AI scanning in this environment:',
+  'Wat je ook kiest: je huidige stand wordt eerst als lokale reservekopie bewaard (Instellingen → Reservekopieën).':'Whatever you choose: your current state is first kept as a local safety copy (Settings → Safety copies).',
+  "Je hele kelder, historie, verlanglijst en foto's worden gewist, en als cloud-sync aanstaat ook in de cloud.":'Your whole cellar, history, wishlist and photos will be erased, and with cloud sync on, the cloud copy too.',
+  'Het bijhouden van je kelder is gratis en blijft dat: flessen, voorraad, locaties, foto\'s, back-ups, en de ingebouwde regels voor drinkvenster en pairing werken zonder account en zonder te betalen.':'Keeping your cellar is free and stays free: bottles, stock, locations, photos, backups, and the built-in rules for drinking window and pairing work without an account and without paying.',
+  'Genoeg voor zo\'n 35 wijnkaarten in een restaurant, of honderden etiketten. Maandelijks opzegbaar. Je houdt Plus tot het einde van de periode die je betaald hebt.':'Enough for some 35 restaurant wine lists, or hundreds of labels. Cancel monthly. You keep Plus until the end of the period you paid for.',
+  'Zonder account gaat er niets weg':'Without an account nothing leaves your device', 'Wat Caveau van je bewaart':'What Caveau keeps of yours', 'Wat de sommelier te zien krijgt':'What the sommelier gets to see', 'Wat we níét doen':'What we do not do',
+  'Je gegevens blijven van jou':'Your data stays yours', 'Hoe lang, en hoe je het weghaalt':'How long, and how to remove it', 'De afspraken':'The agreements', 'De sommelier is een adviseur, geen orakel':'The sommelier is an adviser, not an oracle',
+  'Fatsoenlijk gebruik':'Fair use', 'Beschikbaarheid':'Availability', 'Als er iets verandert':'If something changes', 'Betalingen lopen via':'Payments run through',
+  'Recept:':'Recipe:', 'Lichter':'Lighter', 'Voller':'Fuller', 'Droger':'Drier', 'Zoeter':'Sweeter', 'Frisser':'Fresher', 'Rijper':'Riper', 'Minder hout':'Less oak', 'Meer hout':'More oak', 'Soepel':'Supple',
+  'Vol':'Full', 'Weinig tannine':'Little tannin', 'Veel tannine':'Lots of tannin', 'Zacht en rond':'Soft and round', 'Fris en strak':'Fresh and taut', 'Geen hout':'No oak',
+  'Locatie ▾':'Location ▾', 'Zonder locatie ▾':'No location ▾',
+  '. Dan heb je hem bij de hand in de winkel en het restaurant, opent hij als een app, en werkt je kelder ook zonder bereik.':'. Then it is at hand in the shop and the restaurant, it opens like an app, and your cellar works without signal too.',
+  '. Zonder inloggen werkt alles behalve het automatisch lezen.':'. Without logging in everything works except automatic reading.', '. Het lezen van de kaart gebeurt op de Caveau-server.':'. Reading the list happens on the Caveau server.',
+  ', genoeg voor zo\'n 35 wijnkaarten in een restaurant, of honderden etiketten.':', enough for some 35 restaurant wine lists, or hundreds of labels.', ', en ik wil dat Plus meteen ingaat.':', and I want Plus to start right away.',
+  'Wat de sommelier doet (etiketten lezen, wijnkaarten lezen, pairing en recepten) kost credits. Ingelogd krijg je er':'What the sommelier does (reading labels, reading wine lists, pairing and recipes) costs credits. Logged in you get',
+  'een etiket lezen, een pairing of een vraag aan de sommelier: 1 credit;':'reading a label, a pairing or a question to the sommelier: 1 credit;', 'een wijnkaart lezen: 2 credits per gefotografeerde pagina.':'reading a wine list: 2 credits per photographed page.',
+  ': naam, druiven, drinkvenster en pairing in één foto. Je krijgt':': name, grapes, drinking window and pairing in one photo. You get', 'gratis credits per maand:':'free credits a month:',
+  'en je kelder synchroniseert tussen je apparaten; je krijgt dan ook':'and your cellar syncs across your devices; you also get', 'gratis credits per maand om etiketten en wijnkaarten te laten lezen.':'free credits a month to have labels and wine lists read.',
+  'geeft je':'gives you', 'gratis credits per maand. Zonder account krijg je hieronder de kaartgids: waar je bij dit gerecht op de kaart naar zoekt.':'free credits a month. Without an account you get the list guide below: what to look for on the list with this dish.',
+  'Mail me even. Heb je al credits gebruikt, dan verrekenen we naar rato van wat je hebt verbruikt.':'Just email me. If you have used credits already, we settle in proportion to what you used.',
+  'Bedenktijd: heb je binnen veertien dagen nog geen credits gebruikt en wil je er toch vanaf, dan krijg je je geld terug.':'Cooling-off: if you have not used any credits within fourteen days and want out after all, you get your money back.',
+  'voor':'for', 'btw inbegrepen.':'VAT included.', 'worden dat er':'that becomes', 'Foto\'s van een':'Photos of a', 'Lijst met flessen':'List of bottles',
+  /* toasts en meldingen */
+  'Ligt in':'Is in', 'Nog zonder plek':'Still without a place', 'Genoteerd':'Noted', 'Vertaald':'Translated',
+  'Ruwe schatting':'Rough estimate', 'Prijs opgezocht:':'Price found:', 'Geen prijs gevonden':'No price found', 'Sync mislukt:':'Sync failed:', 'Lezen mislukt:':'Reading failed:', 'Opzoeken mislukte:':'Lookup failed:',
+  'Ruwe schatting van':'Rough estimate from', 'ruwe schatting':'rough estimate', 'zelf ingevuld':'entered by you', 'aankoopprijs':'purchase price', 'marktwaarde':'market value', 'gekocht voor':'bought for', 'Nog geen waarde bekend.':'No value known yet.',
+  'bij oudere wijnen extra grof':'extra rough for older wines', 'ouder dan een jaar':'older than a year', 'gegevens van':'data from',
+};
+/* teksten met een getal of naam erin: [regex, vervanging]; de vervanging mag een functie zijn */
+const bottles = n => Number(n) === 1 ? 'bottle' : 'bottles';
+const wines = n => Number(n) === 1 ? 'wine' : 'wines';
+const EN_RE = [
+  [/^(Licht|Weinig tannine|Zacht en rond|Droog|Geen hout) tot (Vol|Veel tannine|Fris en strak|Zoet|Veel hout)$/, (m, a, b) => `${EN[a]} to ${EN[b]}`],
+  [/^(\d+) fles(?:sen)?$/, (m, n) => `${n} ${bottles(n)}`],
+  [/^(\d+) fles(?:sen)? · tik voor de lijst$/, (m, n) => `${n} ${bottles(n)} · tap for the list`],
+  [/^(\d+) fles(?:sen)? · (\d+)×(\d+) vakken, (\d+) bezet · tik voor de lijst$/, (m, n, r, k, b) => `${n} ${bottles(n)} · ${r}×${k} slots, ${b} taken · tap for the list`],
+  [/^(\d+) fles(?:sen)?, nieuwste eerst\.$/, (m, n) => `${n} ${bottles(n)}, newest first.`],
+  [/^(\d+) fles(?:sen)?(.*) in de kelder gelegd(, proefnotitie bewaard)?(, nog zonder plek)?$/, (m, n, x, p, z) => `${n} ${bottles(n)} put in the cellar${p ? ', tasting note saved' : ''}${z ? ', no place yet' : ''}`],
+  [/^(\d+) fles(?:sen)? toegevoegd(, proefnotitie bewaard)?(, nog zonder plek)?$/, (m, n, p, z) => `${n} ${bottles(n)} added${p ? ', tasting note saved' : ''}${z ? ', no place yet' : ''}`],
+  [/^(\d+) fles(?:sen)? bijgeschreven$/, (m, n) => `${n} ${bottles(n)} added to stock`],
+  [/^\+(\d+) bijgeboekt, nu ×(\d+)$/, '+$1 added, now ×$2'],
+  [/^(\d+) wijn(?:en)? toegevoegd, samen (\d+) fles(?:sen)?$/, (m, a, b) => `${a} ${wines(a)} added, ${b} ${bottles(b)} in all`],
+  [/^(\d+) wijn(?:en)? gelezen( \(de eerste 400\))?$/, (m, n, x) => `${n} ${wines(n)} read${x ? ' (the first 400)' : ''}`],
+  [/^(\d+) wijnen · (.+)$/, '$1 wines · $2'],
+  [/^(\d+) prijs(?:zen)? uit de Caveau-prijstabel overgenomen$/, '$1 price(s) taken from the Caveau price table'],
+  [/^(\d+) prijs(?:zen)? opgezocht$/, '$1 price(s) looked up'],
+  [/^(\d+) regel(?:s)? gevonden\. Per veld staat de kolom die er het meest op lijkt; pas aan waar nodig\. Alleen de naam is verplicht\.$/, '$1 row(s) found. Each field shows the closest column; adjust where needed. Only the name is required.'],
+  [/^Bezig: (\d+) van (\d+)…$/, 'Working: $1 of $2…'],
+  [/^Voorraad gaat van (\d+) naar (\d+)$/, 'Stock goes from $1 to $2'],
+  [/^Je voorraad blijft (\d+); het oordeel telt mee in je smaakprofiel\.$/, 'Your stock stays at $1; the verdict counts towards your taste profile.'],
+  [/^Gedronken in (\d{4})$/, 'Drunk in $1'],
+  [/^Alle (\d+) tonen ▾$/, 'Show all $1 ▾'],
+  [/^Alle (\d+) in de lijst →$/, 'All $1 in the list →'],
+  [/^Alle (\d+) fles(?:sen)? (?:heeft|hebben) al een vak$/, 'All $1 bottles already have a slot'],
+  [/^Vak voor (\d+) van (\d+) fles(?:sen)?$/, 'Slot for $1 of $2 bottles'],
+  [/^Vak in (.+)$/, 'Slot in $1'],
+  [/^van (.+)$/, 'of $1'],
+  [/^Pak de fles uit vak (.+)$/, 'Take the bottle from slot $1'],
+  [/^Ligt in (.+)$/, 'Is in $1'],
+  [/^Plek in je kelder: (.+)$/, 'Place in your cellar: $1'],
+  [/^Plek (.+) toegevoegd$/, 'Place $1 added'],
+  [/^(.+) bestond al, gekozen$/, '$1 already existed, selected'],
+  [/^"(.+)" staat op tafel\. Je ziet hem bovenaan tot je hem afstreept$/, '"$1" is on the table. It stays at the top until you tick it off'],
+  [/^"(.+)" staat nog op tafel\. Vergeet niet af te strepen$/, '"$1" is still on the table. Do not forget to tick it off'],
+  [/^Ruwe schatting (€\s?[\d.,]+)\. Precies opzoeken\?$/, 'Rough estimate $1. Look up the exact price?'],
+  [/^Prijs opgezocht: (.+)$/, 'Price found: $1'],
+  [/^Prijs uit de Caveau-prijstabel: (.+)$/, 'Price from the Caveau price table: $1'],
+  [/^(.+) \(uit de Caveau-prijstabel\)$/, '$1 (from the Caveau price table)'],
+  [/^Geen prijs gevonden: (.+)$/, 'No price found: $1'],
+  [/^Opzoeken mislukte: (.+)$/, 'Lookup failed: $1'],
+  [/^Lezen mislukt: (.+)$/, 'Reading failed: $1'],
+  [/^Sync mislukt: (.+)$/, 'Sync failed: $1'],
+  [/^Inschatten mislukte: (.+)$/, 'Estimating failed: $1'],
+  [/^Lukte niet: (.+)$/, 'Failed: $1'],
+  [/^Opslaan lukte niet: (.+)$/, 'Saving failed: $1'],
+  [/^Versturen lukte niet: (.+)$/, 'Sending failed: $1'],
+  [/^Waarde( en venster)? bijgerekend voor (\S+)( · 1 credit)?$/, (m, v, j, c) => `Value${v ? ' and window' : ''} recalculated for ${j}${c ? ' · 1 credit' : ''}`],
+  [/^De opgezochte prijs gold voor jaargang (\d{4})\. Zoek in het detail opnieuw op$/, 'The looked-up price was for vintage $1. Look it up again from the bottle'],
+  [/^Drinkvenster bijgewerkt \((.+)\)$/, (m, s) => `Drinking window updated (${EN[s] || s})`],
+  [/^Antwoordstijl: (.+)$/, 'Answer style: $1'],
+  [/^Maximaal (\d+) foto's$/, 'At most $1 photos'],
+  [/^Maximaal (\d+) pagina's$/, 'At most $1 pages'],
+  [/^Rijen 1 tot (\d+), kolommen 1 tot (\d+)$/, 'Rows 1 to $1, columns 1 to $2'],
+  [/^(\d+) nieuwe proefnotities\. De sommelier kan er je smaak uit lezen$/, '$1 new tasting notes. The sommelier can read your taste from them'],
+  [/^Lees · 1 credit$/, 'Read · 1 credit'], [/^Lees$/, 'Read'],
+  [/^Lees mijn notities · 1 credit$/, 'Read my notes · 1 credit'], [/^Opnieuw lezen · 1 credit$/, 'Read again · 1 credit'],
+  [/^Na (\d+) proefnotities \(nu (\d+)\) kan de sommelier ze lezen en samenvatten waar je op let: tannine, mondgevoel, fruit, zuur, hout\.$/, 'After $1 tasting notes (now $2) the sommelier can read them and sum up what you notice: tannin, texture, fruit, acidity, oak.'],
+  [/^Bij (\d+) nieuwe notities \(nu (\d+)\) kun je ze opnieuw laten lezen\.$/, 'After $1 new notes (now $2) you can have them read again.'],
+  [/^gelezen uit (\d+) notities$/, 'read from $1 notes'],
+  [/^Uit (\d+) beoordelingen\.$/, 'From $1 ratings.'],
+  [/^Na vijf beoordeelde flessen \(sterren in je drink-historie, nu (\d+)\) verschijnt hier waar je hoog en laag scoort\.$/, 'After five rated bottles (stars in your drinking history, now $1) you will see here what you score high and low.'],
+  [/^(\d+) personen(.*)$/, '$1 people$2'],
+  [/^Zoek op · (\d+) credits$/, 'Look up · $1 credits'],
+  [/^(Precies opzoeken|Opnieuw opzoeken) · (\d+) credits$/, (m, a, n) => `${EN[a]} · ${n} credits`],
+  [/^(\d+) van de (\d+) credits$/, '$1 of $2 credits'],
+  [/^(\d+) van de (\d+) gratis credits$/, '$1 of $2 free credits'],
+  [/^(\d+) per maand gratis$/, '$1 a month free'],
+  [/^(\d+) credits per maand$/, '$1 credits a month'],
+  [/^(\d+) per maand$/, '$1 a month'],
+  [/^Caveau Plus · (.+)$/, 'Caveau Plus · $1'],
+  [/^Caveau v1 · (\d+) flessen · gemaakt met Claude$/, 'Caveau v1 · $1 bottles · made with Claude'],
+  [/^Of een foto \((\d+)\/(\d+)\)$/, 'Or a photo ($1/$2)'],
+  [/^Lange kaart\? Fotografeer tot (\d+) pagina's, of alleen het stuk dat je aanspreekt\.$/, 'Long list? Photograph up to $1 pages, or just the part that appeals to you.'],
+  [/^Lees de kaart en kies(.*)$/, 'Read the list and choose$1'],
+  [/^Lekker bij (.+)$/, 'Goes well with $1'],
+  [/^richting: (.+)$/, 'direction: $1'],
+  [/^staat al in je kelder \(×(\d+)\)\. Flessen bijboeken, of juist één afboeken\?$/, 'is already in your cellar (×$1). Add bottles, or remove one?'],
+  [/^Bekijk fles in kelder \(×(\d+)\)$/, 'View bottle in cellar (×$1)'],
+  [/^(.+) \(niet meer in je kelder\)$/, '$1 (no longer in your cellar)'],
+  [/^Opgeslagen · (.+)$/, 'Saved · $1'],
+  [/^Sommelier-AI · (.+)$/, 'Sommelier AI · $1'],
+  [/^Onlangs · (.+)$/, 'Recently · $1'],
+  [/^(\d+) ·  tik voor de lijst$/, '$1 · tap for the list'],
+  [/^Op dronk (\d{4})/, 'Ready $1'],
+  [/^op dronk (\d{4}.*)$/, 'ready $1'],
+  [/^was op dronk (.+)$/, 'was ready $1'],
+  [/^venster (\d{4}–\d{4})$/, 'window $1'],
+  [/^nog t\/m (\d{4})$/, 'until $1'],
+  [/^tot (\d{4})$/, 'until $1'],
+  [/^nu · (\d{4})$/, 'now · $1'],
+  [/^Bewaren\. (.*)vanaf (\d{4}) op dronk\.$/, (m, a, j) => { const p = a.match(/^(.+), en pas $/); return `Keep. ${p ? (EN[p[1]] || p[1]) + ', and only ' : 'Only '}ready from ${j}.`; }],
+  [/^Open hem gauw, het venster liep in (\d{4}) af\.$/, 'Open it soon, the window closed in $1.'],
+  [/^Binnenkort open, nog op dronk tot (\d{4})\.( Plan er een mooie avond voor\.)?$/, (m, j, p) => `Open soon, still ready until ${j}.${p ? ' Plan a nice evening for it.' : ''}`],
+  [/^(.+)\. Op dronk(?: tot (\d{4}))?, dus geen haast: bewaar hem voor een moment\.$/, (m, p, j) => `${EN[p] || p}. Ready${j ? ' until ' + j : ''}, so no hurry: keep it for an occasion.`],
+  [/^Kan open\. Op dronk(?: tot (\d{4}))?(?:, en je hebt er (\d+))?\.$/, (m, j, n) => `Can be opened. Ready${j ? ' until ' + j : ''}${n ? ', and you have ' + n : ''}.`],
+  [/^(.+)\. Drinkvenster onbekend\.$/, (m, p) => `${EN[p] || p}. Drinking window unknown.`],
+  [/^ruwe schatting van (.+?), (€.+) tot (€.+?)(, bij oudere wijnen extra grof)?$/, (m, d, a, b, o) => `rough estimate from ${d}, ${a} to ${b}${o ? ', extra rough for older wines' : ''}`],
+  [/^ruwe schatting, (€.+) tot (€.+?)(, bij oudere wijnen extra grof)?$/, (m, a, b, o) => `rough estimate, ${a} to ${b}${o ? ', extra rough for older wines' : ''}`],
+  [/^ruwe schatting(?: van (.+?))?(, bij oudere wijnen extra grof)?$/, (m, d, o) => `rough estimate${d ? ' from ' + d : ''}${o ? ', extra rough for older wines' : ''}`],
+  [/^(zelf ingevuld|aankoopprijs)(?:, (.+))?$/, (m, k, d) => `${EN[k]}${d ? ', ' + d : ''}`],
+  [/^marktwaarde, (.+)$/, 'market value, $1'],
+  [/^Nog geen waarde bekend, gekocht voor (.+)\.$/, 'No value known yet, bought for $1.'],
+  [/^gekocht voor (.+)$/, 'bought for $1'],
+  [/^(.+), jaargang (\d{4})(.*)$/, '$1, vintage $2$3'],
+  [/^(.+), gegevens van (.+?)( \(ouder dan een jaar\))?$/, (m, a, d, o) => `${a}, data from ${d}${o ? ' (older than a year)' : ''}`],
+  [/^Recept ophalen lukte niet \((.+)\)\. Probeer het zo nog eens\.$/, 'Fetching the recipe failed ($1). Try again shortly.'],
+  [/^Hoogstens één mail per week, en alleen als er iets te melden is: flessen die dit jaar op dronk komen, die je binnenkort moet drinken of die over hun piek raken\. Gaat naar (.+?)\. Hier weer uit te zetten\.$/, 'At most one email a week, and only when there is something to say: bottles coming ready this year, that you should drink soon or that are passing their peak. Goes to $1. Switch off here again.'],
+  [/^Je hebt nog (\d+) (?:credit|credits)(.*)$/, 'You have $1 credits left$2'],
+  [/^\((.+)\)\. Probeer het nog eens, of vul de velden \(deels\) zelf in en tik op "Herbereken"\. De foto blijft bewaard\.$/, '($1). Try again, or fill in the fields (partly) yourself and tap "Recalculate". The photo is kept.'],
+  [/^\((.+)\)\. Ga wat dichterbij, zorg voor licht, of fotografeer één pagina tegelijk\.$/, '($1). Get a little closer, find some light, or photograph one page at a time.'],
+  [/^Heeft een locatie vakjes, zoals een wijnrek\? Tik op (.*) en geef rijen en kolommen op\. Daarna kies je bij het toevoegen of bewerken per fles een vak\. Een foto per locatie is optioneel, handig om te zien welk rek of welke kast bedoeld wordt\.$/, 'Does a location have slots, like a wine rack? Tap $1 and enter rows and columns. Then pick a slot per bottle when adding or editing. A photo per location is optional, handy to see which rack or cupboard is meant.'],
+  [/^Recepten worden bewaard \(max 50\) en syncen mee met je account\. Vanuit een fles zie je de gekoppelde recepten; vanuit een recept spring je met (.*) naar de fles\.$/, 'Recipes are kept (max 50) and sync with your account. From a bottle you see its recipes; from a recipe you jump to the bottle with $1.'],
+  [/^Vraag bij een fles "Wat eet je hierbij\?" en tik bij een gerecht op (.*) Recept tonen\. Hier bouw je vanzelf je receptenboek op\.$/, 'Ask a bottle "What do I eat with this?" and tap $1 Show recipe next to a dish. Your recipe book builds itself here.'],
+];
+/* dit blijft Nederlands, ook in het Engels: namen, getallen, wat de gebruiker zelf typte */
+function tr(s){
+  if(taal() !== 'en' || !s) return s;
+  const k = s.trim();
+  if(!k || !/[A-Za-zÀ-ÿ]/.test(k)) return s;
+  let uit = EN[k];
+  if(uit == null){
+    for(const [re, rep] of EN_RE){ if(re.test(k)){ uit = k.replace(re, rep); break; } }
+  }
+  if(uit == null || uit === k) return s;
+  return s.replace(k, uit);
+}
+const TR_ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
+function vertaalNode(n){
+  if(!n) return;
+  if(n.nodeType === 3){
+    const p = n.parentNode; if(!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName)) return;
+    const t = tr(n.nodeValue); if(t !== n.nodeValue){ if(n.__nl == null) n.__nl = n.nodeValue; n.nodeValue = t; } return;
+  }
+  if(n.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA)$/.test(n.nodeName)) return;
+  for(const a of TR_ATTRS){ if(n.hasAttribute(a)){ const v = n.getAttribute(a), t = tr(v); if(t !== v){ n.__nl = n.__nl || {}; if(n.__nl[a] == null) n.__nl[a] = v; n.setAttribute(a, t); } } }
+  const it = document.createNodeIterator(n, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let x; while((x = it.nextNode())){ if(x === n) continue;
+    if(x.nodeType === 1){ if(/^(SCRIPT|STYLE|TEXTAREA)$/.test(x.nodeName)) continue; for(const a of TR_ATTRS){ if(x.hasAttribute(a)){ const v = x.getAttribute(a), t = tr(v); if(t !== v){ x.__nl = x.__nl || {}; if(x.__nl[a] == null) x.__nl[a] = v; x.setAttribute(a, t); } } } }
+    else if(x.nodeType === 3){ const p = x.parentNode; if(p && /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName)) continue; const t = tr(x.nodeValue); if(t !== x.nodeValue){ if(x.__nl == null) x.__nl = x.nodeValue; x.nodeValue = t; } }
+  }
+}
+/* terug naar Nederlands: wat ooit vertaald is (ook de vaste navigatie) krijgt zijn origineel terug */
+function herstelNL(root){
+  const it = document.createNodeIterator(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let x; while((x = it.nextNode())){
+    if(x.nodeType === 3){ if(typeof x.__nl === 'string'){ x.nodeValue = x.__nl; x.__nl = null; } }
+    else if(x.__nl && typeof x.__nl === 'object'){ for(const a in x.__nl) x.setAttribute(a, x.__nl[a]); x.__nl = null; }
+  }
+}
+new MutationObserver(muts => {
+  if(taal() !== 'en') return;
+  for(const m of muts){
+    if(m.type === 'childList') m.addedNodes.forEach(vertaalNode);
+    else if(m.type === 'characterData') vertaalNode(m.target);
+  }
+}).observe(document.body, {childList:true, subtree:true, characterData:true});
+function applyTaal(){
+  const en = taal() === 'en';
+  document.documentElement.lang = en ? 'en' : 'nl';
+  document.title = en ? 'Caveau, your wine cellar' : 'Caveau, je wijnkelder';
+  if(en) vertaalNode(document.body); else herstelNL(document.body);
+}
+/* eerste keer: kiezen, daarna blijft het zo (Instellingen → Taal) */
+function openTaalKeuze(){
+  openSheet(`${sheetHead('Taal · Language')}
+    <p class="small mb8">Kies de taal van de app. Je kunt dit later veranderen bij Instellingen.<br>Choose the language of the app. You can change it later under Settings.</p>
+    <div class="btnrow"><button class="btn" data-act="setTaal" data-v="nl">Nederlands</button><button class="btn" data-act="setTaal" data-v="en">English</button></div>`);
+}
+ACT.setTaal = el => {
+  const v = el.dataset.v === 'en' ? 'en' : 'nl';
+  S.settings.taal = v; save(true); applyTaal();
+  if(sheets.length) closeSheet(true);
+  render();
+  if(v === 'nl') toast('De app staat op Nederlands'); else toast('The app is now in English');
+};
+applyTaal();
+if(!S.settings.taal && !location.hash.includes('access_token')) setTimeout(openTaalKeuze, 500);
 </script>
 
 </body>
