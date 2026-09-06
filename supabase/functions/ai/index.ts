@@ -22,7 +22,8 @@ const B64_PER_CREDIT = 700_000  // een etiket (1400 px) blijft 1 credit, een kaa
 // Wat een actie kost. Moet gelijk blijven aan creditCost() in caveau.html.
 function creditsFor(kind: string, images: number): number {
   if (kind === 'wijnkaart') return Math.max(2, images * 2)
-  if (kind === 'prijs') return 5          // zoekagent: gemeten ± $0,06 met Haiku en drie zoekrondes
+  if (kind === 'prijs') return 1          // zoeklaag: één Brave-zoekopdracht plus Haiku op de fragmenten, rond een cent
+  if (kind === 'prijsdiep') return 5      // zoekagent met webtool: gemeten ± $0,06 met Haiku en drie zoekrondes
   return Math.max(1, images)
 }
 type Blok = { type?: string; text?: string; source?: { data?: string } }
@@ -43,7 +44,10 @@ function meet(messages: unknown) {
 
 // Alles draait op Sonnet 5, behalve prijzen: die plukt Haiku 4.5 uit zoekresultaten.
 const MODEL_DEFAULT = 'claude-sonnet-5'
-const MODEL_BY_KIND: Record<string, string> = { prijs: 'claude-haiku-4-5' }
+const MODEL_BY_KIND: Record<string, string> = { prijs: 'claude-haiku-4-5', prijsdiep: 'claude-haiku-4-5' }
+// Zoeklaag: hoogstens zoveel Brave-zoekopdrachten per dag, over alle gebruikers. Brave rekent
+// zonder plafond af, dus het plafond staat hier.
+const BRAVE_DAG_MAX = 400
 // Wijnsites waar de zoekagent mag kijken: minder ruis, minder tokens, en een bron-URL
 // die we vertrouwen (de gedeelde tabel neemt alleen adressen op deze domeinen op).
 const PRIJS_SITES = ['wine-searcher.com', 'idealwine.com', 'vivino.com', 'cellartracker.com', 'gall.nl', 'grandcruwijnen.nl', 'wijnvoordeel.nl',
@@ -75,6 +79,43 @@ Regels voor het antwoord, in deze volgorde:
 4. Alleen als je van deze wijn helemaal geen enkele prijs vindt, in welke munt dan ook: {"value":null,"note":"reden"}.
 Antwoord als allerlaatste met alleen dit JSON-object, zonder tekst ervoor of erna en zonder codeblok:
 {"value":42,"low":38,"high":48,"source":"naam van de winkel of site","url":"adres van de pagina waar de prijs staat","vintage_found":2014,"size_seen":"75cl|50cl|37.5cl|magnum|onbekend","confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt, met de flesmaat als die geen 75 cl was"}${STIJL}`
+}
+// De goedkope zoeklaag: één zoekopdracht bij Brave, daarna leest Haiku de prijs uit de
+// fragmenten. Geen webtool, geen paginabezoek; de bron-URL komt uit de zoekresultaten zelf,
+// dus die kan het model niet verzinnen.
+type Treffer = { title: string; url: string; desc: string }
+async function braveZoek(w: Wijn): Promise<Treffer[]> {
+  const key = Deno.env.get('BRAVE_SEARCH_KEY')
+  if (!key) return []
+  const q = [tekstVeld(w.producer), tekstVeld(w.name), Number(w.vintage) || ''].filter(Boolean).join(' ') + ' prijs'
+  const u = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=10&country=NL&search_lang=nl&text_decorations=false&extra_snippets=true`
+  try {
+    const r = await fetch(u, { headers: { 'Accept': 'application/json', 'X-Subscription-Token': key }, signal: AbortSignal.timeout(8000) })
+    if (!r.ok) { console.error('brave', r.status); return [] }
+    const d = await r.json()
+    // deno-lint-ignore no-explicit-any
+    return ((d?.web?.results || []) as any[]).slice(0, 10).map((x) => ({
+      title: tekstVeld(x.title, 160), url: String(x.url || '').slice(0, 500),
+      desc: tekstVeld([x.description, ...(Array.isArray(x.extra_snippets) ? x.extra_snippets : [])].filter(Boolean).join(' '), 700),
+    })).filter((t) => /^https?:\/\//.test(t.url))
+  } catch (e) { console.error('brave', String((e as Error)?.message || e).slice(0, 120)); return [] }
+}
+function leesPrompt(w: Wijn, treffers: Treffer[]): string {
+  const naam = tekstVeld(w.name), prod = tekstVeld(w.producer), jaar = Number(w.vintage) || null
+  const wie = `${naam}${prod && prod !== naam ? ', ' + prod : ''}, jaargang ${jaar || 'NV'}`
+  const lijst = treffers.map((t, i) => `${i + 1}. ${t.title} | ${t.url} | ${t.desc}`).join('\n')
+  return `Hieronder staan zoekresultaten over deze wijn: ${wie}. Haal er de actuele winkelprijs per fles van 75 cl in euro's uit.
+Regels, in deze volgorde:
+1. Alleen bedragen die letterlijk in een resultaat staan en die over precies deze wijn (zelfde producent en cuvée) gaan. Twijfel je of het dezelfde wijn is, laat het resultaat weg.
+2. Liefst jaargang ${jaar || 'NV'}: confidence "hoog". Alleen andere jaargangen gezien: neem de dichtstbijzijnde, zet die in vintage_found en confidence "middel". Dit is geen mislukking.
+3. Winkelprijzen gaan vóór veilingbiedingen. Meerdere winkelprijzen: value is de middelste, low en high de laagste en hoogste.
+4. Flesmaat: 50 cl × 1,5, 37,5 cl × 2, magnum ÷ 2; zet wat je zag in size_seen. Dollars of ponden: omrekenen (1 USD = 0,92 EUR, 1 GBP = 1,17 EUR), confidence "middel".
+5. Zet in result het nummer van het resultaat waar de prijs vandaan komt.
+6. Geen bruikbare prijs: {"value":null,"note":"reden"}.
+Antwoord met alleen dit JSON-object, zonder tekst ervoor of erna:
+{"value":42,"low":38,"high":48,"result":3,"vintage_found":${jaar || 'null'},"size_seen":"75cl|50cl|37.5cl|magnum|onbekend","confidence":"hoog|middel|laag","note":"één korte zin in het Nederlands over waar de prijs vandaan komt"}${STIJL}
+
+${lijst}`
 }
 function tekstUit(data: { content?: { type?: string; text?: string }[] }): string {
   return (data?.content || []).filter((b) => b.type === 'text').map((b) => b.text || '').join('')
@@ -127,6 +168,21 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== 'object') return json({ error: 'Ongeldig verzoek' }, 400)
     const kind = String(body.kind || 'ai').slice(0, 30)
 
+    // Gemeenschapsprijzen: wat iemand betaalde, één regel per gebruiker per wijn. Alleen als de
+    // gebruiker dat in Instellingen aanzet. Geen AI, geen credit. Anderen zien pas iets bij twee
+    // of meer gebruikers, en dan alleen laag/hoog/midden.
+    if (kind === 'betaald') {
+      const w = (body.wine && typeof body.wine === 'object') ? body.wine as Wijn : null
+      const prijs = Number(body.price)
+      if (!w || !tekstVeld(w.name) || !(prijs > 0 && prijs < 100000)) return json({ error: 'Ongeldig verzoek' }, 400)
+      try {
+        const { error } = await supa.from('wine_paid').upsert({ key: prijsSleutel(w), name: tekstVeld(w.name, 200), producer: tekstVeld(w.producer, 200),
+          vintage: Number(w.vintage) || null, price: Math.round(prijs * 100) / 100, user_id: user.id, created_at: new Date().toISOString() }, { onConflict: 'key,user_id' })
+        if (error) { console.error('wine_paid', error.message); return json({ ok: false }, 200) }
+      } catch (e) { console.error('wine_paid', String((e as Error)?.message || e).slice(0, 200)); return json({ ok: false }, 200) }
+      return json({ ok: true }, 200)
+    }
+
     // Gratis: alleen de prijstabel raadplegen, voor een lijst flessen (nieuwe scan of hele kelder).
     // Geen Anthropic-aanroep, geen credit.
     if (kind === 'prijscache') {
@@ -137,8 +193,22 @@ Deno.serve(async (req) => {
         const { data: rows } = await supa.from('wine_prices').select('*').in('key', keys)
         const vers = (rows || []).filter((r) => r.value != null)
         await Promise.all(vers.map((r) => supa.from('wine_prices').update({ hits: (r.hits || 0) + 1 }).eq('key', r.key)))
+        // gemeenschapsprijzen erbij: samengevoegd, en alleen bij twee of meer verschillende gebruikers
+        let paid: unknown[] = []
+        try {
+          const { data: prows } = await supa.from('wine_paid').select('key, price, user_id, created_at').in('key', keys)
+          const per: Record<string, { ps: number[]; users: Set<string>; at: string }> = {}
+          for (const r of (prows || []) as { key: string; price: number; user_id: string; created_at: string }[]) {
+            const p = per[r.key] || (per[r.key] = { ps: [], users: new Set(), at: '' })
+            p.ps.push(Number(r.price)); p.users.add(r.user_id); if (r.created_at > p.at) p.at = r.created_at
+          }
+          paid = Object.entries(per).filter(([, p]) => p.users.size >= 2).map(([key, p]) => {
+            const s = p.ps.sort((a, b) => a - b)
+            return { key, n: p.users.size, low: s[0], high: s[s.length - 1], med: s[Math.floor(s.length / 2)], at: p.at }
+          })
+        } catch (_) { /* tabel nog niet aangemaakt */ }
         return json({ prices: vers.map((r) => ({ key: r.key, value: r.value, low: r.low, high: r.high, source: r.source, url: r.url,
-          vintage_found: r.vintage_found, confidence: r.confidence, note: r.note, at: r.updated_at })) }, 200)
+          vintage_found: r.vintage_found, confidence: r.confidence, note: r.note, at: r.updated_at })), paid }, 200)
       } catch (_) { return json({ prices: [] }, 200) }
     }
 
@@ -147,7 +217,7 @@ Deno.serve(async (req) => {
     if (m.docs > 0 || m.images > MAX_IMAGES || m.tekst > MAX_TEXT) return json({ error: 'Verzoek te groot' }, 413)
 
     // zoekagent: alleen voor prijzen; de server bouwt de opdracht en kijkt eerst in de tabel
-    const web = body.web === true && kind === 'prijs'
+    const web = body.web === true && (kind === 'prijs' || kind === 'prijsdiep')
     const wijn: Wijn | null = web && body.wine && typeof body.wine === 'object' && tekstVeld((body.wine as Wijn).name) ? body.wine as Wijn : null
     if (web && !wijn) return json({ error: 'Ongeldig verzoek' }, 400)
     let messages = body.messages
@@ -187,6 +257,28 @@ Deno.serve(async (req) => {
     // verzoek doorsturen; de server bepaalt model en instellingen
     const wantStream = body.stream === true && !web
     const model = MODEL_BY_KIND[kind] || MODEL_DEFAULT
+    // Zoeklaag (kind 'prijs'): Brave zoekt, Haiku leest. Geen sleutel of plafond bereikt: dan
+    // valt 'prijs' terug op de zware agent, zodat de app blijft werken.
+    let treffers: Treffer[] = []
+    let viaBrave = false
+    if (wijn && kind === 'prijs' && Deno.env.get('BRAVE_SEARCH_KEY')) {
+      let vandaagN = 0
+      try {
+        const dag = new Date(); dag.setUTCHours(0, 0, 0, 0)
+        const { count } = await supa.from('wine_price_log').select('*', { count: 'exact', head: true }).gte('created_at', dag.toISOString()).like('model', '%brave%')
+        vandaagN = count || 0
+      } catch (_) { /* logboek onbereikbaar: gewoon proberen */ }
+      if (vandaagN < BRAVE_DAG_MAX) {
+        treffers = await braveZoek(wijn)
+        if (treffers.length) { viaBrave = true; messages = [{ role: 'user', content: [{ type: 'text', text: leesPrompt(wijn, treffers) }] }] }
+        else {
+          // niets gevonden bij Brave: geen AI-aanroep, credit terug, en dat melden
+          await boekWeg()
+          try { await supa.from('wine_price_log').insert({ key: prijsSleutel(wijn), model: 'brave', status: 204, text: '', value: null, error: 'geen zoekresultaten', tokens_in: 0, tokens_out: 0 }) } catch (_) { /* bijzaak */ }
+          return json({ content: [{ type: 'text', text: JSON.stringify({ value: null, note: 'geen zoekresultaten bij wijnhandels' }) }], usage: { input_tokens: 0, output_tokens: 0 } }, 200)
+        }
+      }
+    }
     const payload: Record<string, unknown> = {
       model,
       max_tokens: Math.min(Number(body.max_tokens) || 2000, 4000),
@@ -196,7 +288,7 @@ Deno.serve(async (req) => {
     // Sonnet/Opus 5 denken standaard mee in het antwoordbudget; voor JSON zetten we dat uit. Haiku 4.5 kent dat veld anders: weglaten.
     if (!/haiku/.test(model)) payload.thinking = { type: 'disabled' }
     // De webzoekfunctie van de API zelf; Haiku 4.5 kent alleen de basisvariant.
-    if (web) payload.tools = [{ type: /haiku/.test(model) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 3, allowed_domains: PRIJS_SITES }]
+    if (web && !viaBrave) payload.tools = [{ type: /haiku/.test(model) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 3, allowed_domains: PRIJS_SITES }]
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -255,11 +347,17 @@ Deno.serve(async (req) => {
     if (wijn) {
       const txt = tekstUit(data)
       const p = jsonUit(txt)
+      // zoeklaag: de bron is het genummerde zoekresultaat, nooit een adres uit het model zelf
+      if (p && viaBrave) {
+        const t = treffers[Number(p.result) - 1]
+        if (t) { p.url = t.url; try { p.source = new URL(t.url).hostname.replace(/^www\./, '') } catch { p.source = t.url.slice(0, 60) } }
+        else { p.url = ''; p.source = 'zoekresultaat' }
+      }
       const v = p ? Number(p.value) : NaN
       const goed = !!p && Number.isFinite(v) && v > 0 && v < 100000 && ['hoog', 'middel'].includes(String(p.confidence || ''))
       // logboek zonder gebruikers-id, en oude regels opruimen
       try {
-        const logRij = { key: prijsSleutel(wijn), model, status: r.status, text: txt.slice(0, 6000),
+        const logRij = { key: prijsSleutel(wijn), model: viaBrave ? model + '+brave' : model, status: r.status, text: txt.slice(0, 6000),
           value: goed ? v : null, error: p ? null : 'geen JSON', tokens_in: data?.usage?.input_tokens || 0, tokens_out: data?.usage?.output_tokens || 0 }
         // Meting: wat de scanner schatte naast wat de zoekagent vond. Zolang de kolom `schatting`
         // nog niet bestaat (SQL in supabase/sql/schatting-3sep.sql) valt de insert terug op de oude rij.
@@ -276,7 +374,7 @@ Deno.serve(async (req) => {
             key: prijsSleutel(wijn), user_id: user.id,
             name: tekstVeld(wijn.name, 200), producer: tekstVeld(wijn.producer, 200), vintage: Number(wijn.vintage) || null,
             value: v, low: Number.isFinite(Number(p.low)) ? Number(p.low) : null, high: Number.isFinite(Number(p.high)) ? Number(p.high) : null,
-            source: tekstVeld(p.source, 120), url: okUrl(p.url), vintage_found: Number(p.vintage_found) || null,
+            source: tekstVeld(p.source, 120), url: viaBrave ? String(p.url || '').slice(0, 500) : okUrl(p.url), vintage_found: Number(p.vintage_found) || null,
             confidence: tekstVeld(p.confidence, 10), note: tekstVeld(p.note, 300), updated_at: new Date().toISOString(),
           })
         } catch (e) { console.error('wine_prices upsert', String((e as Error)?.message || e).slice(0, 200)) }
