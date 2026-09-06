@@ -550,18 +550,22 @@ function save(skipCloud){
 
 /* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/functions/ai/index.ts */
 const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
-/* Wie Caveau aanbiedt. Staat hier op één plek zodat het in één regel verandert
-   zodra er een eenmanszaak of BV achter zit (dan hoort hier ook een KvK-nummer
-   en een vestigingsadres bij). Deze gegevens staan op de openbare pagina's. */
+/* Wie Caveau aanbiedt: de holding van Max. Staat hier op één plek; deze gegevens
+   staan op de openbare pagina's (privacy en voorwaarden). Het vestigingsadres
+   hoort er wettelijk bij zodra er betaald wordt; leeg = nog niet getoond. */
 /* Staat Plus te koop? Zolang Stripe in testmodus draait moet dit uit: een
    testafrekenpagina met een oranje TEST MODE-balk ziet er kapot uit. Familie en
    vrienden geef je intussen tegoed met een regel SQL (bonus_credits of plan
    'unlimited'), dan hoeft er geen nepbetaling aan te pas te komen.
    Live met Stripe? Dan hier op true, versienummer omhoog, build en klaar. */
 const PLUS_TE_KOOP = false;
-const AANBIEDER = 'Max Ponsen';
+const AANBIEDER = 'Ponsen Polutropon B.V.';
+const AANBIEDER_KVK = '77838335';
+const AANBIEDER_ADRES = '';
+/* "Ponsen Polutropon B.V. (KvK 77838335, <adres>)", of zonder het deel dat nog leeg is. */
+const aanbieder = () => { const extra = [AANBIEDER_KVK && 'KvK ' + AANBIEDER_KVK, AANBIEDER_ADRES].filter(Boolean).join(', '); return esc(AANBIEDER) + (extra ? ' (' + esc(extra) + ')' : ''); };
 const CONTACT_MAIL = 'max.ponsen@gmail.com';
-const LEGAL_DATUM = '3 september 2026';
+const LEGAL_DATUM = '6 september 2026';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -4412,7 +4416,7 @@ function viewPrivacy(){ return legalNote(viewPrivacyNL()); }
 function viewPrivacyNL(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Privacy</div><h2 class="h2">Wat Caveau van je bewaart</h2>
   <div class="legal">
-    <p>Caveau wordt aangeboden door ${esc(AANBIEDER)}. Vragen of een verzoek over je gegevens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>.</p>
+    <p>Caveau wordt aangeboden door ${aanbieder()}. Vragen of een verzoek over je gegevens? Mail <a href="mailto:${esc(CONTACT_MAIL)}" style="color:var(--acc-ink);font-weight:600">${esc(CONTACT_MAIL)}</a>.</p>
 
     <h3>Zonder account gaat er niets weg</h3>
     <p>Gebruik je Caveau zonder in te loggen, dan staat je hele kelder (flessen, notities, foto's) alleen op dit apparaat, in de opslag van je browser. Er gaat niets naar een server. Wis je de app-gegevens of je browser, dan is het weg; maak dus af en toe een back-up via Instellingen.</p>
@@ -4453,7 +4457,7 @@ function viewVoorwaarden(){ return legalNote(viewVoorwaardenNL()); }
 function viewVoorwaardenNL(){
   return `${brandRow('')}${backRow}<div class="eyebrow">Voorwaarden</div><h2 class="h2">De afspraken</h2>
   <div class="legal">
-    <p>Caveau is een app om je eigen wijnkelder bij te houden, aangeboden door ${esc(AANBIEDER)}. Door hem te gebruiken ga je met het onderstaande akkoord.</p>
+    <p>Caveau is een app om je eigen wijnkelder bij te houden, aangeboden door ${aanbieder()}. Door hem te gebruiken ga je met het onderstaande akkoord.</p>
 
     <h3>Gratis, en Plus</h3>
     <p>Het bijhouden van je kelder is gratis en blijft dat: flessen, voorraad, locaties, foto's, back-ups, en de ingebouwde regels voor drinkvenster en pairing werken zonder account en zonder te betalen.</p>
