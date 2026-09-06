@@ -700,10 +700,25 @@ function kleurUitDruiven(grapes){
 /* Kleur en druiven moeten kloppen. Zegt het model wit of rood terwijl alle herkende druiven het
    tegendeel zeggen, dan winnen de druiven. Geen type en geen uitsluitsel: dan vragen we het,
    in plaats van stil rood te kiezen. */
+/* Appellations die (vrijwel) altijd zoet zijn. Een Quarts de Chaume staat als "wit" op het etiket
+   en komt zo ook uit een scan; voor het glas en de pairing is het een dessertwijn. Jurançon en
+   Vouvray alleen zonder "sec"/"brut" erbij. */
+const ZOETE_APPELLATIES = /quarts de chaume|bonnezeaux|coteaux du layon|coteaux de l aubance|sauternes|barsac|cadillac|loupiac|sainte croix du mont|monbazillac|saussignac|tokaji aszu|tokaji aszú|eszencia|beerenauslese|trockenbeerenauslese|eiswein|ijswijn|icewine|ice wine|vin santo|recioto|passito|moscato d asti|muscat de beaumes|muscat de rivesaltes|muscat de frontignan|muscat de saint jean|pedro ximenez|late harvest|vendanges? tardives?|selection de grains nobles|grains nobles|ausbruch|commandaria|vin de paille|straw wine|picolit|malvasia delle lipari|moelleux|liquoreux|doux naturel/;
+const ZOET_TENZIJ = /\bsec\b|\bbrut\b|\bdry\b|\btrocken\b|\bsecco\b/;
+function zoetVolgensNaam(w){
+  const t = norm([w.name, w.appellation, w.region].filter(Boolean).join(' '));
+  if(!t) return false;
+  if(ZOETE_APPELLATIES.test(t)) return !ZOET_TENZIJ.test(t);
+  if(/jurancon|vouvray|montlouis|coteaux du layon/.test(t) && /moelleux|doux|liquoreux/.test(t)) return true;
+  return false;
+}
+/* het type waarmee de pairing rekent: de kleur uit de kelder, tenzij de appellation zoet is */
+const pairType = w => (w.type === 'wit' && zoetVolgensNaam(w)) ? 'zoet' : w.type;
 function typeControle(d){
   let t = d.type ? mapType(d.type, true) : null;
   const k = kleurUitDruiven(d.grapes);
   if((t === 'rood' || t === 'wit') && k && k !== t){ t = k; d.type_gecorrigeerd = true; }
+  if(t === 'wit' && zoetVolgensNaam(d)){ t = 'zoet'; d.type_gecorrigeerd = true; }
   if(!t && k) t = k;
   d.type_onzeker = !t;
   d.type = t;
@@ -1060,15 +1075,18 @@ const foodW = (c, t) => c.w[t] ?? (t === 'oranje' ? Math.max(c.w.wit || 0, (c.w.
 function scoreWines(text){
   const cats = foodCats(text);
   const scored = S.wines.filter(w => w.qty > 0).map(w => {
-    let sc = 0; let reason = ''; let grapeHit = false; let cat = null, catW = 0;
+    let sc = 0; let reason = ''; let grapeHit = false; let cat = null, catW = 0, fit = 0;
+    const pt = pairType(w);
     if(cats.length){
       for(const c of cats){
-        const tw = foodW(c, w.type); sc += tw;
+        const tw = foodW(c, pt); sc += tw; fit += tw;
         if(tw > 0 && (w.grapes||[]).some(g => c.g.some(cg => norm(g).includes(cg)))){ sc += 1.6; grapeHit = true; }
         if(tw >= 3 && !reason) reason = c.rW;
         if(tw > catW){ catW = tw; cat = c; }   /* de categorie waar deze fles het best bij past, voor de reden */
       }
       sc = sc / cats.length;
+      /* past de kleur nergens bij (zoet bij bisque), dan mag urgentie of smaak hem niet alsnog in de lijst tillen */
+      if(fit <= 0) return null;
     } else sc = 1.6;
     const st = windowStatus(w);
     /* urgentie telt mee: wat op moet en past, schenk je juist nú */
@@ -1076,7 +1094,7 @@ function scoreWines(text){
     /* je smaak: een druif of streek waar je van houdt krijgt een duwtje, een afkeer een tikje */
     sc += 0.8 * smaakMatch(w);
     return {w, sc, reason, grapeHit, st, cat, catW};
-  }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc);
+  }).filter(x => x && x.sc > 1).sort((a,b) => b.sc - a.sc);
   return {cats, scored};
 }
 
@@ -1095,21 +1113,22 @@ function winesForDish(text){
    ("zilte schaaldieren vragen om bubbels of strak wit") staat één keer boven de lijst, niet
    vijf keer hetzelfde onder elke kaart. */
 function regelReden(x){
-  const w = x.w, c = x.cat;
+  const w = x.w, c = x.cat, pt = pairType(w);
   if(!c) return 'Veelzijdige keuze uit je kelder.';
   const label = c.label.toLowerCase();
   const druif = (w.grapes||[]).slice(0, 2).join(' en ');
   const herkomst = w.region || w.country || '';
-  const typeL = (TYPES[w.type] ? TYPES[w.type].l : w.type).toLowerCase();
-  const kop = (druif || (TYPES[w.type] ? TYPES[w.type].l : 'Deze fles')) + (herkomst ? ' uit ' + herkomst : '');
+  const typeL = (TYPES[pt] ? TYPES[pt].l : pt).toLowerCase();
+  const kop = (druif || (TYPES[pt] ? TYPES[pt].l : 'Deze fles')) + (herkomst ? ' uit ' + herkomst : '');
   if(x.grapeHit) return `${kop}: een klassieke druif bij ${label}.`;
   if(x.catW >= 3) return druif ? `${kop}: ${typeL}, het register van ${label}.` : `${kop}, het register van ${label}.`;
   return `${kop}: ${typeL} kan hier ook, al is het niet de eerste keuze bij ${label}.`;
 }
 
 function dishesForWine(w){
+  const pt = pairType(w);
   const ranked = FOODS.map(c => {
-    let sc = foodW(c, w.type);
+    let sc = foodW(c, pt);
     if(sc > 0 && (w.grapes||[]).some(g => c.g.some(cg => norm(g).includes(cg)))) sc += 2;
     return {c, sc};
   }).filter(x => x.sc >= 3).sort((a,b) => b.sc - a.sc).slice(0,5);
@@ -1320,7 +1339,7 @@ value_eur is de geschatte marktwaarde per fles in euro's van déze jaargang op d
 
 const CELLAR_ALL = 100;  /* tot zoveel flessen gaat de hele kelder mee in de pairing-prompt (± 35 tokens per fles) */
 let cellarIdx = [];   /* volgnummer → wijn, voor de pairing-prompt (UUID's zijn een derde van de tokens) */
-const wineLine = (w, n) => `${n} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
+const wineLine = (w, n) => `${n} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type}${pairType(w) !== w.type ? ' (zoete appellation, dessertwijn)' : ''} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
 const URGENTIE = {nu:0, over:1, op:2};   /* wat op moet eerst, dan de rest */
 const urgentieVolgorde = (a, b) => (URGENTIE[windowStatus(a).k] ?? 3) - (URGENTIE[windowStatus(b).k] ?? 3);
 
