@@ -1179,6 +1179,13 @@ function dishesForWine(w){
 function ownKey(){
   return S.settings.devMode ? (S.settings.apiKey||'').trim() : '';
 }
+/* Advies zonder de sommelier-AI: dat eerlijk zeggen, met de reden, en dat de keuzes daardoor
+   minder goed kunnen zijn. Gedeeld door Mijn gerecht, Mijn wijn en Wijnkaart. */
+const aiRedenUit = () => IN_SANDBOX ? 'in deze proefomgeving staat de AI uit' : 'log in, dan doet de sommelier mee';
+const bronLabel = src => src === 'Kelderregels' ? 'Standaardregels · zonder AI' : src;
+function zonderAiHtml(reden){
+  return `<div class="banner"><span>${ik('chat')}</span><span><b>Advies zonder de sommelier-AI.</b> <span>${esc(((r) => r.charAt(0).toUpperCase() + r.slice(1))(String(reden || aiRedenUit())))}</span>. <span>Dit komt uit de standaardregels, een eenvoudige tabel op trefwoorden die niets weet van sauzen, bereiding of je hele kelder. Daardoor zijn dit misschien niet de allerbeste keuzes.</span></span></div>`;
+}
 function aiReady(){
   if(IN_SANDBOX) return false;
   if(ownKey()) return true;
@@ -2940,7 +2947,7 @@ async function runWineDishes(w, richting, force){
     renderDishes(out, w, richting, cached.list, `Opgeslagen · ${dt}`, true);
     return;
   }
-  let dishes = null, src = 'Kelderregels';
+  let dishes = null, src = 'Kelderregels', aiFout = aiRedenUit();
   if(aiReady()){
     out.innerHTML = `<div class="banner">${pourSvg}<span class="pulse">De sommelier denkt na…</span></div>`;
     try{
@@ -2950,14 +2957,15 @@ async function runWineDishes(w, richting, force){
         /* hoogstens drie richtingen per wijn bewaren, anders groeit het document en de sync zonder grens */
         const ks = Object.keys(w.dishCache); if(ks.length > 3) delete w.dishCache[ks.sort((a, b) => (w.dishCache[a].at||0) - (w.dishCache[b].at||0))[0]];
         save(); }
-    }catch(e){ dishes = null; }
+    }catch(e){ dishes = null; aiFout = leesFout(e); }
+    if(!aiFout) aiFout = 'de sommelier vond niets';
   }
   if(!dishes || !dishes.length){ dishes = dishesForWine(w); src = 'Kelderregels'; }
   if(!dishes.length){ out.innerHTML = '<p class="small">Geen suggesties gevonden. Vul type of druiven aan.</p>'; return; }
-  renderDishes(out, w, richting, dishes, src, false);
+  renderDishes(out, w, richting, dishes, src, false, aiFout);
 }
-function renderDishes(out, w, richting, list, srcLabel, cached){
-  out.innerHTML = `<div class="mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="srcchip">${esc(srcLabel)}</span>${richting?`<span class="small">richting: ${esc(richting)}</span>`:''}${cached?`<button class="linkbtn" style="font-size:12.5px" data-act="dishFresh" data-id="${w.id}" data-dir="${esc(richting||'')}">↻ vernieuw</button>`:''}</div>` +
+function renderDishes(out, w, richting, list, srcLabel, cached, aiFout){
+  out.innerHTML = (srcLabel === 'Kelderregels' ? zonderAiHtml(aiFout) : '') + `<div class="mb8" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="srcchip">${esc(bronLabel(srcLabel))}</span>${richting?`<span class="small">richting: ${esc(richting)}</span>`:''}${cached?`<button class="linkbtn" style="font-size:12.5px" data-act="dishFresh" data-id="${w.id}" data-dir="${esc(richting||'')}">↻ vernieuw</button>`:''}</div>` +
     list.map(d => `<div class="dishcard"><div class="d">${esc(d.dish)}</div><div class="r">${esc(d.reason||'')}</div><div class="mt8"><button class="linkbtn" style="font-size:13px" data-act="recipeAsk" data-dish="${esc(d.dish)}" data-wid="${w.id}">${ik('boek')} Recept tonen</button></div></div>`).join('');
 }
 
@@ -3489,7 +3497,7 @@ async function runPair(dish, force, stuur){
           save();
         }
       }catch(e){ matches = null; aiFout = leesFout(e); }
-    } else aiFout = IN_SANDBOX ? 'in deze proefomgeving staat de AI uit' : 'log in, dan leest de sommelier het gerecht echt';
+    } else aiFout = aiRedenUit();
     if(!matches || !matches.length){
       const r = winesForDish(dish); src = 'Kelderregels';
       regels = r.cats.map(c => c.rW.charAt(0).toUpperCase() + c.rW.slice(1));
@@ -3498,8 +3506,8 @@ async function runPair(dish, force, stuur){
     }
   }
   if(matches.length){
-    const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
-    if(src === 'Kelderregels') html += `<div class="banner mb8"><span>${ik('chat')}</span><span>${esc(aiFout ? 'De sommelier deed niet mee: ' + aiFout + '.' : 'De sommelier vond niets, dit zijn de kelderregels.')} De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.</span></div>` + regels.map(r => `<p class="small mb8">${esc('Kelderregel: ' + r + '.')}</p>`).join('');
+    const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}` : bronLabel(src)) + (stuur ? ` · ${stuur}` : '');
+    if(src === 'Kelderregels') html += zonderAiHtml(aiFout || 'de sommelier vond niets') + regels.map(r => `<p class="small mb8">${esc('Kelderregel: ' + r + '.')}</p>`).join('');
     html += `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
@@ -3606,7 +3614,7 @@ async function runMenu(){
   const out = document.getElementById('menuOut'); if(!out) return;
   const dish = (menu.dish||'').trim();
   if(!dish && !menu.food.length){ toast('Vertel wat je gaat eten, of fotografeer het menu'); return; }
-  if(!aiReady()){ menuOut = menuGuideHtml(dish, true); out.innerHTML = menuOut; return; }
+  if(!aiReady()){ menuOut = zonderAiHtml(aiRedenUit()) + menuGuideHtml(dish, true); out.innerHTML = menuOut; return; }
   if(!menu.shots.length){ toast('Maak eerst een foto van de wijnkaart'); return; }
   menu.busy = true; menu.err = null;
   menuOut = `<div class="banner">${pourSvg}<span class="pulse">De sommelier leest de kaart…</span></div>`;
@@ -5354,7 +5362,7 @@ const EN = {
   'bv. Vintec, zone boven':'e.g. Vintec, top zone', 'karakter, advies, herinnering…':'character, advice, a memory…', 'Aantal flessen':'Number of bottles', 'doos van 6':'case of 6', 'doos van 12':'case of 12',
   'Laat het drinkvenster leeg om het automatisch te laten schatten.':'Leave the drinking window empty to have it estimated.', 'Geef de wijn een naam':'Give the wine a name', 'Geef de wijn minstens een naam':'Give the wine at least a name',
   'Kies eerst het type: rood, wit, rosé…':'Choose the type first: red, white, rosé…', 'Vul eerst minstens een naam, druif of regio in':'Enter at least a name, grape or region first',
-  'Kelderregels':'Cellar rules', 'Kalf':'Veal', 'Wis het gerecht':'Clear the dish', 'Rundvlees & steak':'Beef & steak', 'Lam':'Lamb', 'Varken':'Pork', 'Kip & gevogelte':'Chicken & poultry', 'Eend':'Duck', 'Zalm & tonijn':'Salmon & tuna', 'Schaal- & schelpdieren':'Shellfish', 'Sushi & sashimi':'Sushi & sashimi', 'Pasta met tomaat & pizza':'Pasta with tomato & pizza', 'Romige pasta & risotto':'Creamy pasta & risotto', 'Paddenstoelen & truffel':'Mushrooms & truffle', 'Blauwe kaas':'Blue cheese', 'Geitenkaas':'Goat cheese', 'Aziatisch & pittig':'Asian & spicy', 'BBQ & gerookt':'BBQ & smoked', 'Groenten & salades':'Vegetables & salads', 'Chocolade':'Chocolate', 'Zoete desserts':'Sweet desserts', 'Borrel & aperitief':'Drinks & aperitif', 'De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.':'The cellar rules are a simple keyword table; they know nothing about sauces or preparation.', 'in deze proefomgeving staat de AI uit':'AI is off in this preview', 'log in, dan leest de sommelier het gerecht echt':'sign in and the sommelier will actually read the dish', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
+  'Kelderregels':'Cellar rules', 'Kalf':'Veal', 'Wis het gerecht':'Clear the dish', 'Rundvlees & steak':'Beef & steak', 'Lam':'Lamb', 'Varken':'Pork', 'Kip & gevogelte':'Chicken & poultry', 'Eend':'Duck', 'Zalm & tonijn':'Salmon & tuna', 'Schaal- & schelpdieren':'Shellfish', 'Sushi & sashimi':'Sushi & sashimi', 'Pasta met tomaat & pizza':'Pasta with tomato & pizza', 'Romige pasta & risotto':'Creamy pasta & risotto', 'Paddenstoelen & truffel':'Mushrooms & truffle', 'Blauwe kaas':'Blue cheese', 'Geitenkaas':'Goat cheese', 'Aziatisch & pittig':'Asian & spicy', 'BBQ & gerookt':'BBQ & smoked', 'Groenten & salades':'Vegetables & salads', 'Chocolade':'Chocolate', 'Zoete desserts':'Sweet desserts', 'Borrel & aperitief':'Drinks & aperitif', 'Advies zonder de sommelier-AI.':'Advice without the sommelier AI.', 'Dit komt uit de standaardregels, een eenvoudige tabel op trefwoorden die niets weet van sauzen, bereiding of je hele kelder. Daardoor zijn dit misschien niet de allerbeste keuzes.':'This comes from the standard rules, a simple keyword table that knows nothing about sauces, preparation or your whole cellar. So these may not be the very best choices.', 'In deze proefomgeving staat de AI uit':'AI is off in this preview', 'Log in, dan doet de sommelier mee':'Sign in and the sommelier joins in', 'De sommelier vond niets':'The sommelier found nothing', 'Standaardregels · zonder AI':'Standard rules · no AI', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
   '+ Nieuwe plek…':'+ New place…', '+ Nieuwe plek toevoegen':'+ Add a new place', 'bv. Kast onder de trap, Vintec links':'e.g. Cupboard under the stairs, Vintec left', 'Geef de plek een naam':'Give the place a name',
   'Later kun je er in Meer → Locaties een foto bij zetten of vakjes van maken.':'Later you can add a photo or slots under More → Locations.', 'Nog zonder plek':'Still without a place',
   'Volgende vrije vak':'Next free slot', 'Vakken weghalen':'Remove slots', 'Vakken weggehaald':'Slots removed', 'Rek aanpassen':'Adjust rack', 'Rijen':'Rows', 'Kolommen':'Columns', 'bv. 6':'e.g. 6', 'bv. 8':'e.g. 8',
@@ -5551,8 +5559,6 @@ const EN_RE = [
   [/^(.+?)(?: uit (.+?))?: (\S+), het register van (.+)\.$/, (m, a, b, t, l) => `${a}${b ? ' from ' + b : ''}: ${trLaag(t)}, the register for ${trLaag(l)}.`],
   [/^(.+?)(?: uit (.+?))?, het register van (.+)\.$/, (m, a, b, l) => `${tr(a)}${b ? ' from ' + b : ''}, the register for ${trLaag(l)}.`],
   [/^(.+?)(?: uit (.+?))?: (\S+) kan hier ook, al is het niet de eerste keuze bij (.+)\.$/, (m, a, b, t, l) => `${a}${b ? ' from ' + b : ''}: ${trLaag(t)} works too, though it is not the first choice for ${trLaag(l)}.`],
-  [/^De sommelier deed niet mee: (.+?)\. (De kelderregels zijn .+)$/, (m, r, rest) => `The sommelier did not take part: ${tr(r)}. ${tr(rest)}`],
-  [/^De sommelier vond niets, dit zijn de kelderregels\. (.*)$/, (m, rest) => `The sommelier found nothing, these are the cellar rules. ${tr(rest)}`],
   [/^(Licht|Weinig tannine|Zacht en rond|Droog|Geen hout) tot (Vol|Veel tannine|Fris en strak|Zoet|Veel hout)$/, (m, a, b) => `${EN[a]} to ${EN[b]}`],
   [/^(\d+) fles(?:sen)? zonder prijs$/, (m, n) => `${n} ${bottles(n)} without a price`],
   [/^(\d+) Caveau-gebruikers betaalden (€\s?[\d.,]+) tot (€\s?[\d.,]+)$/, '$1 Caveau users paid $2 to $3'],
