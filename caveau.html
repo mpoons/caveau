@@ -952,81 +952,103 @@ function estimateWindow(w){
 
 /* ================= spijs & wijn, regeltabel ================= */
 const FOODS = [
-  {id:'rund', label:'Rundvlees & steak', kw:['rund','biefstuk','steak','entrecote','tournedos','ribeye','ossenhaas','sucade','hachee','burger','tartaar','stoofvlees','stoof'],
+  /* Trefwoorden gelden per heel woord. Een * op het eind laat het woord doorlopen ("kip*" vangt kippenbout),
+     een * vooraan laat er iets voor staan ("*risotto" vangt champignonrisotto), want Nederlandse
+     samenstellingen plakken aan elkaar. Zonder * telt alleen het losse woord: "ree" past
+     dan niet meer op puree en "ham" niet op champignon. Meerwoordige trefwoorden gelden als zin. */
+  {id:'rund', label:'Rundvlees & steak', kw:['rund*','biefstuk*','steak*','entrecote*','tournedos','ribeye','rib eye','ossenhaas*','sucade*','hachee','burger*','hamburger*','tartaar','stoofvlees','stoofpot*','stoverij','bavette','picanha','chateaubriand','cote de boeuf','rosbief','bourguignon','goulash','gehakt*','gehaktbal*','diamanthaas','longhaas','haasbiefstuk*'],
    w:{rood:4}, g:G_BIG_RED, rW:'stevig rood met rijpe tannines draagt rood vlees moeiteloos',
    dishes:['Entrecôte met rodewijnjus','Klassiek stoofvlees','Burger van de grill'], buy:'een stevige Syrah, Malbec of Bordeaux-blend'},
-  {id:'wild', label:'Wild', kw:['wild','hert','ree','fazant','haas','wildzwijn','eendenborst','duif','patrijs'],
+  {id:'wild', label:'Wild', kw:['wild','wildzwijn*','wildstoof*','wildragout','everzwijn*','hert*','ree','reerug*','reebout*','reefilet*','reestoof*','fazant*','haas','hazen*','hazenpeper','duif*','patrijs*','kwartel*','wilde eend','damhert*','eendenborst'],
    w:{rood:4}, g:['pinot','nebbiolo','syrah','grenache','mourvedre','sangiovese'], rW:'aards, gerijpt rood is de klassieke partner van wild',
    dishes:['Hertenbiefstuk met jus van rode port','Gebraden fazant','Wildstoof'], buy:'een gerijpte Pinot Noir, Nebbiolo of noordelijke Rhône'},
-  {id:'lam', label:'Lam', kw:['lam','lamsbout','lamsrack','lamskotelet'],
+  {id:'lam', label:'Lam', kw:['lam','lams*','lammetje*','gigot','shoulder of lamb','lamb'],
    w:{rood:4}, g:['cabernet','merlot','tempranillo','syrah','mourvedre'], rW:'lam en gestructureerd rood is een tijdloze combinatie',
    dishes:['Lamsrack met knoflook en rozemarijn','Zeven-uurs lamsbout'], buy:'een Rioja Reserva of linkeroever-Bordeaux'},
-  {id:'varken', label:'Varken', kw:['varken','procureur','speenvarken','ham','spek','worst','saucijs'],
+  {id:'kalf', label:'Kalf', kw:['kalf','kalfsvlees','kalfsbiefstuk*','kalfsoester*','kalfsschnitzel*','kalfslever*','kalfsrollade*','kalfsrib*','kalfsfilet*','kalfsmuis','kalfsentrecote*','kalfswang*','kalfshaas*','kalfsmedaillon*','kalfskotelet*','kalfsstoof*','kalfsgehakt*','kalfsrack','kalfsnier*','kalfszwezerik*','zwezerik*','ossobuco','osso buco','vitello','blanquette','schnitzel*','saltimbocca','wienerschnitzel*'],
+   w:{wit:3, rood:3}, g:['chardonnay','pinot','sangiovese','nebbiolo','gamay','barbera'], rW:'kalfsvlees is fijn en licht: rijk wit of een zijdig, licht rood',
+   dishes:['Ossobuco','Kalfsschnitzel met citroen'], buy:'een Bourgogne blanc of een lichte Sangiovese'},
+  {id:'varken', label:'Varken', kw:['varken*','varkens*','procureur','speenvarken*','ham','spek*','buikspek*','worst*','saucijs*','braadworst*','porchetta','chorizo','pancetta','guanciale','casselerrib','hamlap*','pork'],
    w:{rood:3, wit:2, rose:1}, g:['pinot','gamay','chardonnay','tempranillo','barbera'], rW:'soepel rood of rijk wit past bij het zachte vet van varken',
    dishes:['Langzaam gegaarde procureur','Porchetta'], buy:'een soepele Pinot Noir of Barbera'},
-  {id:'kip', label:'Kip & gevogelte', kw:['kip','gevogelte','kalkoen','parelhoender','poussin','piri'],
+  {id:'kip', label:'Kip & gevogelte', kw:['kip*','kippen*','gevogelte','kalkoen*','parelhoender*','poussin','piri piri','poulet','coq','chicken'],
    w:{wit:3, rood:2, mousserend:1, rose:1}, g:['chardonnay','pinot','viognier','chenin'], rW:'rijk wit, of licht rood, omarmt gebraden gevogelte',
    dishes:['Hele kip uit de oven','Coq au vin (dan rood)'], buy:'een Bourgogne blanc of soepele Pinot Noir'},
-  {id:'eend', label:'Eend', kw:['eend','confit','canard'],
+  {id:'eend', label:'Eend', kw:['eend*','eenden*','confit','canard','magret','duck'],
    w:{rood:4, wit:1}, g:['pinot','grenache','tannat','merlot'], rW:'zijdig rood met wat rijpheid is heerlijk bij eend',
    dishes:['Eendenborst met sinaasappel','Confit de canard'], buy:'een rijpe Pinot Noir of Madiran'},
-  {id:'witvis', label:'Witte vis', kw:['vis','tong','kabeljauw','zeebaars','schol','tarbot','heilbot','wijting','skrei','forel'],
+  {id:'witvis', label:'Witte vis', kw:['vis*','tong*','zeetong*','kabeljauw*','zeebaars*','baars*','schol','scholfilet*','tarbot*','heilbot*','wijting*','skrei','forel*','zeewolf*','zeeduivel*','roodbaars*','koolvis*','snoekbaars*','dorade*','zeebrasem*','griet*','pladijs*','schelvis*','leng','pollak*','rog*','sole','meuniere','lekkerbek*','kibbeling*','witte vis','fish*','bouillabaisse','vispakket*','vissoep*','visstoof*','visschotel*'],
    w:{wit:4, mousserend:2, rose:1}, g:['sauvignon','albarino','muscadet','chablis','verdejo','picpoul','vermentino','chardonnay'], rW:'frisse, minerale witte wijn houdt witte vis licht en zuiver',
    dishes:['Gebakken zeebaars met citroen','Sole meunière'], buy:'een Chablis, Albariño of Muscadet'},
-  {id:'zalm', label:'Zalm & tonijn', kw:['zalm','tonijn','makreel','zwaardvis'],
+  {id:'zalm', label:'Zalm & tonijn', kw:['zalm*','tonijn*','makreel*','zwaardvis*','sardine*','sardientje*','ansjovis*','haring*','paling*','salmon','tuna'],
    w:{wit:3, rose:3, rood:2}, g:['pinot','chardonnay','gamay'], rW:'vette vis kan wit, rosé én licht gekoeld rood aan',
    dishes:['Gegrilde zalm','Tonijnsteak rosé gebakken'], buy:'een rijke rosé of lichte Pinot Noir'},
-  {id:'schaal', label:'Schaal- & schelpdieren', kw:['garnaal','gamba','kreeft','krab','coquille','sint-jakobs','mossel','oester','schelp','langoustine','schaaldier'],
+  {id:'schaal', label:'Schaal- & schelpdieren', kw:['garnaal*','garnalen*','gamba*','kreeft*','krab*','coquille*','sint jakobs*','jakobsschelp*','mossel*','oester*','schelp*','langoustine*','schaaldier*','schaal en schelpdieren','inktvis*','calamar*','octopus*','pulpo','zeevruchten','fruits de mer','scampi*','kokkel*','vongole','lobster','shrimp*','scallop*','prawn*'],
    w:{mousserend:4, wit:4}, g:['chardonnay','muscadet','albarino','chenin','riesling'], rW:'zilte schaaldieren vragen om bubbels of strak mineraal wit',
    dishes:['Oesters met citroen','Kreeft met beurre blanc','Moules-frites'], buy:'een Champagne of Muscadet sur lie'},
-  {id:'sushi', label:'Sushi & sashimi', kw:['sushi','sashimi','poke','ceviche'],
+  {id:'sushi', label:'Sushi & sashimi', kw:['sushi*','sashimi*','poke*','ceviche*','maki','nigiri'],
    w:{mousserend:3, wit:4}, g:['riesling','albarino','gruner','sauvignon'], rW:'strak, aromatisch wit met spanning past bij rauwe vis',
    dishes:['Sushi en sashimi','Ceviche'], buy:'een droge Riesling of Grüner Veltliner'},
-  {id:'pastatomaat', label:'Pasta met tomaat & pizza', kw:['pizza','tomaat','bolognese','arrabbiata','napoletana','lasagne','parmigiana','caprese'],
+  {id:'pastatomaat', label:'Pasta met tomaat & pizza', kw:['pizza*','tomaat*','tomaten*','bolognese','arrabbiata','napoletana','lasagne*','parmigiana','caprese','ragu','puttanesca','amatriciana','margherita','pomodoro'],
    w:{rood:4, rose:2}, g:['sangiovese','barbera','montepulciano','nero','primitivo','nerello'], rW:'Italiaans rood met frisse zuren spiegelt de tomaat',
    dishes:['Pasta al ragù','Pizza margherita'], buy:'een Chianti Classico of Barbera'},
-  {id:'pastaroom', label:'Romige pasta & risotto', kw:['carbonara','romige','roomsaus','risotto','truffelpasta','alfredo','kaassaus'],
+  {id:'pastaroom', label:'Romige pasta & risotto', kw:['carbonara','romige','romig','roomsaus*','risotto*','*risotto','truffelpasta','alfredo','kaassaus*','gratin*','beurre blanc','botersaus*','hollandaise','witte wijnsaus','witte wijn saus','wittewijnsaus','beurre','roomboter*'],
    w:{wit:4, mousserend:1}, g:['chardonnay','soave','pinot grigio','arneis','viognier'], rW:'rond, romig wit sluit aan bij boter en room',
    dishes:['Risotto met parmezaan','Tagliatelle met truffelroom'], buy:'een Soave Classico of Bourgogne blanc'},
-  {id:'paddenstoel', label:'Paddenstoelen & truffel', kw:['paddenstoel','champignon','truffel','porcini','eekhoorntjesbrood','cantharel'],
+  {id:'paddenstoel', label:'Paddenstoelen & truffel', kw:['paddenstoel*','paddestoel*','champignon*','truffel*','porcini','eekhoorntjesbrood','cantharel*','shiitake*','morille*','morielje*'],
    w:{rood:4, wit:2}, g:['nebbiolo','pinot','sangiovese','chardonnay'], rW:'aardse tonen in de wijn resoneren met paddenstoel en truffel',
    dishes:['Risotto met porcini','Tagliolini met truffel'], buy:'een Nebbiolo of gerijpte Bourgogne'},
-  {id:'kaas', label:'Kaasplank', kw:['kaas','brie','camembert','comte','gruyere','manchego','parmezaan','cheddar','oude kaas'],
+  {id:'kaas', label:'Kaasplank', kw:['kaas','kaasplank*','kazen','brie','camembert','comte','gruyere','manchego','parmezaan*','cheddar','oude kaas','kaasfondue','raclette','taleggio','pecorino','gouda','cheese*'],
    w:{rood:3, wit:3, versterkt:2, zoet:2}, g:['chardonnay','chenin','tempranillo','pinot'], rW:'kaas houdt van contrast: rijk wit, soepel rood of iets zoets',
    dishes:['Kaasplank met vijgenbrood','Kaasfondue (dan strak wit)'], buy:'een Chenin, rijpe Comté-partner als Jura, of Tawny Port'},
-  {id:'blauwekaas', label:'Blauwe kaas', kw:['blauwe kaas','roquefort','gorgonzola','stilton','blauwader'],
+  {id:'blauwekaas', label:'Blauwe kaas', kw:['blauwe kaas','roquefort','gorgonzola','stilton','blauwader*','fourme'],
    w:{zoet:4, versterkt:4, rood:1}, g:[], rW:'zout-blauw en zoet is een van de grootste klassiekers',
    dishes:['Roquefort met Sauternes','Stilton met Port'], buy:'een Sauternes of Vintage Port'},
-  {id:'geitenkaas', label:'Geitenkaas', kw:['geitenkaas','geiten','chevre','crottin'],
+  {id:'geitenkaas', label:'Geitenkaas', kw:['geitenkaas*','geiten*','chevre','crottin'],
    w:{wit:4, rose:1}, g:['sauvignon','chenin'], rW:'de zuren van Sauvignon en geitenkaas zijn voor elkaar gemaakt',
    dishes:['Salade met warme geitenkaas'], buy:'een Sancerre of Pouilly-Fumé'},
-  {id:'aziatisch', label:'Aziatisch & pittig', kw:['thais','curry','aziatisch','indiaas','pittig','wok','pad thai','rendang','szechuan','kimchi','ramen','dim sum','vietnam','sate','saté'],
+  {id:'aziatisch', label:'Aziatisch & pittig', kw:['thais*','curry*','*curry','aziatisch*','indiaas*','pittig*','wok*','pad thai','rendang','szechuan','sichuan','kimchi','ramen','dim sum','vietnam*','sate','nasi*','bami*','bibimbap','tandoori','tikka','masala','laksa','pho','chinees*','japans*','koreaans*','indonesisch*','sambal','gochujang','teriyaki','yakitori'],
    w:{wit:4, mousserend:2, rose:2, rood:0}, g:['riesling','gewurztraminer','pinot gris','chenin','gruner'], rW:'aromatisch wit met een vleug zoet blust pit en omarmt specerijen',
    dishes:['Groene curry','Pad thai'], buy:'een (off-dry) Riesling of Gewürztraminer'},
-  {id:'bbq', label:'BBQ & gerookt', kw:['bbq','barbecue','gegrild','gerookt','spareribs','pulled pork','brisket','kamado'],
+  {id:'bbq', label:'BBQ & gerookt', kw:['bbq','barbecue*','spareribs','ribs','pulled pork','brisket','kamado','smoker','low and slow','gerookte ribs'],
    w:{rood:4, rose:2}, g:['syrah','zinfandel','malbec','grenache','primitivo'], rW:'rokerig en royaal fruit tegen rook en karamelisatie',
    dishes:['Spareribs','Brisket low & slow'], buy:'een Zinfandel, Malbec of zuidelijke Rhône'},
-  {id:'vega', label:'Groenten & salades', kw:['salade','groente','vegetarisch','vegan','asperge','courgette','aubergine','bloemkool','pompoen','linzen','falafel','burrata'],
+  {id:'vega', label:'Groenten & salades', kw:['salade*','*salade','groente*','groenten*','vegetarisch*','vega','vegan*','asperge*','courgette*','aubergine*','bloemkool*','pompoen*','linzen*','falafel*','burrata','tofu','quiche*','ratatouille','artisjok*'],
    w:{wit:4, rose:3, rood:1, mousserend:1}, g:['sauvignon','vermentino','gruner','pinot grigio','grenache'], rW:'groen en fris, de wijn moet lucht en zuren meebrengen',
    dishes:['Gegrilde groenten met burrata','Salade niçoise'], buy:'een Grüner Veltliner of Provence-rosé'},
-  {id:'chocolade', label:'Chocolade', kw:['chocolade','chocola','brownie','moelleux','fondant'],
+  {id:'chocolade', label:'Chocolade', kw:['chocolade*','chocola*','brownie*','moelleux','fondant','chocolate'],
    w:{versterkt:4, zoet:3}, g:['grenache'], rW:'donkere chocolade vraagt zoet met kracht, denk aan Banyuls of Port',
    dishes:['Chocoladefondant','Brownie'], buy:'een Banyuls, Maury of Ruby Port'},
-  {id:'dessert', label:'Zoete desserts', kw:['dessert','taart','appeltaart','creme brulee','panna cotta','tiramisu','cheesecake','ijs','pavlova','fruit'],
+  {id:'dessert', label:'Zoete desserts', kw:['dessert*','taart*','appeltaart*','creme brulee','panna cotta','tiramisu','cheesecake','ijs','pavlova','fruit','toetje*','nagerecht*','crumble*','clafoutis','tarte*','sorbet*','mousse'],
    w:{zoet:4, mousserend:2}, g:['riesling','semillon','chenin','muscat'], rW:'de wijn moet minstens zo zoet zijn als het dessert',
    dishes:['Tarte tatin','Crème brûlée'], buy:'een Sauternes of late-harvest Riesling'},
-  {id:'borrel', label:'Borrel & aperitief', kw:['borrel','aperitief','tapas','charcuterie','olijven','nootjes','bitterballen','apero'],
+  {id:'borrel', label:'Borrel & aperitief', kw:['borrel*','aperitief','apero','tapas','charcuterie','olijven','nootjes','bitterballen','hapjes','antipasti'],
    w:{mousserend:4, wit:3, rose:2, versterkt:1}, g:['chardonnay','pinot'], rW:'bubbels of fris wit openen de avond',
    dishes:['Charcuterie en olijven','Bitterballen'], buy:'een Crémant of droge Fino sherry'}
 ];
+
+/* Eén plek die bepaalt of een trefwoord in een gerecht staat, gedeeld door de kelderregels,
+   de zoekbalk en de kaartgids. Werkt op de genormaliseerde tekst (kleine letters, leestekens
+   weg), dus "kalfsfond-witte-wijn-saus" wordt "kalfsfond witte wijn saus". */
+const kwReCache = new Map();
+function kwRe(k){
+  let re = kwReCache.get(k);
+  if(!re){
+    const prefix = k.endsWith('*'), suffix = k.startsWith('*');
+    const kern = norm(k.replace(/^\*|\*$/g, '')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    re = new RegExp((suffix ? '' : '(^| )') + kern + (prefix ? '' : '( |$)'));
+    kwReCache.set(k, re);
+  }
+  return re;
+}
+const foodCats = text => { const t = norm(text); return FOODS.filter(f => f.kw.some(k => kwRe(k).test(t))); };
 
 /* scoort de hele kelder tegen een gerecht; gedeeld door de kelderregels
    (winesForDish) en het voorfilter dat de AI-prompt klein houdt */
 /* gewicht van een gerecht voor een type; oranje leent van wit en rood */
 const foodW = (c, t) => c.w[t] ?? (t === 'oranje' ? Math.max(c.w.wit || 0, (c.w.rood || 0) - 1) : 0);
 function scoreWines(text){
-  const t = norm(text);
-  const cats = FOODS.filter(f => f.kw.some(k => t.includes(norm(k))));
+  const cats = foodCats(text);
   const scored = S.wines.filter(w => w.qty > 0).map(w => {
     let sc = 0; let reason = ''; let grapeHit = false;
     if(cats.length){
@@ -1271,27 +1293,29 @@ value_eur is de geschatte marktwaarde per fles in euro's van déze jaargang op d
   return schoonAI(parseJsonLoose(await callClaude([{type:'text', text:prompt}], 1500, 'herbereken')));
 }
 
-const CELLAR_MAX = 25;   /* hoeveel wijnen er hoogstens meegaan in een AI-prompt */
+const CELLAR_ALL = 100;  /* tot zoveel flessen gaat de hele kelder mee in de pairing-prompt (± 35 tokens per fles) */
 let cellarIdx = [];   /* volgnummer → wijn, voor de pairing-prompt (UUID's zijn een derde van de tokens) */
 const wineLine = (w, n) => `${n} | ${w.name} | ${w.producer||'?'} | ${w.vintage||'NV'} | ${TYPES[w.type]?TYPES[w.type].l:w.type} | ${(w.grapes||[]).join('/')||'?'} | ${[w.region,w.country].filter(Boolean).join(', ')||'?'} | ${windowStatus(w).label}`;
+const URGENTIE = {nu:0, over:1, op:2};   /* wat op moet eerst, dan de rest */
+const urgentieVolgorde = (a, b) => (URGENTIE[windowStatus(a).k] ?? 3) - (URGENTIE[windowStatus(b).k] ?? 3);
 
-/* Een hele kelder meesturen is zonde van het tegoed: bij een bekend gerecht
-   sturen we alleen de plausibele kandidaten (kelderregels doen de voorselectie),
-   aangevuld met flessen die toch bijna op moeten. Zonder gerecht, of als de
-   regels het gerecht niet kennen, gaat de kelder gewoon mee zoals eerst. */
+/* Tot CELLAR_ALL flessen gaat de hele kelder mee: de sommelier kiest dan echt uit alles, en dat kost
+   op honderd flessen nog geen cent. Daarboven maken de kelderregels een ruime voorselectie, met per
+   kleur altijd de beste paar erbij, zodat één verkeerd gelezen gerecht nooit een hele kleur buiten
+   beeld zet, en wat op moet nooit uit beeld valt. */
 function cellarLines(dish){
   const inStock = S.wines.filter(w => w.qty > 0);
   let list = inStock;
-  if(dish && inStock.length > CELLAR_MAX){
-    const {cats, scored} = scoreWines(dish);
-    if(cats.length && scored.length){
-      const pick = new Map();
-      scored.slice(0, CELLAR_MAX).forEach(x => pick.set(x.w.id, x.w));
-      /* wat op moet mag nooit uit beeld vallen, ook als het net niet scoort */
-      inStock.filter(w => ['nu','over'].includes(windowStatus(w).k))
-        .slice(0, 5).forEach(w => pick.set(w.id, w));
-      list = [...pick.values()];
+  if(inStock.length > CELLAR_ALL){
+    const pick = new Map();
+    const {cats, scored} = dish ? scoreWines(dish) : {cats:[], scored:[]};
+    if(cats.length) scored.slice(0, CELLAR_ALL - 30).forEach(x => pick.set(x.w.id, x.w));
+    for(const t of Object.keys(TYPES)){
+      inStock.filter(w => w.type === t && !pick.has(w.id)).sort(urgentieVolgorde).slice(0, 4).forEach(w => pick.set(w.id, w));
     }
+    inStock.filter(w => ['nu','over'].includes(windowStatus(w).k) && !pick.has(w.id)).slice(0, 8).forEach(w => pick.set(w.id, w));
+    if(pick.size < CELLAR_ALL) inStock.filter(w => !pick.has(w.id)).slice(0, CELLAR_ALL - pick.size).forEach(w => pick.set(w.id, w));
+    list = [...pick.values()];
   }
   cellarIdx = list.slice(0, 120);
   return cellarIdx.map((w, i) => wineLine(w, i + 1)).join('\n');
@@ -1510,11 +1534,10 @@ function filteredWines(){
   if(UI.q){ const q = norm(UI.q);
     const tekst = w => norm([w.name,w.producer,w.region,w.country,w.appellation,(w.grapes||[]).join(' '),w.location,w.note,w.vintage].join(' ')).includes(q);
     const opTekst = a.filter(tekst);
-    /* Alleen als geen enkele fles op de tekst past én een trefwoord van een gerecht aan het begin van
-       een woord staat ("lam", "lamsbout met"; niet "Lamothe"). Zo wint een fles altijd van een gerecht. */
+    /* Alleen als geen enkele fles op de tekst past én de tekst een gerecht bevat (foodCats kijkt per heel
+       woord: "lam" of "lamsbout met", niet "Lamothe"). Zo wint een fles altijd van een gerecht. */
     const {cats, scored} = (!opTekst.length && q.length >= 3) ? scoreWines(UI.q) : {cats:[], scored:[]};
-    const woord = cats.length && cats.some(c => c.kw.some(k => new RegExp('(^|[^a-z])' + norm(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(q)));
-    if(woord){
+    if(cats.length){
       UI.qGerecht = cats;
       gerechtVolgorde = new Map(scored.map((x, i) => [x.w.id, i]));
       a = a.filter(w => gerechtVolgorde.has(w.id));
@@ -3366,6 +3389,7 @@ async function runPair(dish, force, stuur){
   UI.pairDish = dish;
   const key = norm(dish) + (stuur ? ' | ' + norm(stuur) : '');
   let html = '', src = 'Kelderregels', matches = null, buyTip = null, cachedAt = null;
+  let aiFout = '';   /* waarom de sommelier niet meedeed; staat boven de kelderregels */
   /* eerder opgeslagen resultaat? (alleen wijnen die nog op voorraad zijn) */
   if(!force){
     const hit = (S.pairCache||[]).find(c => c.key === key);
@@ -3387,8 +3411,8 @@ async function runPair(dish, force, stuur){
           S.pairCache = S.pairCache.slice(0, 30);
           save();
         }
-      }catch(e){ matches = null; }
-    }
+      }catch(e){ matches = null; aiFout = leesFout(e); }
+    } else aiFout = IN_SANDBOX ? 'in deze proefomgeving staat de AI uit' : 'log in, dan leest de sommelier het gerecht echt';
     if(!matches || !matches.length){
       const r = winesForDish(dish); src = 'Kelderregels';
       matches = r.list.map(x => ({w:x.w, score:x.score, reason:x.rHtml}));
@@ -3397,7 +3421,8 @@ async function runPair(dish, force, stuur){
   }
   if(matches.length){
     const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
-    html = `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
+    if(src === 'Kelderregels') html += `<div class="banner mb8"><span>${ik('chat')}</span><span>${esc(aiFout ? 'De sommelier deed niet mee: ' + aiFout + '.' : 'De sommelier vond niets, dit zijn de kelderregels.')} De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.</span></div>`;
+    html += `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
                 : st.k === 'over' ? 'Over z\'n venster heen. Juist nú opdrinken, niet langer bewaren.' : '';
@@ -3579,8 +3604,7 @@ ACT.menuWish = el => {
 
 /* zonder AI (of als vangnet): waar je bij dit gerecht op de kaart naar zoekt: de kelderregels omgedraaid */
 function menuGuideHtml(dish, primary){
-  const t = norm(dish);
-  const cats = FOODS.filter(f => f.kw.some(k => t.includes(norm(k))));
+  const cats = foodCats(dish);
   if(!cats.length){
     return primary ? `<div class="banner"><span>🤔</span><span>Dit gerecht kan ik zonder AI niet plaatsen. Omschrijf het wat gewoner ("iets met kip", "witte vis"), of log in, dan leest de sommelier de kaart écht.</span></div>` : '';
   }
@@ -5252,7 +5276,7 @@ const EN = {
   'bv. Vintec, zone boven':'e.g. Vintec, top zone', 'karakter, advies, herinnering…':'character, advice, a memory…', 'Aantal flessen':'Number of bottles', 'doos van 6':'case of 6', 'doos van 12':'case of 12',
   'Laat het drinkvenster leeg om het automatisch te laten schatten.':'Leave the drinking window empty to have it estimated.', 'Geef de wijn een naam':'Give the wine a name', 'Geef de wijn minstens een naam':'Give the wine at least a name',
   'Kies eerst het type: rood, wit, rosé…':'Choose the type first: red, white, rosé…', 'Vul eerst minstens een naam, druif of regio in':'Enter at least a name, grape or region first',
-  'Kelderregels':'Cellar rules', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
+  'Kelderregels':'Cellar rules', 'Kalf':'Veal', 'De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.':'The cellar rules are a simple keyword table; they know nothing about sauces or preparation.', 'in deze proefomgeving staat de AI uit':'AI is off in this preview', 'log in, dan leest de sommelier het gerecht echt':'sign in and the sommelier will actually read the dish', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
   '+ Nieuwe plek…':'+ New place…', '+ Nieuwe plek toevoegen':'+ Add a new place', 'bv. Kast onder de trap, Vintec links':'e.g. Cupboard under the stairs, Vintec left', 'Geef de plek een naam':'Give the place a name',
   'Later kun je er in Meer → Locaties een foto bij zetten of vakjes van maken.':'Later you can add a photo or slots under More → Locations.', 'Nog zonder plek':'Still without a place',
   'Volgende vrije vak':'Next free slot', 'Vakken weghalen':'Remove slots', 'Vakken weggehaald':'Slots removed', 'Rek aanpassen':'Adjust rack', 'Rijen':'Rows', 'Kolommen':'Columns', 'bv. 6':'e.g. 6', 'bv. 8':'e.g. 8',
@@ -5444,6 +5468,8 @@ const EN = {
 const bottles = n => Number(n) === 1 ? 'bottle' : 'bottles';
 const wines = n => Number(n) === 1 ? 'wine' : 'wines';
 const EN_RE = [
+  [/^De sommelier deed niet mee: (.+?)\. (De kelderregels zijn .+)$/, (m, r, rest) => `The sommelier did not take part: ${tr(r)}. ${tr(rest)}`],
+  [/^De sommelier vond niets, dit zijn de kelderregels\. (.*)$/, (m, rest) => `The sommelier found nothing, these are the cellar rules. ${tr(rest)}`],
   [/^(Licht|Weinig tannine|Zacht en rond|Droog|Geen hout) tot (Vol|Veel tannine|Fris en strak|Zoet|Veel hout)$/, (m, a, b) => `${EN[a]} to ${EN[b]}`],
   [/^(\d+) fles(?:sen)? zonder prijs$/, (m, n) => `${n} ${bottles(n)} without a price`],
   [/^(\d+) Caveau-gebruikers betaalden (€\s?[\d.,]+) tot (€\s?[\d.,]+)$/, '$1 Caveau users paid $2 to $3'],
