@@ -1966,8 +1966,9 @@ async function prijzenUitTabel(wines){
     if(p && pasPrijsToe(w, {...p, cached:true})) n++;
     if(b && getalOk(b.n) >= 2 && getalOk(b.med) > 0){
       w.samen = {n: Math.round(b.n), low: getalOk(b.low), high: getalOk(b.high), med: getalOk(b.med), at: tekstOk(b.at, 40)}; gewijzigd = true;
-      /* geen echte prijs? dan geldt wat anderen betaalden, met de spreiding als band */
-      if(!metBron(w)){ w.value = Math.round(b.med); w.valueLow = Math.round(b.low); w.valueHigh = Math.round(b.high); w.valueSrc = 'samen'; w.valueAt = vandaag(); w.valueBron = {name:'Caveau-gebruikers', n: Math.round(b.n)}; n++; }
+      /* geen echte prijs? dan geldt wat anderen betaalden, met de spreiding als band; pas vanaf drie
+         mensen, bij twee staat het alleen ter info in het detail */
+      if(!metBron(w) && b.n >= 3){ w.value = Math.round(b.med); w.valueLow = Math.round(b.low); w.valueHigh = Math.round(b.high); w.valueSrc = 'samen'; w.valueAt = vandaag(); w.valueBron = {name:'Caveau-gebruikers', n: Math.round(b.n)}; n++; }
     }
   }
   if(n || gewijzigd){ save(); renderTenzijFormulier(); }

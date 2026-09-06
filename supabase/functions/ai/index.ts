@@ -202,10 +202,16 @@ Deno.serve(async (req) => {
             const p = per[r.key] || (per[r.key] = { ps: [], users: new Set(), at: '' })
             p.ps.push(Number(r.price)); p.users.add(r.user_id); if (r.created_at > p.at) p.at = r.created_at
           }
-          paid = Object.entries(per).filter(([, p]) => p.users.size >= 2).map(([key, p]) => {
-            const s = p.ps.sort((a, b) => a - b)
-            return { key, n: p.users.size, low: s[0], high: s[s.length - 1], med: s[Math.floor(s.length / 2)], at: p.at }
-          })
+          // Tegen foute of kwaadwillende invoer: uitschieters (meer dan 2,5× of minder dan 0,4× de
+          // mediaan) tellen niet mee, en pas vanaf twee overgebleven gebruikers komt er iets terug.
+          // De client neemt het cijfer pas als waarde over vanaf drie; bij twee is het alleen ter info.
+          paid = Object.entries(per).map(([key, p]) => {
+            const alle = p.ps.slice().sort((a, b) => a - b)
+            const med0 = alle[Math.floor(alle.length / 2)]
+            const s = alle.filter((x) => x >= med0 * 0.4 && x <= med0 * 2.5)
+            if (s.length < 2 || p.users.size < 2) return null
+            return { key, n: Math.min(p.users.size, s.length), low: s[0], high: s[s.length - 1], med: s[Math.floor(s.length / 2)], at: p.at }
+          }).filter(Boolean)
         } catch (_) { /* tabel nog niet aangemaakt */ }
         return json({ prices: vers.map((r) => ({ key: r.key, value: r.value, low: r.low, high: r.high, source: r.source, url: r.url,
           vintage_found: r.vintage_found, confidence: r.confidence, note: r.note, at: r.updated_at })), paid }, 200)
