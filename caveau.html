@@ -173,6 +173,9 @@ h1,h2,h3{text-wrap:balance}
 .search svg{flex:none;color:var(--ink3)}
 .search .sortbtn{flex:none;width:32px;height:32px;margin:-4px -6px -4px 0;border-radius:9px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
 .search .sortbtn:active{background:var(--card2)}
+.search .swis{flex:none;width:28px;height:28px;margin:-4px -8px -4px 0;border-radius:50%;border:0;background:none;color:var(--ink3);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
+.search .swis:active{background:var(--card2)}
+.search .swis[hidden]{display:none}
 .chiprow{display:flex;gap:7px;overflow-x:auto;padding:10px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chiprow::-webkit-scrollbar{display:none}
 .chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink2);white-space:nowrap}
@@ -368,9 +371,12 @@ textarea.inp{resize:vertical;min-height:64px}
 .nfab.on .fab{background:var(--fab2)}
 :root[data-theme="dark"] .nfab .fab{box-shadow:0 6px 18px rgba(0,0,0,.45)}
 /* ---------- toast ---------- */
-.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 16px;font-size:13.5px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 40px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 16px;font-size:13.5px;display:flex;gap:14px;align-items:center;width:max-content;text-align:left;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 40px)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
 .toast button{color:var(--gold);font-weight:700;font-size:13.5px;flex:none}
+.toast span{flex:1 1 200px;min-width:0}
+.toast{flex-wrap:wrap}
+.toast button{margin-left:auto}
 /* ---------- scan ---------- */
 .scanhero{text-align:center;padding:26px 18px 10px}
 .scanbig{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--fab1) 0%,var(--fab2) 90%);color:#FFF7F2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin:18px auto;box-shadow:0 14px 40px rgba(125,42,60,.35);font-weight:600;font-size:14px}
@@ -861,7 +867,7 @@ function confirmSheet(title, msg, okLabel, fn, danger){
 let toastTimer = null;
 function toast(msg, actionLabel, actionFn, ms=4200){
   const host = document.getElementById('toastHost');
-  host.innerHTML = `<div class="toast" role="status">${esc(msg)}${actionLabel?`<button id="toastAct">${esc(actionLabel)}</button>`:''}</div>`;
+  host.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${actionLabel?`<button id="toastAct">${esc(actionLabel)}</button>`:''}</div>`;
   const el = host.firstChild;
   if(actionLabel) el.querySelector('#toastAct').onclick = () => { host.innerHTML=''; actionFn && actionFn(); };
   requestAnimationFrame(()=>el.classList.add('show'));
@@ -1054,12 +1060,13 @@ const foodW = (c, t) => c.w[t] ?? (t === 'oranje' ? Math.max(c.w.wit || 0, (c.w.
 function scoreWines(text){
   const cats = foodCats(text);
   const scored = S.wines.filter(w => w.qty > 0).map(w => {
-    let sc = 0; let reason = ''; let grapeHit = false;
+    let sc = 0; let reason = ''; let grapeHit = false; let cat = null, catW = 0;
     if(cats.length){
       for(const c of cats){
         const tw = foodW(c, w.type); sc += tw;
         if(tw > 0 && (w.grapes||[]).some(g => c.g.some(cg => norm(g).includes(cg)))){ sc += 1.6; grapeHit = true; }
         if(tw >= 3 && !reason) reason = c.rW;
+        if(tw > catW){ catW = tw; cat = c; }   /* de categorie waar deze fles het best bij past, voor de reden */
       }
       sc = sc / cats.length;
     } else sc = 1.6;
@@ -1068,7 +1075,7 @@ function scoreWines(text){
     if(st.k==='op') sc += 0.9; else if(st.k==='nu') sc += 1.4; else if(st.k==='jong') sc -= 1.3; else if(st.k==='over') sc += 0.8;
     /* je smaak: een druif of streek waar je van houdt krijgt een duwtje, een afkeer een tikje */
     sc += 0.8 * smaakMatch(w);
-    return {w, sc, reason, grapeHit, st};
+    return {w, sc, reason, grapeHit, st, cat, catW};
   }).filter(x => x.sc > 1).sort((a,b) => b.sc - a.sc);
   return {cats, scored};
 }
@@ -1079,11 +1086,25 @@ function winesForDish(text){
   const mx = Math.max(4.8, ...scored.map(x=>x.sc));
   scored.forEach(x => {
     x.score = Math.max(4, Math.min(10, Math.round(x.sc / mx * 10)));
-    let r = x.reason ? x.reason.charAt(0).toUpperCase()+x.reason.slice(1) : 'Veelzijdige keuze uit je kelder';
-    if(x.grapeHit && x.w.grapes && x.w.grapes.length) r += `, want de ${esc(x.w.grapes[0])} doet hier precies wat nodig is`;
-    x.rHtml = r + '.';
+    x.rHtml = regelReden(x);
   });
   return {cats, list:scored};
+}
+
+/* De reden per fles zegt wat déze fles onderscheidt (druif, herkomst, kleur); de regel zelf
+   ("zilte schaaldieren vragen om bubbels of strak wit") staat één keer boven de lijst, niet
+   vijf keer hetzelfde onder elke kaart. */
+function regelReden(x){
+  const w = x.w, c = x.cat;
+  if(!c) return 'Veelzijdige keuze uit je kelder.';
+  const label = c.label.toLowerCase();
+  const druif = (w.grapes||[]).slice(0, 2).join(' en ');
+  const herkomst = w.region || w.country || '';
+  const typeL = (TYPES[w.type] ? TYPES[w.type].l : w.type).toLowerCase();
+  const kop = (druif || (TYPES[w.type] ? TYPES[w.type].l : 'Deze fles')) + (herkomst ? ' uit ' + herkomst : '');
+  if(x.grapeHit) return `${kop}: een klassieke druif bij ${label}.`;
+  if(x.catW >= 3) return druif ? `${kop}: ${typeL}, het register van ${label}.` : `${kop}, het register van ${label}.`;
+  return `${kop}: ${typeL} kan hier ook, al is het niet de eerste keuze bij ${label}.`;
 }
 
 function dishesForWine(w){
@@ -3350,7 +3371,7 @@ function viewPairing(){
     return `${brandRow('')}<div class="eyebrow">Spijs & wijn</div><h2 class="h2">Wat ga je (ongeveer) eten?</h2>${toggle}
       <p class="small mb8">Vaag mag: "iets met kip" of "Aziatisch" is genoeg. De sommelier kiest de beste flessen uit jóuw kelder, met uitleg waarom.</p>
       <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
-        <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="${esc(UI.pairDish||'')}" aria-label="Gerecht"></div>
+        <input type="search" id="pairDish" placeholder="bv. 'iets met kip' of 'hertenbiefstuk'" value="${esc(UI.pairDish||'')}" aria-label="Gerecht"><button class="swis" data-act="pairWis" aria-label="Wis het gerecht"${UI.pairDish?'':' hidden'}>✕</button></div>
       <div class="chiprow">${chips}</div>
       <button class="btn" data-act="pairGo">Zoek de beste fles in mijn kelder</button>
       <div id="pairOut" class="mt14">${pairOut}</div>
@@ -3385,15 +3406,19 @@ ACT.pairStuur = el => { const stuur = ((document.getElementById('pairStuur')||{}
 ACT.pairStuurQuick = el => { const i = document.getElementById('pairStuur'); if(i) i.value = el.dataset.s; runPair(el.dataset.d, true, el.dataset.s); };
 ACT.pairQuick = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d; ACT.pairGo(); };
 ACT.pairGo = () => runPair(((document.getElementById('pairDish')||{}).value||'').trim(), false);
+/* kruisje: veld leeg, cursor erin; het advies eronder blijft staan tot er een nieuw gerecht is */
+ACT.pairWis = el => { const i = document.getElementById('pairDish'); if(i){ i.value = ''; i.focus(); } UI.pairDish = ''; el.hidden = true; };
+const pairWisToon = () => { const i = document.getElementById('pairDish'), b = document.querySelector('#pairDish + .swis'); if(i && b) b.hidden = !i.value; };
+document.addEventListener('input', e => { if(e.target && e.target.id === 'pairDish') pairWisToon(); });
 ACT.pairFresh = el => { const i = document.getElementById('pairDish'); if(i) i.value = el.dataset.d||''; runPair(el.dataset.d||'', true); };
 async function runPair(dish, force, stuur){
   if(!dish){ toast('Vertel eerst wat je gaat eten'); return; }
   const out = document.getElementById('pairOut'); if(!out) return;
   stuur = (stuur || '').trim().slice(0, 120);
-  UI.pairDish = dish;
+  UI.pairDish = dish; pairWisToon();
   const key = norm(dish) + (stuur ? ' | ' + norm(stuur) : '');
   let html = '', src = 'Kelderregels', matches = null, buyTip = null, cachedAt = null;
-  let aiFout = '';   /* waarom de sommelier niet meedeed; staat boven de kelderregels */
+  let aiFout = '', regels = [];   /* waarom de sommelier niet meedeed, en welke regel er dan gold; staat boven de kelderregels */
   /* eerder opgeslagen resultaat? (alleen wijnen die nog op voorraad zijn) */
   if(!force){
     const hit = (S.pairCache||[]).find(c => c.key === key);
@@ -3419,13 +3444,14 @@ async function runPair(dish, force, stuur){
     } else aiFout = IN_SANDBOX ? 'in deze proefomgeving staat de AI uit' : 'log in, dan leest de sommelier het gerecht echt';
     if(!matches || !matches.length){
       const r = winesForDish(dish); src = 'Kelderregels';
+      regels = r.cats.map(c => c.rW.charAt(0).toUpperCase() + c.rW.slice(1));
       matches = r.list.map(x => ({w:x.w, score:x.score, reason:x.rHtml}));
       if(!matches.length && r.cats.length) buyTip = 'Niets ideaals op voorraad. Kooptip: ' + r.cats[0].buy + '.';
     }
   }
   if(matches.length){
     const meta = (src === 'Opgeslagen' ? `Opgeslagen · ${new Date(cachedAt).toLocaleDateString(LOCALE(),{day:'numeric',month:'short'})}` : src) + (stuur ? ` · ${stuur}` : '');
-    if(src === 'Kelderregels') html += `<div class="banner mb8"><span>${ik('chat')}</span><span>${esc(aiFout ? 'De sommelier deed niet mee: ' + aiFout + '.' : 'De sommelier vond niets, dit zijn de kelderregels.')} De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.</span></div>`;
+    if(src === 'Kelderregels') html += `<div class="banner mb8"><span>${ik('chat')}</span><span>${esc(aiFout ? 'De sommelier deed niet mee: ' + aiFout + '.' : 'De sommelier vond niets, dit zijn de kelderregels.')} De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.</span></div>` + regels.map(r => `<p class="small mb8">${esc('Kelderregel: ' + r + '.')}</p>`).join('');
     html += `<div class="mb8" style="display:flex;gap:10px;align-items:center"><span class="srcchip">${esc(meta)}</span>${src==='Opgeslagen'?`<button class="linkbtn" style="font-size:12.5px" data-act="pairFresh" data-d="${esc(dish)}">↻ vernieuw</button>`:''}</div>` + matches.map(m => {
       const st = windowStatus(m.w);
       const urg = st.k === 'nu' ? 'Moet toch binnenkort op, vanavond is een mooi excuus.'
@@ -5280,7 +5306,7 @@ const EN = {
   'bv. Vintec, zone boven':'e.g. Vintec, top zone', 'karakter, advies, herinnering…':'character, advice, a memory…', 'Aantal flessen':'Number of bottles', 'doos van 6':'case of 6', 'doos van 12':'case of 12',
   'Laat het drinkvenster leeg om het automatisch te laten schatten.':'Leave the drinking window empty to have it estimated.', 'Geef de wijn een naam':'Give the wine a name', 'Geef de wijn minstens een naam':'Give the wine at least a name',
   'Kies eerst het type: rood, wit, rosé…':'Choose the type first: red, white, rosé…', 'Vul eerst minstens een naam, druif of regio in':'Enter at least a name, grape or region first',
-  'Kelderregels':'Cellar rules', 'Kalf':'Veal', 'De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.':'The cellar rules are a simple keyword table; they know nothing about sauces or preparation.', 'in deze proefomgeving staat de AI uit':'AI is off in this preview', 'log in, dan leest de sommelier het gerecht echt':'sign in and the sommelier will actually read the dish', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
+  'Kelderregels':'Cellar rules', 'Kalf':'Veal', 'Wis het gerecht':'Clear the dish', 'Rundvlees & steak':'Beef & steak', 'Lam':'Lamb', 'Varken':'Pork', 'Kip & gevogelte':'Chicken & poultry', 'Eend':'Duck', 'Zalm & tonijn':'Salmon & tuna', 'Schaal- & schelpdieren':'Shellfish', 'Sushi & sashimi':'Sushi & sashimi', 'Pasta met tomaat & pizza':'Pasta with tomato & pizza', 'Romige pasta & risotto':'Creamy pasta & risotto', 'Paddenstoelen & truffel':'Mushrooms & truffle', 'Blauwe kaas':'Blue cheese', 'Geitenkaas':'Goat cheese', 'Aziatisch & pittig':'Asian & spicy', 'BBQ & gerookt':'BBQ & smoked', 'Groenten & salades':'Vegetables & salads', 'Chocolade':'Chocolate', 'Zoete desserts':'Sweet desserts', 'Borrel & aperitief':'Drinks & aperitif', 'De kelderregels zijn een eenvoudige tabel op trefwoorden; die weet niets van sauzen of bereiding.':'The cellar rules are a simple keyword table; they know nothing about sauces or preparation.', 'in deze proefomgeving staat de AI uit':'AI is off in this preview', 'log in, dan leest de sommelier het gerecht echt':'sign in and the sommelier will actually read the dish', 'Sommelier-AI':'Sommelier AI', 'Opgeslagen':'Saved', '↻ vernieuw':'↻ refresh', 'Plek in de kelder':'Place in the cellar', 'Nieuwe plek':'New place', '+ Nieuwe plek':'+ New place',
   '+ Nieuwe plek…':'+ New place…', '+ Nieuwe plek toevoegen':'+ Add a new place', 'bv. Kast onder de trap, Vintec links':'e.g. Cupboard under the stairs, Vintec left', 'Geef de plek een naam':'Give the place a name',
   'Later kun je er in Meer → Locaties een foto bij zetten of vakjes van maken.':'Later you can add a photo or slots under More → Locations.', 'Nog zonder plek':'Still without a place',
   'Volgende vrije vak':'Next free slot', 'Vakken weghalen':'Remove slots', 'Vakken weggehaald':'Slots removed', 'Rek aanpassen':'Adjust rack', 'Rijen':'Rows', 'Kolommen':'Columns', 'bv. 6':'e.g. 6', 'bv. 8':'e.g. 8',
@@ -5472,6 +5498,11 @@ const EN = {
 const bottles = n => Number(n) === 1 ? 'bottle' : 'bottles';
 const wines = n => Number(n) === 1 ? 'wine' : 'wines';
 const EN_RE = [
+  [/^Kelderregel: (.+)$/, (m, r) => `Cellar rule: ${tr(r)}`],
+  [/^(.+?)(?: uit (.+?))?: een klassieke druif bij (.+)\.$/, (m, a, b, l) => `${a}${b ? ' from ' + b : ''}: a classic grape for ${trLaag(l)}.`],
+  [/^(.+?)(?: uit (.+?))?: (\S+), het register van (.+)\.$/, (m, a, b, t, l) => `${a}${b ? ' from ' + b : ''}: ${trLaag(t)}, the register for ${trLaag(l)}.`],
+  [/^(.+?)(?: uit (.+?))?, het register van (.+)\.$/, (m, a, b, l) => `${tr(a)}${b ? ' from ' + b : ''}, the register for ${trLaag(l)}.`],
+  [/^(.+?)(?: uit (.+?))?: (\S+) kan hier ook, al is het niet de eerste keuze bij (.+)\.$/, (m, a, b, t, l) => `${a}${b ? ' from ' + b : ''}: ${trLaag(t)} works too, though it is not the first choice for ${trLaag(l)}.`],
   [/^De sommelier deed niet mee: (.+?)\. (De kelderregels zijn .+)$/, (m, r, rest) => `The sommelier did not take part: ${tr(r)}. ${tr(rest)}`],
   [/^De sommelier vond niets, dit zijn de kelderregels\. (.*)$/, (m, rest) => `The sommelier found nothing, these are the cellar rules. ${tr(rest)}`],
   [/^(Licht|Weinig tannine|Zacht en rond|Droog|Geen hout) tot (Vol|Veel tannine|Fris en strak|Zoet|Veel hout)$/, (m, a, b) => `${EN[a]} to ${EN[b]}`],
@@ -5596,6 +5627,8 @@ const EN_RE = [
   [/^Vraag bij een fles "Wat eet je hierbij\?" en tik bij een gerecht op (.*) Recept tonen\. Hier bouw je vanzelf je receptenboek op\.$/, 'Ask a bottle "What do I eat with this?" and tap $1 Show recipe next to a dish. Your recipe book builds itself here.'],
 ];
 /* dit blijft Nederlands, ook in het Engels: namen, getallen, wat de gebruiker zelf typte */
+/* een woord dat in de zin met een kleine letter staat ('witte vis', 'wit'): opzoeken met hoofdletter, teruggeven zonder */
+const trLaag = s => { const t = tr(s.charAt(0).toUpperCase() + s.slice(1)); return t === s.charAt(0).toUpperCase() + s.slice(1) ? s : t.toLowerCase(); };
 function tr(s){
   if(taal() !== 'en' || !s) return s;
   const k = s.trim();
