@@ -596,7 +596,7 @@ const FREE_CREDITS = 20, PLUS_CREDITS = 300, PLUS_PRIJS = '€ 2,99 per maand';
 const PLUS_TE_KOOP = false;
 const AANBIEDER = 'Ponsen Polutropon B.V.';
 const AANBIEDER_KVK = '77838335';
-const AANBIEDER_ADRES = '';
+const AANBIEDER_ADRES = 'Westerstraat 244, 1015 MT Amsterdam';
 /* "Ponsen Polutropon B.V. (KvK 77838335, <adres>)", of zonder het deel dat nog leeg is. */
 const aanbieder = () => { const extra = [AANBIEDER_KVK && 'KvK ' + AANBIEDER_KVK, AANBIEDER_ADRES].filter(Boolean).join(', '); return esc(AANBIEDER) + (extra ? ' (' + esc(extra) + ')' : ''); };
 const CONTACT_MAIL = 'max.ponsen@gmail.com';

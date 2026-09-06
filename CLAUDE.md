@@ -131,7 +131,7 @@ Geen gedachtestreepjes en geen "niet X, maar Y". Geldt voor de app, voor dit bes
 
 ## Nog open
 - Supabase Pro en Stripe live vóór er vreemden bij komen; uitgavenplafond bij Anthropic. Alles op naam van Ponsen Polutropon B.V.: Stripe-onboarding (account `acct_1UAm7oL0f2iIgWz0` staat nog op "onboarding niet af") met KvK 77838335, en de Supabase- en Anthropic-facturen naar de BV.
-- Vestigingsadres van de BV invullen in `AANBIEDER_ADRES` voordat `PLUS_TE_KOOP` op true gaat.
+- Vestigingsadres (Westerstraat 244, 1015 MT Amsterdam) staat sinds 6 sep in `AANBIEDER_ADRES`. Moneybird hoort bij Atelier Marx (bedrijf van Max' vrouw) en staat los van de BV; nooit voor Caveau gebruiken.
 - Kostprijs per credit meten met `ai_usage` (`tokens_in`/`tokens_out`). Blijft het onder $0,010, dan klopt de bundel van 300 voor €2,99.
 - Positionering: Caveau beantwoordt "welke fles moet vanavond open", Vivino "moet ik deze kopen". Echte concurrent is CellarTracker, niet Vivino.
 
