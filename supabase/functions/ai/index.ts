@@ -2,9 +2,14 @@
 // Uitrollen: supabase functions deploy ai --project-ref dbzgrkipcoebglacsqwe
 // Vereist secret: CAVEAU_ANTHROPIC_KEY (aparte Anthropic-sleutel voor de server).
 // "Verify JWT" laten aanstaan: alleen ingelogde Caveau-gebruikers kunnen deze functie aanroepen.
-// Vereist de SQL uit supabase/sql/*.sql (wine_prices, wine_price_log, boek_credits).
+// Vereist de SQL uit supabase/sql/*.sql (wine_prices, wine_price_log, boek_credits, ai_fouten).
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+
+// Welke soorten verzoeken de app kent. Alles daarbuiten is geen Caveau-verkeer en krijgt 400.
+// De soort komt in ai_usage.kind en in de kostenmail, dus hij mag geen vrije tekst zijn.
+const KINDS = new Set(['ai', 'scan', 'herbereken', 'pairing', 'wijnkaart', 'gerechten', 'vraag', 'waardes', 'recept', 'import', 'smaak',
+  'prijs', 'prijsdiep', 'prijscache', 'betaald'])
 
 // Tegoed in CREDITS, niet in acties: een kaartscan kost nu eenmaal veel meer dan een etiketscan.
 const FREE_CREDITS = 20    // gratis credits per maand
@@ -149,6 +154,15 @@ Deno.serve(async (req) => {
   const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   let boekId: string | null = null
   const boekWeg = async () => { if (boekId) { const id = boekId; boekId = null; await supa.from('ai_usage').delete().eq('id', id) } }
+  // Een mislukte aanroep verwijdert zijn eigen verbruiksregel, dus zonder dit logboek ziet de
+  // kostenmail een stille week terwijl elke gebruiker "Fout bij de AI" krijgt. Geen gebruikers-id.
+  let soort = 'ai'
+  const logFout = async (status: number, tekst: string) => {
+    try {
+      await supa.from('ai_fouten').insert({ kind: soort, status, tekst: tekst.slice(0, 300) })
+      await supa.from('ai_fouten').delete().lt('created_at', new Date(Date.now() - 90 * 864e5).toISOString())
+    } catch (_) { /* logboek is bijzaak, en de tabel kan nog ontbreken */ }
+  }
   try {
     const jwt = (req.headers.get('authorization') || '').replace('Bearer ', '')
     const { data: { user }, error: authErr } = await supa.auth.getUser(jwt)
@@ -167,6 +181,8 @@ Deno.serve(async (req) => {
     try { body = JSON.parse(raw) } catch { body = null }
     if (!body || typeof body !== 'object') return json({ error: 'Ongeldig verzoek' }, 400)
     const kind = String(body.kind || 'ai').slice(0, 30)
+    if (!KINDS.has(kind)) return json({ error: 'Ongeldig verzoek' }, 400)
+    soort = kind
 
     // Gemeenschapsprijzen: wat iemand betaalde, één regel per gebruiker per wijn. Alleen als de
     // gebruiker dat in Instellingen aanzet. Geen AI, geen credit. Anderen zien pas iets bij twee
@@ -308,6 +324,7 @@ Deno.serve(async (req) => {
       const fout = await r.json().catch(() => ({}))
       console.error('anthropic', r.status, JSON.stringify(fout).slice(0, 300))
       await boekWeg()
+      await logFout(r.status, JSON.stringify(fout))
       return json({ error: r.status === 429 ? 'De AI is even druk, probeer het zo nog eens' : 'Fout bij de AI', status: r.status }, r.status >= 500 ? 502 : r.status)
     }
 
@@ -380,7 +397,8 @@ Deno.serve(async (req) => {
             key: prijsSleutel(wijn), user_id: user.id,
             name: tekstVeld(wijn.name, 200), producer: tekstVeld(wijn.producer, 200), vintage: Number(wijn.vintage) || null,
             value: v, low: Number.isFinite(Number(p.low)) ? Number(p.low) : null, high: Number.isFinite(Number(p.high)) ? Number(p.high) : null,
-            source: tekstVeld(p.source, 120), url: viaBrave ? String(p.url || '').slice(0, 500) : okUrl(p.url), vintage_found: Number(p.vintage_found) || null,
+            // ook op het Brave-pad alleen een link naar een bekende wijnsite; een andere bron houdt zijn naam, zonder link
+            source: tekstVeld(p.source, 120), url: okUrl(p.url), vintage_found: Number(p.vintage_found) || null,
             confidence: tekstVeld(p.confidence, 10), note: tekstVeld(p.note, 300), updated_at: new Date().toISOString(),
           })
         } catch (e) { console.error('wine_prices upsert', String((e as Error)?.message || e).slice(0, 200)) }
@@ -390,6 +408,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error('ai', String((e as Error)?.message || e).slice(0, 300))
     await boekWeg()
+    await logFout(0, String((e as Error)?.message || e))
     return json({ error: 'Er ging iets mis aan onze kant. Probeer het zo nog eens' }, 500)
   }
 })

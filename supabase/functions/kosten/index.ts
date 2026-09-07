@@ -7,9 +7,10 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-// Tarieven per miljoen tokens (USD), plus de webzoekfunctie per zoekopdracht.
+// Tarieven per miljoen tokens (USD), plus de zoekkosten per actie.
 const TARIEF: Record<string, { in: number; out: number; extra: number }> = {
-  prijs: { in: 1, out: 5, extra: 0.03 },      // Haiku 4.5 + ± drie zoekopdrachten à $0,01
+  prijs: { in: 1, out: 5, extra: 0.005 },     // Haiku 4.5 + één Brave-zoekopdracht ($5 per duizend)
+  prijsdiep: { in: 1, out: 5, extra: 0.03 },  // Haiku 4.5 + ± drie zoekrondes van de API-webtool à $0,01
   default: { in: 2, out: 10, extra: 0 },      // Sonnet 5
 }
 const CREDIT_PRIJS_EUR = 2.99 / 300           // wat een Plus-credit opbrengt
@@ -23,6 +24,8 @@ function kosten(r: Rij): number {
 }
 const eur = (n: number) => '€ ' + n.toFixed(2).replace('.', ',')
 const usd = (n: number) => '$ ' + n.toFixed(2)
+// Alles uit de database dat in de mail komt gaat hierdoorheen; kind is sinds 7 sep een vaste lijst, maar oude rijen niet.
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
 
 Deno.serve(async (req) => {
   const secret = Deno.env.get('CRON_SECRET')
@@ -63,10 +66,26 @@ Deno.serve(async (req) => {
     }
   } catch (_) { /* kolom schatting nog niet aangemaakt */ }
   const { count: plus } = await supa.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'plus')
+  const verschil = (a: number, b: number) => b ? ` (vorige week ${b})` : ''
+  // Mislukte AI-aanroepen: die staan niet in ai_usage (de regel wordt weer verwijderd), wel in ai_fouten.
+  // Een verlopen sleutel of een gepauzeerd project is hier het eerst te zien.
+  let foutenRegel = '', foutenMeting: { n: number; vorige: number; perStatus: Record<string, number> } | null = null
+  try {
+    const { data: fouten, error: foutErr } = await supa.from('ai_fouten').select('status, created_at').gte('created_at', vorige)
+    if (foutErr) throw foutErr   /* supabase-js gooit niet zelf; zonder dit lijkt een ontbrekende tabel op nul fouten */
+    const fs = (fouten || []) as { status: number | null; created_at: string }[]
+    const dezeWeek = fs.filter((f) => f.created_at >= sinds)
+    const perStatus: Record<string, number> = {}
+    for (const f of dezeWeek) { const k = String(f.status ?? 0); perStatus[k] = (perStatus[k] || 0) + 1 }
+    foutenMeting = { n: dezeWeek.length, vorige: fs.length - dezeWeek.length, perStatus }
+    const uitleg = Object.entries(perStatus).map(([s, n]) => `${n}× status ${esc(s)}`).join(', ')
+    foutenRegel = dezeWeek.length
+      ? `<p style="color:#8E3347"><b>Fouten bij de AI deze week: ${dezeWeek.length}</b>${verschil(dezeWeek.length, fs.length - dezeWeek.length)} (${uitleg}). Status 401 is een ongeldige of verlopen sleutel, 429 is drukte, 0 is een fout aan onze kant.</p>`
+      : `<p>Fouten bij de AI deze week: 0${verschil(0, fs.length)}.</p>`
+  } catch (_) { foutenRegel = '<p>Fouten bij de AI: logboek ai_fouten niet gevonden (SQL supabase/sql/fouten-7sep.sql nog niet gedraaid).</p>' }
 
   const soorten = Object.entries(perSoort).sort((a, b) => b[1].usd - a[1].usd)
-  const regels = soorten.map(([k, p]) => `<tr><td>${k}</td><td align="right">${p.n}</td><td align="right">${p.credits}</td><td align="right">${usd(p.usd)}</td></tr>`).join('')
-  const verschil = (a: number, b: number) => b ? ` (vorige week ${b})` : ''
+  const regels = soorten.map(([k, p]) => `<tr><td>${esc(k)}</td><td align="right">${p.n}</td><td align="right">${p.credits}</td><td align="right">${usd(p.usd)}</td></tr>`).join('')
   const oordeel = perCreditUsd > 0.01 ? `Let op: een credit kost ${usd(perCreditUsd)}, boven de grens van $0,01 waarop de bundel van 300 voor ${eur(2.99)} is gerekend.` : `Een credit kost ${usd(perCreditUsd)}; dat past binnen de bundel (grens $0,01).`
   const onderwerp = `Caveau, week ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}: ${d.acties} acties, ${usd(d.kostenUsd)}`
   const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#2A1F24;max-width:560px">
@@ -77,11 +96,12 @@ Deno.serve(async (req) => {
     <p>Tokens: ${d.tokensIn.toLocaleString('nl-NL')} in, ${d.tokensOut.toLocaleString('nl-NL')} uit.</p>
     <p>Prijstabel: <b>${prijzenNieuw || 0}</b> nieuwe prijzen deze week, ${prijzenTotaal || 0} in totaal. Zoekagent zonder resultaat: ${zoekMissers || 0} keer.</p>
     ${schattingRegel}
+    ${foutenRegel}
     <p>Accounts: ${profielen || 0}, waarvan ${plus || 0} Plus.</p>
-    <p style="color:#8E867D;font-size:13px">Automatisch verstuurd op maandagochtend door de Edge Function <code>kosten</code>. Tarieven: Sonnet 5 $2/$10 per miljoen tokens, Haiku 4.5 $1/$5 plus zoekopdrachten.</p>
+    <p style="color:#8E867D;font-size:13px">Automatisch verstuurd op maandagochtend door de Edge Function <code>kosten</code>. Tarieven: Sonnet 5 $2/$10 per miljoen tokens, Haiku 4.5 $1/$5, Brave $0,005 en de API-webtool $0,01 per zoekopdracht.</p>
   </div>`
 
-  const samenvatting = { week: d, vorige: v, perSoort, perCreditUsd, prijzenNieuw, prijzenTotaal, zoekMissers, schatting: schattingMeting, profielen, plus }
+  const samenvatting = { week: d, vorige: v, perSoort, perCreditUsd, prijzenNieuw, prijzenTotaal, zoekMissers, schatting: schattingMeting, fouten: foutenMeting, profielen, plus }
   const resendKey = Deno.env.get('RESEND_API_KEY'), from = Deno.env.get('MAIL_FROM'), to = Deno.env.get('KOSTEN_MAIL_TO')
   if (!resendKey || !from || !to) {
     return new Response(JSON.stringify({ verstuurd: false, reden: 'RESEND_API_KEY, MAIL_FROM of KOSTEN_MAIL_TO ontbreekt', onderwerp, samenvatting }, null, 1), { status: 200, headers: { 'content-type': 'application/json' } })
