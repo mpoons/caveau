@@ -4936,12 +4936,34 @@ function askShrink(mode, remote, lc, rc){
         /* deze stand moet winnen van wat er in de cloud staat */
         S.rev = Math.max(S.rev||0, (remote && remote.rev)||0) + 1; save(true);
         await pushDoc(); await pushPhotos(); }
-      else { await applyRemote(remote); }
+      else {
+        /* in de stand 'push' is remote een placeholder met alleen lengtes (_kop); wie dan toch
+           de cloud kiest krijgt eerst het echte document, anders adopteert hij lege rijen */
+        if(remote && remote._kop) remote = await pullDoc();
+        if(!remote) throw new Error('Cloudversie niet gevonden');
+        await applyRemote(remote); }
       await done();
     }catch(e){ lastSyncNote = String(e.message||e).slice(0,110); toast('Sync mislukt: ' + lastSyncNote); }
   };
 }
 
+/* De beslissing van de sync, zonder netwerk en zonder scherm, zodat hij te testen is (tests/tests.js).
+   Niet kijken welk revisienummer het hoogst is, maar wie er iets veranderde sinds de laatste
+   geslaagde sync (syncedRev). Een hoger nummer zegt niets over wie gelijk heeft: een apparaat
+   dat niets nieuws heeft kan best het hoogste nummer dragen, en duwde dan zijn oude kopie over
+   verse wijzigingen heen. Zonder ijkpunt (allereerste sync op dit apparaat) vergelijken we de
+   nummers zoals vroeger. Geeft terug: 'eerste' (cloud leeg: alles omhoog), 'niets', 'push',
+   'pull' of 'botsing' (beide kanten gewijzigd: de gebruiker kiest). */
+function syncBesluit(localRev, remoteRev, syncedRev, kopBestaat){
+  if(!kopBestaat) return 'eerste';
+  const eersteKeer = syncedRev == null;
+  const lokaal = eersteKeer ? (localRev > remoteRev) : (localRev !== syncedRev);
+  const cloud = eersteKeer ? (remoteRev > localRev) : (remoteRev !== syncedRev);
+  if(lokaal && cloud) return 'botsing';
+  if(cloud) return 'pull';
+  if(lokaal) return 'push';
+  return 'niets';
+}
 async function syncNow(interactive){
   if(!loggedIn()) return;
   if(syncBusy){ syncAgain = true; return; }
@@ -4952,34 +4974,23 @@ async function syncNow(interactive){
        pas als er echt iets te vergelijken valt. */
     const kop = await pullRev();
     const localRev = S.rev||0, remoteRev = (kop && kop.rev)||0;
-    /* Wat stond er bij de laatste geslaagde sync? Zonder dat getal kun je niet zien
-       of één kant iets veranderde (veilig overnemen) of allebei (dan gaat er werk
-       verloren, wat je ook kiest). Ontbreekt het, dan doen we alsof er lokaal niets
-       openstaat; vanaf de eerste sync klopt het vanzelf. */
-    const syncedRev = S.syncedRev;
-    /* Niet kijken welk revisienummer het hoogst is, maar wie er iets veranderde
-       sinds de laatste geslaagde sync. Een hoger nummer zegt namelijk niets over
-       wie gelijk heeft: een apparaat dat niets nieuws heeft kan best het hoogste
-       nummer dragen, en duwde dan zijn oude kopie over verse wijzigingen heen.
-       Bij de allereerste sync is er nog geen ijkpunt; dan vergelijken we de
-       nummers zoals vroeger. */
-    const eersteKeer = syncedRev == null;
-    const lokaalGewijzigd = eersteKeer ? (localRev > remoteRev) : (localRev !== syncedRev);
-    const cloudGewijzigd  = !kop ? false : (eersteKeer ? (remoteRev > localRev) : (remoteRev !== syncedRev));
-    /* Niets veranderd aan beide kanten: klaar zonder het document op te halen. Alleen lokaal
-       veranderd en de telling van de vorige sync bekend: de krimp-guard kan zonder document. */
-    const alleenLokaal = lokaalGewijzigd && !cloudGewijzigd && kop && S.syncedTel;
-    const remote = !kop ? null : (alleenLokaal || (!lokaalGewijzigd && !cloudGewijzigd)) ? {rev: remoteRev, wines: [], history: [], wishlist: [], _kop: true} : await pullDoc();
-    if(alleenLokaal){ remote.wines = new Array(S.syncedTel[0]); remote.history = new Array(S.syncedTel[1]); remote.wishlist = new Array(S.syncedTel[2]); }
+    let besluit = syncBesluit(localRev, remoteRev, S.syncedRev, !!kop);
+    /* Het hele document (honderden KB) alleen als er echt iets te vergelijken valt. Bij alleen
+       een lokale wijziging volstaat de telling van de vorige sync voor de krimpbewaking; dan
+       staat er een placeholder met de juiste lengtes en _kop:true, nooit echte wijnen. */
+    let remote = null;
+    if(besluit === 'botsing' || besluit === 'pull' || (besluit === 'push' && !S.syncedTel)) remote = await pullDoc();
+    else if(besluit === 'push') remote = {rev: remoteRev, wines: new Array(S.syncedTel[0]), history: new Array(S.syncedTel[1]), wishlist: new Array(S.syncedTel[2]), _kop: true};
+    if(!remote && besluit !== 'niets') besluit = 'eerste';   /* rij zonder document: dan is dit apparaat de bron */
     const lc = S.wines.length, rc = remote ? (remote.wines||[]).length : 0;
-    if(!remote){
+    if(besluit === 'eerste'){
       await pushDoc(); await pushPhotos();
-    } else if(lokaalGewijzigd && cloudGewijzigd){
+    } else if(besluit === 'botsing'){
       syncBusy = false; askShrink('botsing', remote, lc, rc); return;
-    } else if(cloudGewijzigd){
+    } else if(besluit === 'pull'){
       if(krimpErgens(S, remote)){ syncBusy = false; askShrink('adopt', remote, lc, rc); return; }
       await applyRemote(remote);
-    } else if(lokaalGewijzigd){
+    } else if(besluit === 'push'){
       if(krimpErgens(remote, S)){ syncBusy = false; askShrink('push', remote, lc, rc); return; }
       await pushDoc(); await pushPhotos();
     }
