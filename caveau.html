@@ -550,8 +550,26 @@ function save(skipCloud){
   if(!skipCloud) S.rev = (S.rev||0) + 1;
   if(document.querySelector('#sheetHost .sheet')) renderNaSluiten = true;
   if(typeof _kelderPrijzen !== 'undefined'){ _kelderPrijzen = null; _smaakSets = null; }
-  try{ localStorage.setItem(DB_KEY, JSON.stringify(S)); }catch(e){ toast('Opslaan mislukt. Is de opslag vol?'); }
+  const ok = schrijfState();
+  if(!ok && !opslagVol){ opslagVol = true; toast('De opslag van je browser is vol. Wijzigingen worden niet bewaard', 'Back-up', () => ACT.expLite(), 12000); }
+  else if(ok && opslagVol){ opslagVol = false; toast('Opslaan lukt weer'); }
   if(!skipCloud && typeof cloudOnSave === 'function') cloudOnSave();
+}
+/* De kelder staat vier keer in localStorage (de stand plus drie reservekopieën). Zit het quotum
+   vol, dan gaan eerst de kopieën weg, oudste eerst, en proberen we opnieuw; de stand zelf gaat
+   altijd voor. Lukt het dan nog niet, dan blijft opslagVol staan en toont de kelder een banner
+   tot een opslag weer slaagt. Een toast van vier seconden was daarvoor te weinig. */
+let opslagVol = false;
+function schrijfState(){
+  const tekst = JSON.stringify(S);
+  const kopieen = ['caveau_backup_prev2', 'caveau_backup_prev', 'caveau_backup_daily'];
+  for(let i = 0; ; i++){
+    try{ localStorage.setItem(DB_KEY, tekst); return true; }
+    catch(e){
+      if(i >= kopieen.length) return false;
+      try{ localStorage.removeItem(kopieen[i]); }catch(_){}
+    }
+  }
 }
 
 /* tegoed: moet gelijk blijven aan FREE_CREDITS / PLUS_CREDITS in supabase/functions/ai/index.ts */
@@ -1679,7 +1697,7 @@ function viewKelder(){
     <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
       <input type="search" placeholder="Zoek op naam, druif, regio, of typ een gerecht…" value="${esc(UI.q)}" data-in="q" aria-label="Zoeken">
       <button class="sortbtn" data-act="chipSort" aria-label="Sorteren: ${esc(SORTS[UI.sort])}" title="Sorteren"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V5m0 0L4 8m3-3 3 3"/><path d="M17 4v15m0 0 3-3m-3 3-3-3"/></svg></button></div>
-    <div class="chiprow">${chips}</div>${tonightBanner()}${installBanner()}${locBanner}${body}`;
+    <div class="chiprow">${chips}</div>${opslagBanner()}${tonightBanner()}${installBanner()}${locBanner}${body}`;
 }
 INP.q = el => { UI.q = el.value; refreshList(); };
 function refreshList(){ if(UI.tab==='kelder') { render(true); } }
@@ -4171,6 +4189,14 @@ function isApple(){
 function toonInstallTip(){
   return !IN_SANDBOX && !isStandalone() && !S.settings.installWeg;
 }
+/* Blijft staan zolang de laatste opslag mislukte; verdwijnt vanzelf zodra bewaren weer lukt. */
+function opslagBanner(){
+  if(!opslagVol) return '';
+  return `<div class="banner" style="border-color:var(--warn);align-items:center">
+    <span>${ik('waarschuwing')}</span>
+    <span style="flex:1"><b>De opslag van je browser is vol.</b> Wijzigingen worden niet meer bewaard. Maak nu een back-up, en haal daarna oude notities of flessen weg.</span>
+    <button class="btn sm" data-act="expLite" style="flex:none">Back-up</button></div>`;
+}
 function installBanner(){
   if(!toonInstallTip()) return '';
   return `<div class="banner" style="align-items:center">
@@ -5457,7 +5483,8 @@ const EN = {
   'Alles wissen':'Erase everything', 'Alles wissen?':'Erase everything?', 'Alles gewist':'Everything erased', 'Alles gewist, ook in de cloud':'Everything erased, in the cloud too', 'Cloud wissen…':'Erasing the cloud…', 'Dit kan niet ongedaan worden.':'This cannot be undone.',
   'Eigen Anthropic API-sleutel':'Own Anthropic API key', 'Model (bij eigen sleutel)':'Model (with own key)',
   'Draait op je eigen Anthropic-tegoed en gaat vóór het Caveau-tegoed. Blijft op dit apparaat: nooit in een back-up, nooit naar de cloud. Zet je de ontwikkelaarsstand uit, dan wordt hij gewist.':'Runs on your own Anthropic balance and takes precedence over Caveau credits. Stays on this device: never in a backup, never to the cloud. Switching developer mode off erases it.',
-  '6 voorbeeldflessen geladen. Wissen kan via Instellingen':'6 sample bottles loaded. Erase them under Settings', 'Opslaan mislukt. Is de opslag vol?':'Saving failed. Is storage full?',
+  '6 voorbeeldflessen geladen. Wissen kan via Instellingen':'6 sample bottles loaded. Erase them under Settings', 'De opslag van je browser is vol. Wijzigingen worden niet bewaard':'Your browser storage is full. Changes are not being saved', 'Opslaan lukt weer':'Saving works again', 'Back-up':'Backup',
+  'De opslag van je browser is vol.':'Your browser storage is full.', 'Wijzigingen worden niet meer bewaard. Maak nu een back-up, en haal daarna oude notities of flessen weg.':'Changes are no longer being saved. Make a backup now, then remove old notes or bottles.',
   'Cloud-sync':'Cloud sync', 'Cloud-sync aanzetten':'Switch on cloud sync', 'Cloud-sync actief':'Cloud sync active', 'Nu synchroniseren':'Sync now', 'Gesynchroniseerd ✓':'Synced ✓', 'Ingelogd, synchroniseren…':'Logged in, syncing…', 'Ingelogd:':'Logged in:',
   'Log in en je kelder synchroniseert automatisch tussen al je apparaten. Nog geen account? Kies een wachtwoord en tik op "Account aanmaken".':'Log in and your cellar syncs automatically across all your devices. No account yet? Choose a password and tap "Create account".',
   'E-mail':'Email', 'jij@voorbeeld.nl':'you@example.com', 'Wachtwoord':'Password', 'minimaal 8 tekens':'at least 8 characters', 'Inloggen':'Log in', 'Account aanmaken':'Create account', 'account aanmaken':'create account',
