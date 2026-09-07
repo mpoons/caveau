@@ -589,7 +589,7 @@ const AANBIEDER_ADRES = 'Westerstraat 244, 1015 MT Amsterdam';
 /* "Ponsen Polutropon B.V. (KvK 77838335, <adres>)", of zonder het deel dat nog leeg is. */
 const aanbieder = () => { const extra = [AANBIEDER_KVK && 'KvK ' + AANBIEDER_KVK, AANBIEDER_ADRES].filter(Boolean).join(', '); return esc(AANBIEDER) + (extra ? ' (' + esc(extra) + ')' : ''); };
 const CONTACT_MAIL = 'max.ponsen@gmail.com';
-const LEGAL_DATUM = '6 september 2026';
+const LEGAL_DATUM = '7 september 2026';
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id'+Date.now()+Math.random().toString(36).slice(2,8));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1724,7 +1724,8 @@ ACT.pickSort = el => { UI.sort = el.dataset.s; closeSheet(); render(); };
 /* ================= smaakprofiel ================= */
 /* Twee lagen: wat je zelf aangeeft (druiven, streken, vijf schuifjes, kleur) en
    wat de sterren in je historie laten zien. Gaat als één regel mee in de
-   AI-prompts en telt mee in de kelderregels. Blijft lokaal en in het sync-document. */
+   AI-prompts en telt mee in de kelderregels. Staat in S.settings en dus per apparaat: cloudDoc()
+   neemt instellingen niet mee, het smaakprofiel synct niet. */
 const SMAAK_DRUIVEN = ['Cabernet Sauvignon','Merlot','Pinot Noir','Syrah','Grenache','Tempranillo','Sangiovese','Nebbiolo','Malbec','Cabernet Franc','Gamay','Mourvèdre','Barbera','Primitivo','Zinfandel',
   'Chardonnay','Sauvignon Blanc','Riesling','Chenin Blanc','Pinot Grigio','Viognier','Grüner Veltliner','Albariño','Verdejo','Gewürztraminer'];
 const SMAAK_REGIOS = ['Bordeaux','Bourgogne','Rhône','Loire','Champagne','Languedoc','Provence','Elzas','Piemonte','Toscane','Veneto','Sicilië','Rioja','Ribera del Duero','Priorat','Douro','Mosel','Oostenrijk','Californië','Chili','Argentinië','Zuid-Afrika','Australië','Nieuw-Zeeland'];
@@ -4077,7 +4078,7 @@ function viewSettings(){
       <hr class="sep">
       <div class="eyebrow mb8">Geavanceerd</div>
       <button class="btn ghost" data-act="estValues">${ik('euro')} Indicaties schatten voor flessen zonder prijs</button>
-      <div class="small mt8">Eén AI-aanroep geeft een grove indicatie (met bandbreedte) voor flessen zonder prijs. Een indicatie is geen waarde: hij staat klein in het detail en telt nergens mee.</div>
+      <div class="small mt8">Eén AI-aanroep per 40 flessen (hoogstens drie, 1 credit per aanroep) geeft een grove indicatie met bandbreedte voor flessen zonder prijs. Een indicatie is geen waarde: hij staat klein in het detail en telt nergens mee.</div>
       ${S.settings.devMode ? `<hr class="sep">
       <div class="eyebrow mb8">Ontwikkelaarsstand</div>
       <div class="field"><label>Eigen Anthropic API-sleutel</label><input class="inp" type="password" value="${esc(S.settings.apiKey)}" data-in="setKey" placeholder="sk-ant-…" autocomplete="off">
@@ -4505,7 +4506,7 @@ function viewPrivacyNL(){
     <ul>
       <li>je e-mailadres en een versleutelde versie van je wachtwoord;</li>
       <li>je kelder: flessen, voorraad, locaties, notities, verlanglijst en drinkhistorie;</li>
-      <li>alleen als je dat zelf aanzet in Instellingen: een wekelijkse herinnering per mail over flessen die op dronk komen. Die mail gaat via de maildienst <b>Resend</b>; daarvoor krijgen zij je e-mailadres en de namen van die flessen, niets anders;</li>
+      <li>alleen als je dat zelf aanzet in Instellingen: een wekelijkse herinnering per mail over flessen die op dronk komen. Die mail gaat via de maildienst <b>Resend</b>; daarvoor krijgen zij je e-mailadres en van die flessen de naam, producent, jaargang, het aantal en de plek in je kelder, niets anders;</li>
       <li>de foto's die je bij flessen bewaart;</li>
       <li>hoeveel credits je per maand gebruikt. De inhoud van je vragen en antwoorden bewaren we daar niet bij.</li>
     </ul>
@@ -4545,7 +4546,9 @@ function viewVoorwaardenNL(){
     <h3>Wat credits kosten</h3>
     <ul>
       <li>een etiket lezen, een pairing of een vraag aan de sommelier: 1 credit;</li>
-      <li>een wijnkaart lezen: 2 credits per gefotografeerde pagina.</li>
+      <li>een wijnkaart lezen: 2 credits per gefotografeerde pagina;</li>
+      <li>een prijs opzoeken bij wijnhandels: 1 credit, en dieper zoeken op veilingen en buitenlandse sites: 5 credits;</li>
+      <li>indicaties schatten voor flessen zonder prijs: 1 credit per 40 flessen.</li>
     </ul>
     <p>Je tegoed loopt per kalendermaand en begint elke maand opnieuw; wat je niet gebruikt schuift niet door. Er geldt ook een daglimiet, puur om misbruik tegen te gaan.</p>
 
@@ -5561,7 +5564,7 @@ const EN = {
   '. Zonder inloggen werkt alles behalve het automatisch lezen.':'. Without logging in everything works except automatic reading.', '. Het lezen van de kaart gebeurt op de Caveau-server.':'. Reading the list happens on the Caveau server.',
   ', genoeg voor zo\'n 35 wijnkaarten in een restaurant, of honderden etiketten.':', enough for some 35 restaurant wine lists, or hundreds of labels.', ', en ik wil dat Plus meteen ingaat.':', and I want Plus to start right away.',
   'Wat de sommelier doet (etiketten lezen, wijnkaarten lezen, pairing en recepten) kost credits. Ingelogd krijg je er':'What the sommelier does (reading labels, reading wine lists, pairing and recipes) costs credits. Logged in you get',
-  'een etiket lezen, een pairing of een vraag aan de sommelier: 1 credit;':'reading a label, a pairing or a question to the sommelier: 1 credit;', 'een wijnkaart lezen: 2 credits per gefotografeerde pagina.':'reading a wine list: 2 credits per photographed page.',
+  'een etiket lezen, een pairing of een vraag aan de sommelier: 1 credit;':'reading a label, a pairing or a question to the sommelier: 1 credit;', 'een wijnkaart lezen: 2 credits per gefotografeerde pagina;':'reading a wine list: 2 credits per photographed page;', 'een prijs opzoeken bij wijnhandels: 1 credit, en dieper zoeken op veilingen en buitenlandse sites: 5 credits;':'looking up a price at wine merchants: 1 credit, and searching deeper on auctions and foreign sites: 5 credits;', 'indicaties schatten voor flessen zonder prijs: 1 credit per 40 flessen.':'estimating indications for bottles without a price: 1 credit per 40 bottles.',
   ': naam, druiven, drinkvenster en pairing in één foto. Je krijgt':': name, grapes, drinking window and pairing in one photo. You get', 'gratis credits per maand:':'free credits a month:',
   'en je kelder synchroniseert tussen je apparaten; je krijgt dan ook':'and your cellar syncs across your devices; you also get', 'gratis credits per maand om etiketten en wijnkaarten te laten lezen.':'free credits a month to have labels and wine lists read.',
   'geeft je':'gives you', 'gratis credits per maand. Zonder account krijg je hieronder de kaartgids: waar je bij dit gerecht op de kaart naar zoekt.':'free credits a month. Without an account you get the list guide below: what to look for on the list with this dish.',
@@ -5581,7 +5584,7 @@ const EN = {
   'Je aankoopprijs gaat met naam en jaargang van de wijn naar de gedeelde tabel. Anderen zien alleen samengevoegde bedragen van minstens twee mensen, nooit wie wat betaalde. Zo krijgt elke fles een echte prijs.':'Your purchase price goes to the shared table with the name and vintage of the wine. Others only see combined amounts from at least two people, never who paid what. That is how every bottle gets a real price.',
   'Je aankoopprijs gaat met naam en jaargang van de wijn naar de gedeelde tabel. Anderen zien alleen samengevoegde bedragen van minstens twee mensen, nooit wie wat betaalde. Zo krijgt elke fles een echte prijs. Hiervoor moet je ingelogd zijn.':'Your purchase price goes to the shared table with the name and vintage of the wine. Others only see combined amounts from at least two people, never who paid what. That is how every bottle gets a real price. You need to be logged in for this.',
   'Prijzen opzoeken voor flessen zonder prijs':'Look up prices for bottles without one', 'Indicaties schatten voor flessen zonder prijs':'Estimate indications for bottles without a price',
-  'Eén AI-aanroep geeft een grove indicatie (met bandbreedte) voor flessen zonder prijs. Een indicatie is geen waarde: hij staat klein in het detail en telt nergens mee.':'One AI call gives a rough indication (with a range) for bottles without a price. An indication is not a value: it sits small in the detail and counts nowhere.',
+  'Eén AI-aanroep per 40 flessen (hoogstens drie, 1 credit per aanroep) geeft een grove indicatie met bandbreedte voor flessen zonder prijs. Een indicatie is geen waarde: hij staat klein in het detail en telt nergens mee.':'One AI call per 40 bottles (at most three, 1 credit per call) gives a rough indication with a range for bottles without a price. An indication is not a value: it sits small in the detail and counts nowhere.',
   'Nog geen aankoopprijzen om te delen':'No purchase prices to share yet',
   /* toasts en meldingen */
   'Ligt in':'Is in', 'Nog zonder plek':'Still without a place', 'Genoteerd':'Noted', 'Vertaald':'Translated',
