@@ -2943,7 +2943,7 @@ function renderDishes(out, w, richting, list, srcLabel, cached, aiFout){
 /* ---- recepten (met personen-keuze en cache) ---- */
 ACT.recipeAsk = el => {
   if(!aiReady() && !(S.recipeCache||[]).some(r => r.dish === el.dataset.dish)){
-    toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return;
+    toast(hoofd(aiRedenUit())); return;
   }
   const dish = el.dataset.dish, wid = el.dataset.wid || '';
   openSheet(`${sheetHead('Recept: ' + esc(dish))}
@@ -2956,7 +2956,7 @@ ACT.recipeGo = async el => {
   closeSheet();
   const hit = (S.recipeCache||[]).find(r => r.key === key);
   if(hit){ showRecipe({...hit, cached:true}); return; }
-  if(!aiReady()){ toast('Recepten vergen de AI-sleutel (Meer → Instellingen)'); return; }
+  if(!aiReady()){ toast(hoofd(aiRedenUit())); return; }
   const sh = openSheet(`${sheetHead('Recept: ' + esc(dish))}<div class="banner">${pourSvg}<span class="pulse">Recept schrijven…</span></div>`);
   try{
     const r = await aiRecipe(dish, p);
@@ -2993,7 +2993,7 @@ ACT.recipeOpen = el => {
 /* ---- vraag de sommelier (vrije vraag over wijn/pairing) ---- */
 ACT.askSomm = el => {
   const w = findWine(el.dataset.id); if(!w) return;
-  if(!aiReady()){ toast('Vragen stellen vergt de AI-sleutel (Meer → Instellingen)'); return; }
+  if(!aiReady()){ toast(hoofd(aiRedenUit())); return; }
   const dish = el.dataset.dish || '';
   openSheet(`${sheetHead('Vraag de sommelier')}
     <div class="small mb8">${esc(w.name)} ${w.vintage||''}${dish?` · bij "${esc(dish)}"`:''}</div>
@@ -4107,7 +4107,7 @@ INP.mailMij = async el => {
 };
 ACT.aiStyle = el => { S.settings.aiStyle = el.dataset.s; save(true); render(); toast(`Antwoordstijl: ${el.textContent}`); };
 ACT.estValues = async el => {
-  if(!aiReady()){ toast('Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)'); return; }
+  if(!aiReady()){ toast(hoofd(aiRedenUit())); return; }
   const targets = S.wines.filter(w => w.value == null);
   if(!targets.length){ toast('Alle flessen hebben al een waarde'); return; }
   const orig = el.textContent; el.textContent = 'Inschatten…'; el.style.pointerEvents = 'none';
@@ -4618,9 +4618,24 @@ async function doImport(text){
   document.getElementById('impReplace').onclick = () => apply(true);
   document.getElementById('impMerge').onclick = () => apply(false);
 }
+/* Wissen doet wat de privacyverklaring belooft: met sync aan gaat eerst de cloud leeg
+   (leeg document met hogere rev, foto's weg), pas daarna dit apparaat. Lukt de cloud
+   niet, dan wordt er niets gewist. De sessie, taal en weergave blijven staan: het
+   account is niet weg, alleen de kelder. */
 ACT.wipe = () => confirmSheet('Alles wissen?', 'Je hele kelder, historie, verlanglijst en foto\'s worden gewist, en als cloud-sync aanstaat ook in de cloud. <b>Dit kan niet ongedaan worden.</b> Maak eerst een back-up.', 'Wis alles', async () => {
+  const cloudAan = typeof loggedIn === 'function' && loggedIn();
+  let rev = 0;
+  if(cloudAan){
+    toast('Cloud wissen…', null, null, 20000);
+    try{ rev = await cloudWis(); }
+    catch(e){ toast('Wissen in de cloud lukte niet: ' + String(e.message||e).slice(0, 80) + '. Er is niets gewist', null, null, 8000); return; }
+  }
   const ids = await pKeys(); for(const id of ids) await pDel(id);
-  S = DEFAULTS(); save(); scanReset(); render(); toast('Alles gewist');
+  photoCache.clear();
+  const bewaar = {cloud: S.settings.cloud, taal: S.settings.taal, theme: S.settings.theme, installWeg: S.settings.installWeg};
+  S = DEFAULTS(); Object.assign(S.settings, bewaar);
+  if(cloudAan){ S.rev = rev; S.syncedRev = rev; S.syncedTel = [0, 0, 0]; }
+  save(true); scanReset(); render(); toast(cloudAan ? 'Alles gewist, ook in de cloud' : 'Alles gewist');
 }, true);
 
 /* ================= voorbeeldflessen ================= */
@@ -4995,6 +5010,21 @@ async function pullPhotos(){
 function cloudDeletePhoto(id){
   if(!loggedIn()) return;
   sbFetch('/rest/v1/photos?user_id=eq.' + encodeURIComponent(cloud().uid) + '&id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'prefer':'return=minimal'}}).catch(()=>{});
+}
+/* "Alles wissen" met sync aan: alle foto's weg en een leeg document met een rev boven alles wat
+   de cloud kent, via dezelfde upsert als de gewone sync. Geeft die rev terug, zodat het apparaat
+   daarna gelijk loopt. Gooit bij elke fout, dan wist de aanroeper ook lokaal niets. */
+async function cloudWis(){
+  const uid = cloud().uid;
+  if(!uid) throw new Error('geen account bekend');
+  await sbFetch('/rest/v1/photos?user_id=eq.' + encodeURIComponent(uid), {method:'DELETE', headers:{'prefer':'return=minimal'}});
+  const kop = await pullRev();
+  const rev = Math.max(S.rev||0, (kop && kop.rev)||0) + 1;
+  await sbFetch('/rest/v1/cellars?on_conflict=user_id', {method:'POST',
+    headers:{'prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify([{user_id: uid, data: {rev, wines:[], history:[], wishlist:[], locations:[], pairCache:[], recipeCache:[], tonight:[], cellarName:'Mijn kelder'}, updated_at: new Date().toISOString()}])});
+  fotoOpnieuw.clear();
+  return rev;
 }
 
 /* ---- AI via de Caveau-serverfunctie (Fase 1) ---- */
@@ -5424,8 +5454,8 @@ const EN = {
   'Je kelder staat alleen op dit apparaat. Maak regelmatig een back-up; op een ander apparaat lees je die weer in.':'Your cellar lives only on this device. Make a backup regularly; import it on another device.',
   'Automatische reservekopieën (dit apparaat)':'Automatic safety copies (this device)', 'Dagelijkse reservekopie':'Daily safety copy', 'Die daarvóór':'The one before', 'Vóór laatste sync-overname':'Before last sync takeover',
   'Terugzetten':'Restore', 'Reservekopie teruggezet':'Safety copy restored', 'Reservekopie niet leesbaar':'Safety copy unreadable', 'nog niet':'not yet',
-  'Alles wissen':'Erase everything', 'Alles wissen?':'Erase everything?', 'Alles gewist':'Everything erased', 'Dit kan niet ongedaan worden.':'This cannot be undone.',
-  'Eigen Anthropic API-sleutel':'Own Anthropic API key', 'Model (bij eigen sleutel)':'Model (with own key)', 'Hiervoor is de AI-sleutel nodig (vul hierboven je sleutel in)':'This needs the AI key (enter your key above)',
+  'Alles wissen':'Erase everything', 'Alles wissen?':'Erase everything?', 'Alles gewist':'Everything erased', 'Alles gewist, ook in de cloud':'Everything erased, in the cloud too', 'Cloud wissen…':'Erasing the cloud…', 'Dit kan niet ongedaan worden.':'This cannot be undone.',
+  'Eigen Anthropic API-sleutel':'Own Anthropic API key', 'Model (bij eigen sleutel)':'Model (with own key)',
   'Draait op je eigen Anthropic-tegoed en gaat vóór het Caveau-tegoed. Blijft op dit apparaat: nooit in een back-up, nooit naar de cloud. Zet je de ontwikkelaarsstand uit, dan wordt hij gewist.':'Runs on your own Anthropic balance and takes precedence over Caveau credits. Stays on this device: never in a backup, never to the cloud. Switching developer mode off erases it.',
   '6 voorbeeldflessen geladen. Wissen kan via Instellingen':'6 sample bottles loaded. Erase them under Settings', 'Opslaan mislukt. Is de opslag vol?':'Saving failed. Is storage full?',
   'Cloud-sync':'Cloud sync', 'Cloud-sync aanzetten':'Switch on cloud sync', 'Cloud-sync actief':'Cloud sync active', 'Nu synchroniseren':'Sync now', 'Gesynchroniseerd ✓':'Synced ✓', 'Ingelogd, synchroniseren…':'Logged in, syncing…', 'Ingelogd:':'Logged in:',
@@ -5474,7 +5504,7 @@ const EN = {
   'een Grüner Veltliner of Provence-rosé':'a Grüner Veltliner or Provence rosé', 'een (off-dry) Riesling of Gewürztraminer':'an (off-dry) Riesling or Gewürztraminer', 'een Zinfandel, Malbec of zuidelijke Rhône':'a Zinfandel, Malbec or southern Rhône',
   'een Crémant of droge Fino sherry':'a Crémant or dry Fino sherry', 'een Chenin, rijpe Comté-partner als Jura, of Tawny Port':'a Chenin, a Jura as ripe Comté partner, or Tawny Port', 'een Sauternes of late-harvest Riesling':'a Sauternes or late-harvest Riesling',
   'een Banyuls, Maury of Ruby Port':'a Banyuls, Maury or Ruby Port', 'een Sauternes of Vintage Port':'a Sauternes or Vintage Port', 'een rijpe Pinot Noir of Madiran':'a ripe Pinot Noir or Madiran', 'een droge Riesling of Grüner Veltliner':'a dry Riesling or Grüner Veltliner',
-  'Recepten vergen de AI-sleutel (Meer → Instellingen)':'Recipes need the AI key (More → Settings)', 'Vragen stellen vergt de AI-sleutel (Meer → Instellingen)':'Asking questions needs the AI key (More → Settings)',
+ 
   'Log in via Meer → Account':'Log in via More → Account', 'Log in bij':'Log in under', 'Met een account':'With an account', 'Je hebt nog':'You have', 'deze maand. Elke maand begint de teller opnieuw.':'left this month. The counter restarts every month.',
   'deze maand. Met Plus krijg je er':'left this month. With Plus you get', 'Wat credits kosten':'What credits cost', 'Gratis, en Plus':'Free, and Plus', 'Bedenktijd':'Cooling-off period', 'Je bestaande kelder erin':'Your existing cellar in',
   'Hoe preciezer, hoe beter het advies: saus, bereiding en bijgerecht sturen de keuze vaak meer dan het stuk vlees of vis zelf.':'The more precise, the better the advice: sauce, preparation and side dish often steer the choice more than the meat or fish itself.',
@@ -5579,6 +5609,7 @@ const EN_RE = [
   [/^Opzoeken mislukte: (.+)$/, 'Lookup failed: $1'],
   [/^Lezen mislukt: (.+)$/, 'Reading failed: $1'],
   [/^Sync mislukt: (.+)$/, 'Sync failed: $1'],
+  [/^Wissen in de cloud lukte niet: (.+)\. Er is niets gewist$/, 'Erasing the cloud failed: $1. Nothing was erased'],
   [/^Inschatten mislukte: (.+)$/, 'Estimating failed: $1'],
   [/^Lukte niet: (.+)$/, 'Failed: $1'],
   [/^Opslaan lukte niet: (.+)$/, 'Saving failed: $1'],

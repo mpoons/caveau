@@ -1,22 +1,26 @@
-# Caveau — wijnkelder
+# Caveau, wijnkelder
 
-Persoonlijke wijnkelder-app: etiketten scannen, voorraad en locaties bijhouden, drinkvensters volgen, spijs-wijnpairing twee kanten op, drink-historie met ratings, waarde-statistieken en een verlanglijst.
+Persoonlijke wijnkelder-app: etiketten scannen, voorraad en locaties bijhouden, drinkvensters volgen, spijs-wijnpairing twee kanten op, de wijnkaart in het restaurant lezen, drink-historie met sterren, prijzen met bron en een verlanglijst. Nederlands en Engels.
 
-**App:** https://mpoons.github.io/caveau/ — open op je telefoon en kies "Zet op beginscherm".
+**App:** https://mpoons.github.io/caveau/ Open hem op je telefoon en kies "Zet op beginscherm".
 
 ## Hoe het werkt
 
-- Gegevens staan lokaal op je apparaat (localStorage + IndexedDB) en synchroniseren optioneel automatisch via **cloud-sync** (Meer → Account, e-mail + wachtwoord via Supabase; last-write-wins, foto's incrementeel). Zonder account blijft alles puur lokaal; back-up/overzetten kan altijd via Instellingen → export/import.
-- **AI-scannen:** plak je eigen Anthropic API-sleutel in Instellingen; Claude leest dan etiketfoto's uit (naam, druiven, drinkvenster, pairing). De sleutel blijft op het apparaat en gaat nooit mee in een back-up. Zonder sleutel werkt alles op ingebouwde sommelier-regels.
-- Werkt offline dankzij een service worker (behalve de AI-functies).
+- **Zonder account** staat alles op je eigen apparaat (localStorage en IndexedDB). Drinkvenster en pairing komen dan uit ingebouwde kelderregels. Back-up maken en inlezen kan altijd via Instellingen.
+- **Met een account** (Meer → Account, e-mail en wachtwoord via Supabase) synchroniseert je kelder tussen apparaten, en leest de sommelier etiketten en wijnkaarten via de Caveau-server. Dat kost credits: 20 per maand gratis, Caveau Plus (nog niet te koop) geeft er 300. De AI-sleutel staat op de server, nooit in de app.
+- Werkt offline dankzij een service worker; alleen sync en de sommelier hebben netwerk nodig.
 
 ## Bestanden
 
 | Bestand | Rol |
 |---|---|
-| `caveau.html` | De bron (één bestand, hele app) — hieruit wordt alles gebouwd; ook de bron voor de Claude-artifactversie |
-| `head.html` + `build.sh` | Wrapper en buildscript: `./build.sh` maakt `index.html` |
-| `index.html` | De gehoste app (niet met de hand bewerken) |
-| `sw.js` | Service worker — versienummer (`caveau-v1`) ophogen bij elke app-wijziging |
+| `caveau.html` | De bron: één bestand met opmaak, schermen en alle code in zes scriptblokken. Ook de bron voor de Claude-artifactversie. |
+| `head.html` + `build.sh` | Wrapper en buildscript: `./build.sh` maakt `index.html`. |
+| `index.html` | De gehoste app. Nooit met de hand bewerken. |
+| `sw.js` | Service worker. Versienummer (`caveau-vN`) ophogen bij elke wijziging. |
+| `check.sh` | Syntaxcontrole en tests, zonder browser. |
+| `supabase/` | Edge Functions (`ai`, `billing`, `stripe-webhook`, `herinnering`, `kosten`) en de SQL van de tabellen. |
+
+Hoe het in elkaar zit staat in `ARCHITECTURE.md`; waarom het zo is gebouwd in `DECISIONS.md`; de werkafspraken in `CLAUDE.md`.
 
 Gebouwd met Claude Code.
