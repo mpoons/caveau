@@ -1,0 +1,31 @@
+From bda2e0aa2fe333a859bc59b673122f0ab3056385 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 15 Sep 2026 16:00:04 +0000
+Subject: [PATCH 5/5] client: prijstabel ook voor kelders met meer dan 100
+ flessen zonder prijs
+
+prijzenUitTabel stuurde alleen de eerste 100 flessen naar de server maar liep
+over de hele lijst; de rest kreeg nooit een tabelprijs. Nu in blokken van 100.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011SwgqVVr93qHAFGj6ur81b
+---
+ cellarmentor.html | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/cellarmentor.html b/cellarmentor.html
+index a4ecf2f..6337b32 100644
+--- a/cellarmentor.html
++++ b/cellarmentor.html
+@@ -2113,6 +2113,8 @@ function prijsSleutel(w){
+ }
+ async function prijzenUitTabel(wines){
+   if(!wines.length || typeof loggedIn !== 'function' || !loggedIn()) return 0;
++  /* de server kijkt naar hoogstens 100 flessen per aanroep; met meer werd de rest stil overgeslagen */
++  if(wines.length > 100){ let n = 0; for(let i = 0; i < wines.length; i += 100) n += await prijzenUitTabel(wines.slice(i, i + 100)); return n; }
+   let d = {};
+   try{
+     const res = await fnFetch('ai', {
+-- 
+2.43.0
+
