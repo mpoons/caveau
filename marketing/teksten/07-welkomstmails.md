@@ -31,9 +31,9 @@ CellarMentor
 
 ---
 
-## Mail 2 · dag 2 · Je kelder in één middag
+## Mail 2 · dag 2 · Je hele kelder erin
 
-**Onderwerp:** Je hele kelder in één middag
+**Onderwerp:** Je hele kelder erin, fles voor fles of in één keer
 **Voorbeeldtekst:** Plekken, rekken en een bestand inlezen: zo gaat het vlot.
 
 Hoi [voornaam],
@@ -141,9 +141,9 @@ CellarMentor
 
 ---
 
-## Email 2 · day 2 · Your cellar in one afternoon
+## Email 2 · day 2 · Bring your whole cellar
 
-**Subject:** Your whole cellar in one afternoon
+**Subject:** Your whole cellar, bottle by bottle or all at once
 **Preview text:** Places, racks and importing a file: here's the quick way.
 
 Hi [first name],

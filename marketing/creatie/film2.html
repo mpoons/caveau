@@ -2,9 +2,10 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<title>CellarMentor film, ronde 2</title>
-<!-- De film "zo werkt het", ronde 2 (na de kritiek): opent op het echte scanmoment (live-camera met etiket,
-     formulier dat zich vult, fleskaartje met venster), grotere teksten, korte eindkaart, overvloeiers.
+<title>CellarMentor film, ronde 3</title>
+<!-- De film "zo werkt het", ronde 3 (na de tweede kritiek): zoeker met sluiter in beeld (0–1,0 s), afdrukken,
+     het venster staat er op 2,0 s en licht één keer op; geen formulierscherm meer; harde overgangen naar en van
+     de donkere wijnkaartscène; Horizon is weg vóór de eindkaart komt; het toestel past altijd helemaal in beeld.
      ?f=st|p45|sq &l=nl|en &m=nl|be|uk. Beeldreeksen in reeks/<taal>/ (0–29 live, 30–55 bevestigen, 56–67 kaartje). -->
 <style>
 @font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(fonts/playfair-normal-latin.woff2) format('woff2')}
@@ -34,7 +35,8 @@ body{background:#000}
 #eind .cta{background:#6E1F33;color:#FFF8F0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
 #eind .url{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.16em;color:#6B5A60;margin-top:1em}
 #nix{position:absolute;z-index:7;font-weight:800;color:#241B1F;border:3px solid currentColor;border-radius:8px;padding:.04em .3em;line-height:1.12;background:#F6F2EA}
-#band{position:absolute;left:0;right:0;z-index:7;background:#fff;color:#111;font-family:'Open Sans',sans-serif;font-weight:600;text-align:center;border-top:2px solid #111}
+#band{position:absolute;left:0;right:0;bottom:0;z-index:7;background:#241B1F;color:#F6F2EA;font-family:'Open Sans',sans-serif;font-weight:600;text-align:center;line-height:1.36;box-shadow:inset 0 2px 0 #C8A96A}
+#puls{position:absolute;left:3.5%;right:3.5%;top:35.4%;height:4.6%;border:3px solid #C9A25A;border-radius:10px;opacity:0;z-index:2;box-shadow:0 0 24px rgba(201,162,90,.55)}
 </style>
 </head>
 <body>
@@ -42,7 +44,7 @@ body{background:#000}
   <div id="nacht"></div>
   <div class="merk" id="merk">CellarMentor</div>
   <div id="kappen"></div>
-  <div class="toestel" id="toestel"><div class="scherm" id="scherm"><div id="flits"></div></div></div>
+  <div class="toestel" id="toestel"><div class="scherm" id="scherm"><div id="flits"></div><div id="puls"></div></div></div>
   <div id="hz"><img id="hzImg" alt=""></div>
   <div id="eind"><div class="wm">CellarMentor</div><h2 id="eindH"></h2><div class="cta" id="eindC"></div><div class="url">cellarmentor.com</div></div>
   <div id="nix" hidden>NIX18</div><div id="band" hidden>Alcoholmisbruik schaadt de gezondheid</div>
@@ -50,17 +52,21 @@ body{background:#000}
 <script>
 const q = new URLSearchParams(location.search);
 const F = q.get('f') || 'st', L = q.get('l') || 'nl', MARKT = q.get('m') || (L === 'en' ? 'uk' : 'nl');
-const DUUR = 19;
+const DUUR = 17;
 const T = {
-  nl:{ s1:['Fig. 1 · Eén foto','Scan het etiket.',''], s2:['Drinkvenster','Weet wanneer',"je&nbsp;'m&nbsp;opent."], s3:['Fig. 3 · Uit je eigen kelder','Zeg wat je eet.','De fles staat bovenaan.'],
-       s4:['Fig. 4 · Uit eten','Uit eten?','CellarMentor leest de kaart&nbsp;mee.'], s5:['Fig. 2 · Horizon','Welke fles is nu',"op z'n&nbsp;best?"], eind:['Open elke fles',"op z'n best."], cta:'Scan je eerste fles' },
-  en:{ s1:['Fig. 1 · One photo','Scan the label.',''], s2:['Drinking window','Know when','to open&nbsp;it.'], s3:['Fig. 3 · From your own cellar','Say what you eat.','The bottle comes first.'],
-       s4:['Fig. 4 · Dining out','Dining out?','CellarMentor reads the wine&nbsp;list.'], s5:['Fig. 2 · Horizon','Which bottle is at','its best right&nbsp;now?'], eind:['Open every bottle','at its best.'], cta:'Scan your first bottle' } }[L];
+  nl:{ s1:['Eén foto','Scan het etiket.',''], s2:['Drinkvenster','Weet wanneer',"je&nbsp;'m&nbsp;opent."], s3:['Uit je eigen kelder','Zeg wat je eet.','Dit is je fles.'],
+       s4:['Uit eten','Uit eten?','CellarMentor leest&nbsp;mee.'], s5:['Horizon',"Welke fles is nu op z'n&nbsp;best?",''], eind:['Open elke fles',"op z'n best."], cta:'Scan je eerste fles' },
+  en:{ s1:['One photo','Scan the label.',''], s2:['Drinking window','Know when','to open&nbsp;it.'], s3:['From your own cellar',"Say what you're eating.","Here's your bottle."],
+       s4:['Dining out','Dining out?','It reads the wine&nbsp;list.'], s5:['Horizon','Which bottle is at its best right&nbsp;now?',''], eind:['Open every bottle','at its best.'], cta:'Scan your first bottle' } }[L];
 const M = {
-  st: { w:1080, h:1920, merk:[96,250,32], kapTop:316, kapL:96, kapW:900, k:30, h1:92, tw:670, tTop:790, hzTop:820 },
-  p45:{ w:1080, h:1350, merk:[84,84,28], kapTop:150, kapL:84, kapW:920, k:26, h1:74, tw:520, tTop:520, hzTop:520 },
-  sq: { w:1080, h:1080, merk:[84,84,26], kapTop:140, kapL:84, kapW:440, k:24, h1:66, tw:430, tTop:96, hzTop:420, naast:true },
+  st: { w:1080, h:1920, merk:[96,250,32], kapTop:316, kapL:96, kapW:900, k:30, h1:84, tTop:600, hzTop:640 },
+  p45:{ w:1080, h:1350, merk:[84,84,28], kapTop:150, kapL:84, kapW:920, k:26, h1:70, tTop:390, hzTop:420 },
+  sq: { w:1080, h:1080, merk:[84,84,26], kapTop:140, kapL:84, kapW:440, k:24, h1:62, tTop:96, hzTop:400, naast:true },
 }[F];
+/* het hele toestel (met sluiter) past tussen tTop en de onderkant, of boven de Belgische band */
+const bandF = Math.round(M.w * .032), bandPadOnder = F === 'st' ? 340 : bandF, bandH = MARKT === 'be' ? Math.round(bandF * 1.36 + bandF + bandPadOnder) : 0;
+const bodem = M.h - (MARKT === 'be' ? bandH : (F === 'st' ? 340 : 40)) - 22;
+M.tw = Math.min(M.naast ? 430 : 560, Math.floor((bodem - M.tTop) / 2.085));
 const doek = document.getElementById('doek');
 doek.style.width = M.w + 'px'; doek.style.height = M.h + 'px';
 const merk = document.getElementById('merk'); merk.style.left = M.merk[0] + 'px'; merk.style.top = M.merk[1] + 'px'; merk.style.fontSize = M.merk[2] + 'px';
@@ -72,7 +78,7 @@ if (M.naast) { toestel.style.left = 'auto'; toestel.style.right = '70px'; }
 /* beelden: de opgenomen reeks, en de vaste schermen uit ui2 */
 const reeks = []; for (let i = 0; i < 68; i++) { const im = new Image(); im.src = `reeks/${L}/${String(i).padStart(3, '0')}.jpg`; scherm.appendChild(im); reeks.push(im); }
 const vast = {}; for (const n of ['detail', 'pairing', 'wijnkaart']) { const im = new Image(); im.src = `ui2/${L}-${n}.png`; scherm.appendChild(im); vast[n] = im; }
-vast.wijnkaart.style.top = '-12%'; vast.wijnkaart.style.height = '112%';
+vast.wijnkaart.style.top = '-10.3%'; vast.wijnkaart.style.height = '110.3%';   /* begint bij de SOMMELIER-regel, zoals de stills */
 const hz = document.getElementById('hz'); document.getElementById('hzImg').src = `ui2/${L}-horizon.png`;
 const hzW = M.naast ? 600 : M.w - 2 * M.kapL; hz.style.width = hzW + 'px'; hz.style.left = (M.naast ? M.w - 600 - 60 : M.kapL) + 'px'; hz.style.top = M.hzTop + 'px';
 const kappen = document.getElementById('kappen'), kap = {};
@@ -89,35 +95,39 @@ const ctaEl = document.getElementById('eindC'); ctaEl.textContent = T.cta; ctaEl
 eind.querySelector('.url').style.fontSize = M.k + 'px';
 const nix = document.getElementById('nix'), band = document.getElementById('band');
 if (MARKT === 'nl') { nix.hidden = false; nix.style.fontSize = Math.round(M.w * .036) + 'px'; nix.style.right = M.kapL + 'px'; nix.style.top = (M.merk[1] - 8) + 'px';   /* naast het woordmerk, nooit over het scherm */ }
-if (MARKT === 'be') { band.hidden = false; band.style.fontSize = Math.round(M.w * .032) + 'px'; band.style.padding = '14px 10px'; band.style.bottom = (F === 'st' ? 384 : 0) + 'px'; }
+if (MARKT === 'be') { band.hidden = false; band.style.fontSize = bandF + 'px'; band.style.padding = `${bandF}px 10px ${bandPadOnder}px`; }   /* JEP: onderaan, volle breedte, contrasterend, marge = teksthoogte */
 
 const ease = x => { x = Math.min(1, Math.max(0, x)); return 1 - Math.pow(1 - x, 3); };
 const venster = (t, a, b, fade = .4) => Math.min(ease((t - a) / fade), 1 - ease((t - (b - fade)) / fade));
 const nacht = document.getElementById('nacht'), flits = document.getElementById('flits');
 /* tijdlijn (s) */
-const SC = [['s1', 0, 4.1], ['s2', 4.0, 7.3], ['s3', 7.2, 10.7], ['s4', 10.6, 13.7], ['s5', 13.6, 16.5]];
+const SC = [['s1', 0, 1.95], ['s2', 1.9, 5.2], ['s3', 5.1, 8.4], ['s4', 8.3, 11.4], ['s5', 11.3, 14.2]];
 window.zet = function (t) {
   for (const [s, a, b] of SC) { const o = a === 0 ? (t < b - .4 ? 1 : 1 - ease((t - (b - .4)) / .4)) : venster(t, a, b); kap[s].style.opacity = o; kap[s].style.transform = `translateY(${a === 0 ? 0 : (1 - ease((t - a) / .6)) * 16}px)`; }
-  /* reeks: 0–29 live (0–2,2 s), 30–55 bevestigen (2,35–4,0 s), 56–67 kaartje (4,0–4,6 s) */
+  /* reeks: 0–29 zoeker (0–1,0 s), sluiter op 1,0 s, 30–35 de foto en de eerste gegevens (1,0–1,5 s),
+     56–67 het fleskaartje schuift omhoog (1,5–2,0 s); het formulier (36–55) zit er niet meer in */
   let fr = -1;
-  if (t < 2.2) fr = Math.min(29, Math.floor(t / 2.2 * 30));
-  else if (t < 2.35) fr = 29;
-  else if (t < 4.0) fr = 30 + Math.min(25, Math.floor((t - 2.35) / 1.65 * 26));
-  else if (t < 4.6) fr = 56 + Math.min(11, Math.floor((t - 4.0) / .6 * 12));
+  if (t < 1.0) fr = Math.min(29, Math.floor(t / 1.0 * 30));
+  else if (t < 1.5) fr = 30 + Math.min(5, Math.floor((t - 1.0) / .5 * 6));
+  else if (t < 2.0) fr = 56 + Math.min(11, Math.floor((t - 1.5) / .5 * 12));
   reeks.forEach((im, i) => im.style.opacity = i === fr ? 1 : 0);
-  flits.style.opacity = Math.max(0, .8 - Math.abs(t - 2.27) * 7);
-  vast.detail.style.opacity = t >= 4.6 && t < 7.6 ? (t < 7.2 ? 1 : 1 - ease((t - 7.2) / .4)) : 0;
-  vast.pairing.style.opacity = venster(t, 7.2, 10.75, .4);
-  vast.wijnkaart.style.opacity = venster(t, 10.55, 13.75, .2);
-  nacht.style.opacity = venster(t, 10.55, 13.75, .2);
-  merk.style.color = nacht.style.opacity > .5 ? '#E9DFD0' : '#241B1F';
+  flits.style.opacity = Math.max(0, .85 - Math.abs(t - 1.0) * 8);
+  vast.detail.style.opacity = t >= 2.0 && t < 5.25 ? (t < 5.1 ? 1 : 1 - ease((t - 5.1) / .15)) : 0;
+  document.getElementById('puls').style.opacity = Math.max(0, Math.sin(Math.min(1, Math.max(0, (t - 2.3) / .9)) * Math.PI));
+  vast.pairing.style.opacity = venster(t, 5.1, 8.36, .15);
+  /* harde overgang naar en van de donkere scène: geen grijze tussenstand meer */
+  const donker = t >= 8.3 && t < 11.35;
+  vast.wijnkaart.style.opacity = donker ? 1 : 0;
+  nacht.style.opacity = donker ? 1 : 0;
+  merk.style.color = donker ? '#E9DFD0' : '#241B1F';
   /* het toestel: komt rustig omhoog, wijkt bij Horizon voor de uitsnede */
-  const y = M.tTop + (1 - ease(t / .9)) * 80 - t * 3;
+  const y = M.tTop + (1 - ease(t / .6)) * 40 - Math.min(t, 11) * 1.5;
   toestel.style.transform = (M.naast ? '' : 'translateX(-50%) ') + `translateY(${y - (M.naast ? 0 : 0)}px)`;
   toestel.style.top = '0px';
-  toestel.style.opacity = t < 13.6 ? 1 : 1 - ease((t - 13.6) / .4);
-  hz.style.opacity = venster(t, 13.7, 16.6, .4); hz.style.transform = `translateY(${(1 - ease((t - 13.7) / .7)) * 20}px)`;
-  eind.style.opacity = ease((t - 16.45) / .5); eind.style.transform = `translateY(${(1 - ease((t - 16.45) / .7)) * 14}px)`;
+  toestel.style.opacity = t < 11.35 ? 1 : 0;   /* harde snede samen met het licht: geen leeg toestel in beeld */
+  /* Horizon is helemaal weg voordat de eindkaart opkomt: geen rijen meer onder de eindtekst */
+  hz.style.opacity = venster(t, 11.45, 14.25, .35); hz.style.transform = `translateY(${(1 - ease((t - 11.45) / .7)) * 20}px)`;
+  eind.style.opacity = ease((t - 14.3) / .45); eind.style.transform = `translateY(${(1 - ease((t - 14.3) / .7)) * 14}px)`;
 };
 window.DUUR = DUUR;
 const alles = [...reeks, ...Object.values(vast), document.getElementById('hzImg')];

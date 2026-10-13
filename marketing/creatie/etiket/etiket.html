@@ -1,43 +1,65 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Etiket voor de scan-opname</title>
-<!-- Een verzonnen, merkloos Saint-Julien-etiket, alleen gebruikt als camerabeeld voor de opname van de echte
-     live-scanner (er is nog geen video van een echte fles). Vervangen zodra Max echte opnames aanlevert. -->
+<!-- Een verzonnen, merkloos Saint-Julien-etiket (geen château, geen klassement), alleen gebruikt als camerabeeld
+     voor de opname van de echte live-scanner. Er is nog geen video van een echte fles; vervangen zodra Max die
+     aanlevert (plan, sectie 0e). Ronde 2: geen 'Grand Cru Classé' meer (bestaat niet zonder château-naam), geen
+     tekst die buiten het papier loopt, papierstructuur, rondingsschaduw, scherptediepte en korrel over het beeld. -->
 <style>
-@font-face{font-family:'Playfair Display';font-style:italic;font-weight:400 900;src:url(../fonts/playfair-italic-latin.woff2) format('woff2')}
-@font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(../fonts/playfair-normal-latin.woff2) format('woff2')}
 @font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;src:url(../fonts/ebgaramond-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;src:url(../fonts/ebgaramond-italic-latin.woff2) format('woff2')}
 html,body{margin:0;width:1280px;height:720px;overflow:hidden;background:#120d0b}
-.muur{position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 45%,#3a2a20 0%,#21170f 55%,#100b08 100%)}
-.plank{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(#2c1e14,#1a120c);box-shadow:0 -6px 18px rgba(0,0,0,.5)}
-.fles{position:absolute;left:50%;top:-140px;transform:translateX(-50%);width:430px;height:900px;border-radius:120px 120px 30px 30px;
-  background:linear-gradient(90deg,#0b0f0a 0%,#1d2a1c 18%,#0e140d 38%,#0a0e09 62%,#18241a 86%,#0a0d09 100%);box-shadow:inset 0 0 40px rgba(0,0,0,.6),0 30px 60px rgba(0,0,0,.6)}
-.glans{position:absolute;top:0;bottom:0;left:22%;width:7%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);filter:blur(2px)}
-.etiket{position:absolute;left:50%;top:250px;transform:translateX(-50%);width:356px;height:410px;background:#f1e8d6;color:#2a1d17;
-  box-shadow:inset 18px 0 22px -14px rgba(0,0,0,.45),inset -18px 0 22px -14px rgba(0,0,0,.45);text-align:center;font-family:'EB Garamond',serif;overflow:hidden}
-.etiket::before{content:'';position:absolute;inset:12px;border:1.5px solid #8a6930}
-.etiket::after{content:'';position:absolute;inset:17px;border:.6px solid #8a6930}
-.korrel{position:absolute;inset:0;opacity:.35;mix-blend-mode:multiply}
-.binnen{position:relative;padding:38px 30px 0}
-.sc{font-variant:small-caps;text-transform:lowercase;letter-spacing:.2em;font-size:15px;color:#6e1f33;font-weight:600}
-.orn{font-size:18px;color:#8a6930;letter-spacing:.4em;margin:6px 0}
-.app{font-family:'Playfair Display',serif;font-style:italic;font-size:52px;line-height:1;margin:14px 0 10px;font-weight:500;white-space:nowrap}
-.gcc{font-family:'Playfair Display',serif;font-size:19px;letter-spacing:.06em;margin-bottom:10px}
-.aoc{font-variant:small-caps;text-transform:lowercase;letter-spacing:.14em;font-size:13px}
-.jaar{font-family:'Playfair Display',serif;font-size:42px;margin:14px 0 6px;letter-spacing:.06em;color:#6e1f33}
-.voet{font-variant:small-caps;text-transform:lowercase;letter-spacing:.12em;font-size:12px;line-height:1.6}
+.muur{position:absolute;inset:-40px;filter:blur(7px);
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 3px,transparent 3px 58px),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.22) 0 3px,transparent 3px 124px),
+    radial-gradient(ellipse 55% 75% at 46% 40%,#5a4030 0%,#33241a 50%,#140e0a 100%)}
+.rek{position:absolute;top:-20px;bottom:110px;width:420px;filter:blur(11px);opacity:.9;
+  background:radial-gradient(circle at 50% 50%,#070504 0 15px,#20160f 17px,#4b3626 23px,#2c1f15 27px,transparent 29px) 0 0/66px 62px}
+.plank{position:absolute;left:-20px;right:-20px;bottom:0;height:118px;filter:blur(3px);background:linear-gradient(#4a3424,#2a1c12 30%,#1a120c);box-shadow:0 -10px 24px rgba(0,0,0,.55)}
+.fles{position:absolute;left:50%;top:-150px;transform:translateX(-50%) rotate(-1.2deg);width:440px;height:930px;border-radius:130px 130px 26px 26px;
+  background:linear-gradient(90deg,#060805 0%,#162116 12%,#243323 22%,#0f170e 40%,#090d08 62%,#132015 82%,#1f2e1f 90%,#060805 100%);
+  box-shadow:inset 0 0 50px rgba(0,0,0,.7),0 34px 70px rgba(0,0,0,.65)}
+.glans{position:absolute;top:0;bottom:0;left:16%;width:5%;background:linear-gradient(90deg,transparent,rgba(255,240,215,.16),transparent);filter:blur(3px)}
+.glans2{position:absolute;top:0;bottom:0;left:84%;width:3%;background:linear-gradient(90deg,transparent,rgba(255,240,215,.08),transparent);filter:blur(2px)}
+.etiket{position:absolute;left:50%;top:262px;transform:translateX(-50%);width:372px;height:420px;color:#2b2019;text-align:center;font-family:'EB Garamond',serif;overflow:hidden;
+  background:#ece2cc}
+.papier{position:absolute;inset:0;opacity:.55;mix-blend-mode:multiply}
+.rond{position:absolute;inset:0;background:linear-gradient(90deg,rgba(40,25,10,.55) 0%,rgba(40,25,10,.12) 14%,rgba(255,250,235,.10) 30%,rgba(0,0,0,0) 46%,rgba(40,25,10,.08) 70%,rgba(40,25,10,.5) 100%);mix-blend-mode:multiply}
+.licht{position:absolute;inset:0;background:linear-gradient(90deg,transparent 22%,rgba(255,252,240,.22) 30%,transparent 40%)}
+.rand{position:absolute;inset:14px;border:1px solid #7d6236}
+.rand2{position:absolute;inset:19px;border:.5px solid #7d6236}
+.binnen{position:relative;padding:62px 34px 0;display:flex;flex-direction:column;align-items:center}
+.gv{font-style:italic;font-size:19px;color:#5b4632;letter-spacing:.02em}
+.lijn{width:64px;height:1px;background:#7d6236;margin:14px 0 18px}
+.app{font-size:37px;line-height:1;letter-spacing:.07em;white-space:nowrap;font-weight:500;text-transform:uppercase;color:#2b2019}
+.aoc{font-size:10.5px;letter-spacing:.12em;white-space:nowrap;text-transform:uppercase;margin-top:14px;color:#3d2f24}
+.jaar{font-size:48px;margin:30px 0 0;letter-spacing:.08em;color:#6a1e2e;font-weight:500}
+.lijn2{width:120px;height:1px;background:#7d6236;margin:22px 0 14px}
+.voet{font-size:11px;letter-spacing:.16em;text-transform:uppercase;line-height:1.75;color:#4a3a2c}
+.inkt{filter:url(#inkt)}
+.korrel{position:absolute;inset:0;opacity:.22;mix-blend-mode:overlay;pointer-events:none}
+.vignet{position:absolute;inset:0;background:radial-gradient(ellipse 75% 70% at 50% 48%,transparent 55%,rgba(0,0,0,.55) 100%);pointer-events:none}
 </style></head><body>
-<div class="muur"></div><div class="plank"></div>
-<div class="fles"><div class="glans"></div>
+<svg width="0" height="0" style="position:absolute"><filter id="inkt"><feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="9"/><feDisplacementMap in="SourceGraphic" scale="1.1"/></filter></svg>
+<div class="muur"></div>
+<div class="rek" style="left:-30px"></div><div class="rek" style="right:-50px;background-position:20px 10px"></div>
+<div class="plank"></div>
+<div class="fles"><div class="glans"></div><div class="glans2"></div>
   <div class="etiket">
-    <svg class="korrel" width="356" height="410"><filter id="k"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .55  0 0 0 0 .45  0 0 0 0 .32  0 0 0 .55 0"/></filter><rect width="100%" height="100%" filter="url(#k)"/></svg>
-    <div class="binnen">
-      <div class="sc">Grand Vin</div>
-      <div class="orn">✦ ✦ ✦</div>
+    <svg class="papier" width="372" height="420"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="3" seed="4"/><feColorMatrix values="0 0 0 0 .58  0 0 0 0 .48  0 0 0 0 .34  0 0 0 .6 0"/></filter><rect width="100%" height="100%" filter="url(#p)"/>
+      <filter id="v"><feTurbulence type="fractalNoise" baseFrequency=".012 .5" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .4  0 0 0 0 .3  0 0 0 .25 0"/></filter><rect width="100%" height="100%" filter="url(#v)"/></svg>
+    <div class="rand"></div><div class="rand2"></div>
+    <div class="binnen inkt">
+      <div class="gv">Grand Vin de Bordeaux</div>
+      <div class="lijn"></div>
       <div class="app">Saint-Julien</div>
-      <div class="gcc">GRAND CRU CLASSÉ</div>
       <div class="aoc">Appellation Saint-Julien Contrôlée</div>
       <div class="jaar">2016</div>
-      <div class="voet">Mis en bouteille à la propriété<br>75 cl · 13,5 % vol.</div>
+      <div class="lijn2"></div>
+      <div class="voet">Mis en bouteille à Saint-Julien<br>750 ml · 13,5 % vol.</div>
     </div>
+    <div class="rond"></div><div class="licht"></div>
   </div>
 </div>
+<div class="vignet"></div>
+<svg class="korrel" width="1280" height="720"><filter id="g"><feTurbulence type="fractalNoise" baseFrequency=".95" numOctaves="2" seed="11"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#g)"/></svg>
 </body></html>

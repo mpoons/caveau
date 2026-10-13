@@ -175,7 +175,7 @@ Vóór de naam publiek wordt: het woordmerk vastleggen (staat al op je lijst, kl
 
 **Kosten:** € 0
 
-Twee verse critici gaven alle uitingen een onvoldoende op bewijs: er staat niets onwaars, maar ook niets dat laat zien dat echte mensen dit gebruiken. Topapps zetten één echte, benoemde stem naast de kop. Verzinnen mag nooit; verzamelen kan deze week.
+Wat nu nog tussen deze uitingen en topniveau staat, kan alleen jij leveren. Ten eerste een echte fles: het etiket in film en advertenties is getekend, en wijnliefhebbers zien dat. Ten tweede een echte stem: er staat niets onwaars, maar ook niets dat laat zien dat echte mensen dit gebruiken. Topapps zetten één benoemde stem naast de kop. Verzinnen mag nooit; verzamelen kan deze week.
 
 **Al klaar of voorbereid**
 
@@ -318,6 +318,12 @@ Bij het opnemen van de schermen en het bouwen van de pagina's kwamen dingen bove
 - Kelderlijst zei "Mogelijk topfles", het detail "Waarschijnlijk een topfles": nu één woord.
 - Horizon herhaalde dezelfde zin bij twee lege periodes.
 - Engelse stand: statuschip, jaargangchip, wijnkaartkop, "X en Y" in pairingredenen en "Waar komt dit venster vandaan?" waren Nederlands.
+- Eendenborst viel onder Wild en "duck breast" onder Eend, zodat NL en EN andere flessen en scores gaven; nu allebei Eend.
+- Pairingredenen: "een klassieke druif" bij twee druiven werd "klassieke druiven"; "het register van" werd "met het juiste gewicht voor".
+- Geen drinkdrang meer in schermen die in advertenties staan: "Vanavond drinken" heet "Zet op tafel", "Ik wil iets drinken" heet "Welke fles kies ik?", en de Sancerre-zin noemt geen avond meer.
+- De privacyverklaring zei "Er gaat niets naar een server" terwijl de nieuwe meting anonieme tellingen stuurt; nu klopt het: je kelder blijft op je telefoon, alleen de tellingen gaan weg.
+- Voorbeeld in het formulier was "bv. Château Talbot", een echt château; nu "bv. Saint-Julien 2016".
+- Engelse knoppen natuurlijker: "Pick this", "Order this", "Add to cellar", "Put away".
 
 **Wat ik doe**
 
@@ -327,6 +333,7 @@ Bij het opnemen van de schermen en het bouwen van de pagina's kwamen dingen bove
 - CSV-import leest alleen UTF-8; een Excel-bestand in het oude Windows-formaat verminkt é en ü.
 - Na import met een later venstereinde zegt de fles nog "uit het bestand".
 - Beslissen: de chip "Sommelier-AI" in de app heet in advertenties "Sommelier"; de app zelf ook zo noemen?
+- Valuta: de app toont bedragen altijd in euro's, ook bij een Britse wijnkaart in ponden. Voorstel: de wijnkaartlezer laat het model de valuta van de kaart teruggeven en toont die; kelderwaarden blijven in euro's. Nodig vóór 7b.
 
 **Wat jij doet**
 
@@ -880,6 +887,7 @@ De app en een landingspagina zijn er al in het Engels. Eerst bewijzen in NL en B
 
 - De rest van de Engelse vertaling nalopen (teksten van v87 tot v99), met een automatische telling van Nederlandse zinnen in de Engelse stand.
 - Makers: The Wine Beast, Wine With Jimmy, No Sediment; DutchNews.
+- Eerst de valuta in de wijnkaartlezer (zie 1e): de Britse advertentieset toont nu €-prijzen en is daarom gemarkeerd als voorlopig.
 
 **Wat jij doet**
 
