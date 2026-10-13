@@ -341,7 +341,7 @@ De Nederlandse zoekresultaten over bewaren, wijnjaren en "op dronk" zijn dun: ko
 | Stoppen bij | Na 12 weken zonder vertoningen: herschrijven of samenvoegen. |
 | Wat dit kan bewijzen | SEO duurt 3 tot 9 maanden; de eerste maand bewijst niets. |
 
-**Bestanden:** [Gidsen (branch)](https://github.com/mpoons/cellarmentor/blob/claude/optimistic-wozniak-2tlaqt/gids/)
+**Bestanden:** [Gidsen (branch)](https://github.com/mpoons/cellarmentor/tree/claude/optimistic-wozniak-2tlaqt/gids)
 
 
 ### 2c · Wijnjaren per streek
@@ -369,7 +369,7 @@ Nederlanders zoeken "wijnjarentabel", "goede wijnjaren bordeaux" en "wijn op dro
 | Stoppen bij | Pagina's zonder vertoningen na 12 weken op noindex. |
 | Wat dit kan bewijzen | Als 2b. |
 
-**Bestanden:** [Wijnjaren (branch)](https://github.com/mpoons/cellarmentor/blob/claude/optimistic-wozniak-2tlaqt/jaargangen/)
+**Bestanden:** [Wijnjaren (branch)](https://github.com/mpoons/cellarmentor/tree/claude/optimistic-wozniak-2tlaqt/jaargangen)
 
 
 ### 2d · Search Console, sitemap en vermeldingen
@@ -701,7 +701,7 @@ Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij �
 | Stoppen bij | Per haak stoppen na € 40 met CTR onder 0,8% of zonder aanmelding; de hele test stopt op € 200. |
 | Wat dit kan bewijzen | Met € 200 krijg je ± 200 tot 300 klikken en ± 15 tot 25 aanmeldingen in totaal. Alleen een verschil van factor twee tussen haken is zichtbaar. Over betalers zegt dit niets. |
 
-**Bestanden:** [Advertenties](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/creatie/out/)
+**Bestanden:** [Advertenties](https://github.com/mpoons/caveau/tree/claude/optimistic-wozniak-2tlaqt/marketing/creatie/out)
 
 
 ### 5c · Bewust niet nu

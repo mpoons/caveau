@@ -4,6 +4,8 @@
 
 const GH_M = 'https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/';
 const GH_A = 'https://github.com/mpoons/cellarmentor/blob/claude/optimistic-wozniak-2tlaqt/';
+const GH_AT = 'https://github.com/mpoons/cellarmentor/tree/claude/optimistic-wozniak-2tlaqt/';
+const GH_MT = 'https://github.com/mpoons/caveau/tree/claude/optimistic-wozniak-2tlaqt/marketing/';
 
 export const PLAN = {
   bijgewerkt: '13 oktober 2026',
@@ -156,7 +158,7 @@ export const PLAN = {
       ik: ['Elke week één nieuw artikel uit de lijst van vijftien (onder meer Kelder-APK, wat is mijn wijn waard, bewaarwijn voor een geboortejaar, beste wijnkelder-app).'],
       jij: ['Akkoord; per artikel even nalezen op wijninhoud.'],
       test: { meten: 'Vertoningen, klikken en positie per pagina in Search Console; aanmeldingen met bron google.', opschalen: 'Onderwerpen die na 8 weken in de top 10 staan krijgen vervolgartikelen.', stoppen: 'Na 12 weken zonder vertoningen: herschrijven of samenvoegen.', bewijs: 'SEO duurt 3 tot 9 maanden; de eerste maand bewijst niets.' },
-      afh: ['2a', '2d'], bestanden: [{ t: 'Gidsen (branch)', u: GH_A + 'gids/' }],
+      afh: ['2a', '2d'], bestanden: [{ t: 'Gidsen (branch)', u: GH_AT + 'gids' }],
     },
     {
       id: '2c', fase: '2', titel: 'Wijnjaren per streek', kosten: 0, kostenTekst: '€ 0',
@@ -165,7 +167,7 @@ export const PLAN = {
       ik: ['In delen live zetten en de indexering volgen; later per streek en jaar ("Bordeaux 2015: op dronk?") alleen waar een pagina echt iets eigens zegt.'],
       jij: ['Akkoord.'],
       test: { meten: 'Als 2b.', opschalen: 'Bij vertoningen op streek+jaar: de pagina\'s per jaargang bouwen.', stoppen: 'Pagina\'s zonder vertoningen na 12 weken op noindex.', bewijs: 'Als 2b.' },
-      afh: ['2a', '2d'], bestanden: [{ t: 'Wijnjaren (branch)', u: GH_A + 'jaargangen/' }],
+      afh: ['2a', '2d'], bestanden: [{ t: 'Wijnjaren (branch)', u: GH_AT + 'jaargangen' }],
     },
     {
       id: '2d', fase: '2', titel: 'Search Console, sitemap en vermeldingen', kosten: 0, kostenTekst: '€ 0',
@@ -280,7 +282,7 @@ export const PLAN = {
       jij: ['Advertentieaccount met betaalmethode; pagina- en accountleeftijd op 18+ zetten; akkoord.'],
       regels: 'Leeftijd 25+; geen Audience Network; NIX18 op elk beeld; geen BE of NO zonder de juiste variant.',
       test: { meten: 'CTR, CPC, CPA aanmelding per haak.', opschalen: 'Er wordt hier niet opgeschaald. De winnende haak gaat naar de hero, de makersbrief en de pers.', stoppen: 'Per haak stoppen na € 40 met CTR onder 0,8% of zonder aanmelding; de hele test stopt op € 200.', bewijs: 'Met € 200 krijg je ± 200 tot 300 klikken en ± 15 tot 25 aanmeldingen in totaal. Alleen een verschil van factor twee tussen haken is zichtbaar. Over betalers zegt dit niets.' },
-      afh: ['0a', '0b', '0c', '2a', '0d'], bestanden: [{ t: 'Advertenties', u: GH_M + 'creatie/out/' }],
+      afh: ['0a', '0b', '0c', '2a', '0d'], bestanden: [{ t: 'Advertenties', u: GH_MT + 'creatie/out' }],
     },
     {
       id: '5c', fase: '5', titel: 'Bewust niet nu', kosten: 0, kostenTekst: '€ 0',

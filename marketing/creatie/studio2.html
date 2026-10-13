@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>CellarMentor advertentiestudio, ronde 2</title>
+<!-- Ronde 2, na de kritiek (verse criticus, 3,5 van 5): elk concept een eigen compositie, het etiket zichtbaar,
+     dezelfde CTA als de site, NIX18 en de Belgische band in een eigen zone, geen merken van derden, geen "AI".
+     Parameters: ?c=concept&f=sq|p45|st|ls&l=nl|en&m=nl|be|uk. Schermen: ui2/ (echte app, opgenomen met t13). -->
+<style>
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(fonts/playfair-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:400 900;src:url(fonts/playfair-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;src:url(fonts/ebgaramond-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;src:url(fonts/ebgaramond-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'Open Sans';font-weight:600;src:url(fonts/opensans.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#777}
+.doek{--bg:#F6F2EA;--sunk:#EEE6D7;--ink:#241B1F;--ink2:#6B5A60;--ink3:#9C8D92;--acc:#6E1F33;--gold:#8A6930;--rule:#C8A96A;--bezel:#1D1719;
+  position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.doek.donker{--bg:#1B1418;--sunk:#251C21;--ink:#E9DFD0;--ink2:#B4A498;--ink3:#8E7B83;--acc:#D9B56E;--gold:#C9A25A;--rule:#6E552C;--bezel:#0B0809}
+.merk{position:absolute;font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.14em;font-weight:500;white-space:nowrap}
+.kicker{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.18em;color:var(--gold);font-weight:500}
+h1{font-family:'Playfair Display',serif;font-weight:500;line-height:1.05;letter-spacing:-.012em;text-wrap:balance}
+h1 em{font-style:italic;color:var(--acc)}
+h1 .br{display:block}
+.sub{color:var(--ink2);line-height:1.42;text-wrap:pretty}
+.fig{font-family:'EB Garamond',serif;font-style:italic;color:var(--ink3)}
+.voet{position:absolute;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.cta{display:flex;align-items:center;gap:.6em;font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.15em;font-weight:600;color:var(--ink);white-space:nowrap}
+.cta b{color:var(--acc);font-weight:600}
+.cta i{display:inline-block;width:1px;height:1em;background:var(--rule)}
+.nix{font-weight:800;letter-spacing:.02em;color:var(--ink);border:3px solid currentColor;border-radius:8px;padding:.04em .3em;line-height:1.15}
+.band{position:absolute;left:0;right:0;bottom:0;background:#fff;color:#111;font-family:'Open Sans',sans-serif;font-weight:600;text-align:center;border-top:2px solid #111}
+.toestel{position:absolute;background:var(--bezel);box-shadow:0 50px 90px -40px rgba(60,20,30,.5),0 18px 40px -20px rgba(36,27,31,.4)}
+.toestel img{display:block;width:100%;aspect-ratio:390/844;object-fit:cover;object-position:top}
+.uitsnede{position:absolute;overflow:hidden;background:var(--bg);box-shadow:0 1px 0 var(--rule),0 -1px 0 var(--rule)}
+.uitsnede img{display:block;width:100%}
+.camera{position:absolute;overflow:hidden;background:#111;box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
+.camera img{display:block;width:100%;height:100%;object-fit:cover}
+.pijl{position:absolute;overflow:visible}
+.poster-balk{position:absolute}
+.pb-track{position:relative;height:100%;background:var(--sunk);border-radius:999px;overflow:hidden}
+.pb-fill{position:absolute;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#3E6B47,#7A8F4F 45%,#B38236 75%,#8E3347)}
+.pb-nu{position:absolute;top:-18%;bottom:-18%;width:4px;background:var(--ink);border-radius:2px}
+.pb-lab{position:absolute;left:0;right:0;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.pb-lab span{position:absolute;white-space:nowrap}
+.pb-lab .nu{color:var(--ink);font-weight:700}
+</style>
+</head>
+<body>
+<div id="doek"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const C = q.get('c') || 'wanneer', F = q.get('f') || 'sq', L = q.get('l') || 'nl', M = q.get('m') || (L === 'en' ? 'uk' : 'nl');
+const EN = L === 'en';
+const MAAT = { sq:[1080,1080], p45:[1080,1350], st:[1080,1920], ls:[1200,628] }[F];
+const W = MAAT[0], H = MAAT[1];
+const img = n => `ui2/${L}-${n}.png`;
+const T = {
+  merk:    { nl:{ k:'Je wijnkelder, in je zak', h:'Open elke fles', em:"op z'n best.", sub:'Scan het etiket. CellarMentor zegt wanneer je hem opent.' },
+             en:{ k:'Your wine cellar, in your pocket', h:'Open every bottle', em:'at its best.', sub:'Scan the label. CellarMentor tells you when to open it.' } },
+  wanneer: { nl:{ k:'Fig. 1 · Eén foto van het etiket', h:'Scan het etiket.', em:"Weet wanneer je&nbsp;'m&nbsp;opent.", sub:'Berekend uit streek, jaargang en soort wijn.' },
+             en:{ k:'Fig. 1 · One photo of the label', h:'Scan the label.', em:'Know when to open&nbsp;it.', sub:'Worked out from region, vintage and style.' } },
+  specifiek:{ nl:{ k:'Saint-Julien Grand Cru Classé · 2016', h:'Op dronk sinds 2025.', em:'En nog tot 2060.', sub:'Zo staat het bij elke fles in je kelder, met waar het vandaan komt.' },
+             en:{ k:'Saint-Julien Grand Cru Classé · 2016', h:'Ready since 2025.', em:'And until 2060.', sub:'That is what every bottle in your cellar shows, with where it comes from.' } },
+  kelder:  { nl:{ k:'Fig. 5 · Je kelder', h:'', em:'Je hele kelder, in één middag.', sub:'Scan fles voor fles, of lees je CellarTracker- of Vivino-bestand in.' },
+             en:{ k:'Fig. 5 · Your cellar', h:'', em:'Your whole cellar, in one afternoon.', sub:'Scan bottle by bottle, or import your CellarTracker or Vivino file.' } },
+  erbij:   { nl:{ k:'Fig. 3 · Uit je eigen kelder', h:'Eendenborst?', em:'Dit is je fles.', sub:'Zeg wat je eet. De beste fles uit je eigen kelder staat bovenaan, met de reden erbij.' },
+             en:{ k:'Fig. 3 · From your own cellar', h:'Duck breast?', em:"Here's your bottle.", sub:'Say what you are eating. The best bottle from your own cellar comes first, with the reason.' } },
+  uiteten: { nl:{ k:'Fig. 4 · Uit eten', h:'Uit eten?', em:'CellarMentor leest de kaart mee.', sub:'Eén foto van de wijnkaart: drie flessen bij je gerechten, binnen je budget.' },
+             en:{ k:'Fig. 4 · Dining out', h:'Dining out?', em:'CellarMentor reads the wine list.', sub:'One photo of the list: three bottles for your dishes, within your budget.' } },
+  nu:      { nl:{ k:'Fig. 2 · Horizon', h:'Welke fles is nu', em:"op z'n best?", sub:'Horizon zet je hele kelder op een tijdlijn.' },
+             en:{ k:'Fig. 2 · Horizon', h:'Which bottle is at its best', em:'right now?', sub:'Horizon puts your whole cellar on a timeline.' } },
+}[C][L];
+const cta = EN ? ['Scan your first bottle', 'cellarmentor.com'] : ['Scan je eerste fles', 'cellarmentor.com'];
+const donker = C === 'uiteten';
+
+/* maatvoering per formaat: marge, kop, voet; de inhoudszone ligt tussen kop en voet */
+const G = { sq:{ m:72, merk:26, k:24, h1:70, sub:27, voet:24, voetY:72 }, p45:{ m:76, merk:28, k:26, h1:80, sub:29, voet:26, voetY:76 },
+            st:{ m:88, merk:30, k:28, h1:94, sub:32, voet:30, voetY:400 }, ls:{ m:52, merk:20, k:18, h1:50, sub:20, voet:18, voetY:44 } }[F];
+const bandH = M === 'be' ? Math.round((F === 'ls' ? 26 : 34) * 1.9) : 0;
+const bandOnder = (M === 'be' && F === 'st') ? 384 : 0;
+const voetOnder = (F === 'st' && M === 'be' ? 400 : G.voetY) + bandH + (bandOnder ? 16 : 0);                                   /* afstand van de voet tot de onderkant */
+const tekstBlok = (w, opts = {}) => `<div class="kicker" style="font-size:${G.k}px;margin-bottom:${G.k * .7}px">${T.k}</div>
+  <h1 style="font-size:${opts.h1 || G.h1}px">${T.h ? `<span class="br">${T.h}</span>` : ''}<em class="${T.h ? 'br' : ''}">${T.em}</em></h1>
+  ${opts.zonderSub ? '' : `<p class="sub" style="font-size:${G.sub}px;margin-top:${G.sub * .8}px;max-width:${w}px">${T.sub}</p>`}`;
+
+let inhoud = '';
+const yTop = G.m + G.merk * 2.6;                                      /* onder het woordmerk */
+const onder = H - voetOnder - G.voet * 2.4;                          /* boven de voet */
+
+if (C === 'wanneer' || C === 'merk') {
+  /* links het camerabeeld met het etiket, rechts het fleskaartje met het venster, een pijl ertussen */
+  if (F === 'ls') {
+    inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:520px">${tekstBlok(500, { h1: 46 })}</div>
+      <div class="camera" style="left:640px;top:70px;width:200px;height:300px;border-radius:14px"><img src="${img('live')}" style="object-position:50% 40%"></div>
+      <div class="toestel" style="left:900px;top:40px;width:250px;padding:8px;border-radius:34px"><img src="${img('detail')}" style="border-radius:27px"></div>`;
+  } else {
+    const tw = { sq:400, p45:460, st:470 }[F], camW = { sq:330, p45:380, st:360 }[F];
+    const tekstH = { sq:330, p45:380, st:470 }[F];
+    const vy = yTop + tekstH;
+    const beschikbaar = onder - vy;
+    const toestelH = Math.min(beschikbaar + tw * 1.2, tw * 844 / 390);
+    inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:${W - 2 * G.m}px">${tekstBlok(W - 2 * G.m - 40)}</div>
+      <div class="camera" style="left:${G.m}px;top:${vy + 30}px;width:${camW}px;height:${camW * 1.38}px;border-radius:22px"><img src="${img('live')}" style="object-position:50% 42%"></div>
+      <svg class="pijl" style="left:${G.m + camW + 16}px;top:${vy + camW * .62}px" width="${W - G.m * 2 - camW - tw - 16}" height="40" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M2 20 H92" stroke="${'var(--acc)'}" stroke-width="2.4" vector-effect="non-scaling-stroke" fill="none"/><path d="M84 10 L98 20 L84 30" stroke="var(--acc)" stroke-width="2.4" vector-effect="non-scaling-stroke" fill="none"/></svg>
+      <div class="toestel" style="right:${G.m - 10}px;top:${vy}px;width:${tw}px;height:${toestelH}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('detail')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0"></div>
+      <div class="fig" style="position:absolute;left:${G.m}px;top:${vy + 30 + camW * 1.38 + 16}px;font-size:${G.sub * .78}px;width:${camW}px">${EN ? 'The real scanner in the app. The drinking window comes from the regional vintage chart.' : 'De echte scanner in de app. Het venster komt uit de jaargangtabel van de streek.'}</div>`;
+  }
+}
+
+if (C === 'specifiek') {
+  /* typografische poster: geen telefoon, het venster zelf als beeld */
+  const bw = W - 2 * G.m, by = F === 'ls' ? 420 : (F === 'st' ? 1000 : F === 'p45' ? 880 : 720), bh = F === 'ls' ? 22 : 34;
+  const van = 2016, tot = 2060, pos = j => (j - van) / (tot + 1 - van) * 100;   /* de as begint bij de oogst */
+  const h1 = { sq:104, p45:118, st:132, ls:66 }[F];
+  inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop + (F === 'st' ? 120 : 10)}px;width:${bw}px">${tekstBlok(bw - 60, { h1, zonderSub: true })}</div>
+    <div class="poster-balk" style="left:${G.m}px;top:${by}px;width:${bw}px;height:${bh}px"><div class="pb-track"><div class="pb-fill" style="left:${pos(2025)}%;right:0"></div></div>
+      <div class="pb-nu" style="left:calc(${pos(2026.5)}% - 2px)"></div>
+      <div class="pb-lab" style="top:${-G.sub * 1.7}px;font-size:${G.sub * .9}px"><span class="nu" style="left:${pos(2026.5)}%;transform:translateX(-50%)">${EN ? 'now' : 'nu'} · 2026</span></div>
+      <div class="pb-lab" style="top:${bh + 14}px;font-size:${G.sub * .9}px"><span style="left:0">${EN ? 'harvest' : 'oogst'} 2016</span><span style="right:0">${EN ? 'to' : 'tot'} 2060 →</span></div></div>
+    <p class="sub" style="position:absolute;left:${G.m}px;top:${by + bh + G.sub * 3.4}px;font-size:${G.sub}px;max-width:${Math.min(bw, 760)}px">${T.sub}</p>`;
+}
+
+if (C === 'kelder' || C === 'nu' || C === 'erbij') {
+  /* echte uitsnede uit de app, zonder telefoonlijst, groot */
+  const naam = { kelder:'kelderlijst', nu:'horizon', erbij:'match' }[C];
+  const verhouding = { kelder:1305 / 1074, nu:795 / 1074, erbij:612 / 1074 }[C];
+  if (F === 'ls') {
+    const bw = 560, bh = Math.min(bw * verhouding, 520);
+    inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:520px">${tekstBlok(500, { h1: 44 })}</div>
+      <div class="uitsnede" style="right:40px;top:${(H - bh) / 2 - 10}px;width:${bw}px;height:${bh}px;${C === 'erbij' ? 'box-shadow:0 30px 60px -30px rgba(36,27,31,.35);border:1px solid var(--rule)' : ''}"><img src="${img(naam)}"></div>`;
+  } else {
+    const tekstH = { sq:300, p45:360, st:470 }[F];
+    const bw = C === 'erbij' ? W - 2 * G.m + 20 : W - G.m;
+    const vy = yTop + tekstH + (C === 'erbij' ? 40 : 10);
+    const bh = Math.min(bw * verhouding, onder - vy - 20);
+    inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:${W - 2 * G.m}px">${tekstBlok(W - 2 * G.m - 60)}</div>
+      <div class="uitsnede" style="left:${C === 'erbij' ? G.m - 10 : G.m}px;top:${vy}px;width:${bw}px;height:${bh}px;${C === 'erbij' ? 'box-shadow:0 40px 80px -40px rgba(36,27,31,.4);border:1px solid var(--rule)' : ''}"><img src="${img(naam)}"></div>`;
+  }
+}
+
+if (C === 'uiteten') {
+  if (F === 'ls') {
+    inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:560px">${tekstBlok(520, { h1: 46 })}</div>
+      <div class="toestel" style="right:80px;top:40px;width:270px;height:640px;overflow:hidden;padding:9px 9px 0;border-radius:38px 38px 0 0"><img src="${img('wijnkaart')}" style="border-radius:30px 30px 0 0;margin-top:-17%"></div>`;
+  } else {
+    const tw = { sq:400, p45:500, st:600 }[F], tekstH = { sq:0, p45:400, st:520 }[F];
+    if (F === 'sq') inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:520px">${tekstBlok(500, { h1: 66 })}</div>
+      <div class="toestel" style="right:${G.m}px;top:${yTop - 40}px;width:${tw}px;height:${H}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('wijnkaart')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0;margin-top:-17%"></div>`;
+    else inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:${W - 2 * G.m}px">${tekstBlok(W - 2 * G.m - 60)}</div>
+      <div class="toestel" style="left:50%;transform:translateX(-50%);top:${yTop + tekstH}px;width:${tw}px;height:${H}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('wijnkaart')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0;margin-top:-17%"></div>`;
+  }
+}
+
+/* voet: een vlak in de achtergrondkleur zodat beeld er netjes achter verdwijnt; CTA links, NIX18 rechts */
+const voetVlakH = voetOnder + G.voet * 2.6;
+const voet = `<div style="position:absolute;left:0;right:0;bottom:0;height:${voetVlakH}px;background:linear-gradient(to bottom, transparent, var(--bg) ${G.voet * 1.2}px);z-index:3"></div>
+  <div class="voet" style="left:${G.m}px;right:${G.m}px;bottom:${voetOnder}px;z-index:4">
+    <div class="cta" style="font-size:${G.voet}px"><span>${cta[0]}</span><i></i><b>${cta[1]}</b></div>
+    ${M === 'nl' ? `<span class="nix" style="font-size:${G.voet * 1.25}px">NIX18</span>` : ''}
+  </div>
+  ${M === 'be' ? `<div class="band" style="z-index:5;bottom:${bandOnder}px;font-size:${F === 'ls' ? 26 : 34}px;padding:${F === 'ls' ? 10 : 15}px 10px">Alcoholmisbruik schaadt de gezondheid</div>` : ''}`;
+
+document.getElementById('doek').outerHTML = `<div class="doek ${donker ? 'donker' : ''}" id="doek" style="width:${W}px;height:${H}px">
+  <div class="merk" style="left:${G.m}px;top:${F === 'st' ? 250 : G.m}px;font-size:${G.merk}px">CellarMentor</div>
+  ${F === 'st' ? `<div style="position:absolute;inset:0;transform:translateY(${250 - G.m}px)">${inhoud}</div>` : inhoud}
+  ${voet}
+</div>`;
+const plaatjes = [...document.querySelectorAll('#doek img')];
+Promise.all([document.fonts.ready, ...plaatjes.map(i => i.complete ? 1 : new Promise(r => { i.onload = r; i.onerror = r; }))]).then(() => document.body.dataset.klaar = '1');
+</script>
+</body>
+</html>

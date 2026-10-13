@@ -16,9 +16,9 @@
 
 **CellarMentor zegt per fles wanneer hij op z'n best is, en welke fles uit je eigen kelder bij je eten past.**
 
-In 2014 bekeek Kassa de wijnapp Vivino. Etiketten scannen ging goed. Twee dingen misten: de app was alleen Engelstalig, en zoeken op gerecht kon niet. Vandaag verschijnt CellarMentor, een wijnkelder-app die in het Nederlands begint en uitgaat van de wijn die je al hebt.
+In 2014 bekeek Kassa de wijnapp Vivino. Etiketten scannen ging goed. Twee dingen ontbraken: de app was alleen Engelstalig, en zoeken op gerecht kon niet. Vandaag verschijnt CellarMentor, een wijnkelder-app die in het Nederlands begint en uitgaat van de wijn die je al hebt.
 
-Eén foto van het etiket vult naam, druiven, jaargang en drinkvenster in. Dat venster komt uit streek, jaargang en soort wijn. CellarMentor gebruikt daarvoor een eigen jaargangtabel voor 38 wijnstreken, en bij elk jaar staat of het tegen gepubliceerde bronnen is gelegd. In het overzicht Horizon zie je wanneer je flessen op hun mooist zijn.
+Eén foto van het etiket vult naam, druiven, jaargang en drinkvenster in. Dat venster komt uit streek, jaargang en soort wijn. CellarMentor gebruikt daarvoor een eigen jaargangtabel voor 68 wijnstreken, en bij elk jaar staat of het tegen gepubliceerde bronnen is gelegd. In het overzicht Horizon zie je wanneer je flessen op hun mooist zijn.
 
 Typ wat je eet, en de beste fles uit je eigen kelder staat bovenaan, met de reden erbij. Wie uit eten gaat, fotografeert de wijnkaart en eventueel het menu. De app kiest dan drie of vier flessen die echt op de kaart staan, bij je gerechten en binnen je budget.
 
@@ -26,7 +26,7 @@ Vivino helpt bij de vraag of je een wijn moet kopen. CellarMentor helpt bij de v
 
 "Ik wilde een sommelier voor de wijn die je al hebt," zegt maker Max Ponsen. "Eén die eerlijk is over wat hij weet. Daarom laat de app bij elk drinkvenster zien waar het vandaan komt, en een geschatte prijs heet ook gewoon een schatting. En je kelder blijft van jou: zonder account staat alles op je eigen telefoon."
 
-CellarMentor werkt in de browser op iPhone en Android en zet je op je beginscherm, zonder app store. Een kelder uit CellarTracker of Vivino lees je in met een CSV-bestand. De app is gratis te gebruiken; met een gratis account synct je kelder tussen apparaten en krijg je 20 credits per maand voor scans en wijnkaarten. Plus kost €2,99 per maand inclusief btw en geeft 300 credits per maand. Er staan geen advertenties in de app en gegevens worden niet verkocht.
+Je opent CellarMentor in de browser op iPhone of Android en zet hem op je beginscherm, zonder app store. Een kelder uit CellarTracker of Vivino lees je in met een CSV-bestand. De app is gratis te gebruiken; met een gratis account synct je kelder tussen apparaten en krijg je 20 credits per maand voor scans en wijnkaarten. Plus kost €2,99 per maand inclusief btw en geeft 300 credits per maand. Er staan geen advertenties in de app en gegevens worden niet verkocht.
 
 CellarMentor is gemaakt door Ponsen Polutropon B.V. in Amsterdam. De app is ook in het Engels beschikbaar.
 
@@ -39,7 +39,7 @@ CellarMentor is gemaakt door Ponsen Polutropon B.V. in Amsterdam. De app is ook 
 | Wat | Wijnkelder-app: etiket scannen, drinkvenster per fles, de fles bij je eten uit je eigen kelder, de wijnkaart in het restaurant lezen |
 | Werkt op | Iedere browser op iPhone, Android en computer; zet op je beginscherm, geen app store nodig |
 | Talen | Nederlands en Engels |
-| Jaargangtabel | Eigen tabel voor 38 wijnstreken; per jaar staat of het tegen gepubliceerde bronnen is gelegd |
+| Jaargangtabel | Eigen tabel voor 68 wijnstreken; per jaar staat of het tegen gepubliceerde bronnen is gelegd |
 | Kelder meenemen | CSV uit CellarTracker of Vivino, zonder credits |
 | Prijzen | Opgezochte prijzen met bron (winkel en datum); schattingen heten schatting |
 | Prijs | Gratis. Gratis account: sync en 20 credits per maand. Plus: €2,99 per maand incl. btw, 300 credits per maand, maandelijks opzegbaar |
@@ -66,9 +66,9 @@ Hallo redactie,
 
 Jullie gids wijnapps voor iPhone noemt VinoCell, Vivino, Raisin en WineStein, en staat op juni 2024. Ik wil CellarMentor graag aanmelden voor die gids.
 
-CellarMentor is een wijnkelder-app in het Nederlands die bewust buiten de App Store blijft. Je opent cellarmentor.com in Safari en zet hem op je beginscherm; hij werkt daarna ook zonder verbinding. Eén foto van het etiket vult naam, druiven, jaargang en drinkvenster in, en de app kiest bij je eten de beste fles uit je eigen kelder. Uit eten fotografeer je de wijnkaart, en je krijgt drie of vier flessen die echt op de kaart staan.
+CellarMentor is een wijnkelder-app in het Nederlands die je niet uit de App Store haalt. Je opent cellarmentor.com in Safari en zet hem op je beginscherm; hij werkt daarna ook zonder verbinding. Eén foto van het etiket vult naam, druiven, jaargang en drinkvenster in, en de app kiest bij je eten de beste fles uit je eigen kelder. Uit eten fotografeer je de wijnkaart, en je krijgt drie of vier flessen die echt op de kaart staan.
 
-Het verhaal waarom een web-app in plaats van de App Store vertel ik graag, ook als los stuk. Jullie mogen het een paar dagen als eerste hebben.
+Waarom ik met een web-app begon, vertel ik graag, ook als los stuk. Jullie mogen het een paar dagen als eerste hebben.
 
 Plus om te testen: code [journalistcode]. Schermafbeeldingen: [link perskit].
 
@@ -100,9 +100,9 @@ Max Ponsen · [jouw telefoonnummer]
 
 Beste [naam],
 
-Voor CellarMentor, een Nederlandse wijnkelder-app, heb ik een eigen jaargangtabel gemaakt voor 38 wijnstreken. Bij elk jaar staat hoe hard het oordeel is: gelegd tegen twee onafhankelijke gepubliceerde bronnen, op één bron, of nog een eigen schatting.
+Voor CellarMentor, een Nederlandse wijnkelder-app, heb ik een eigen jaargangtabel gemaakt voor 68 wijnstreken. Bij elk jaar staat hoe hard het oordeel is: gelegd tegen twee onafhankelijke gepubliceerde bronnen, op één bron, of nog een eigen schatting.
 
-Voor het decembernummer bied ik jullie een uittreksel aan: per streek de jaargangen die deze winter in hun drinkvenster zitten, met de bronnen erbij. Of een smaller stuk: "Hoe oud worden Bordeaux 2015, 2016 en 2019?", met de tabel als uitgangspunt en jullie proevers als toets.
+Voor het decembernummer bied ik jullie een uittreksel aan: per streek de jaargangen die deze winter in hun drinkvenster zitten, met per jaar de bronnen of de melding dat het een schatting is. Of een smaller stuk: "Hoe oud worden Bordeaux 2015, 2016 en 2019?", met de tabel als uitgangspunt en jullie proevers als toets.
 
 Ik lever de cijfers, jullie oordelen. Als de tabel ergens naast zit, hoor ik dat graag.
 
@@ -123,9 +123,9 @@ Beste Manon,
 
 Iedereen met een wijnrek kent de fles die "voor een goede gelegenheid" ligt. Met kerst komt die vraag terug: is het nu het moment, of mag hij nog liggen?
 
-Van 1 tot en met 20 december doet CellarMentor, een Nederlandse wijnkelder-app, een Kelder-APK. Je scant je flessen en krijgt een kerstlijst: wat nu op dronk is, wat nog mag liggen, en welke fles past bij je kerstmenu, uit je eigen kelder.
+Van 1 tot en met 20 december doet CellarMentor, een Nederlandse wijnkelder-app, een Kelder-APK. Je scant je flessen, en de app laat zien wat nu op dronk is, wat nog mag liggen, en welke fles uit je eigen kelder past bij je kerstmenu.
 
-Voor een consumentenstuk bied ik een praktisch lijstje (zo check je je eigen kelder in een middag), jaargangen die deze winter op dronk zijn uit onze tabel van 38 streken, en een lezersactie: drie maanden Plus met code [lezerscode].
+Voor een consumentenstuk bied ik een praktisch lijstje (zo check je je eigen kelder in een middag), jaargangen die deze winter op dronk zijn uit onze tabel van 68 streken, en een lezersactie: drie maanden Plus met code [lezerscode].
 
 Bellen kan altijd: [jouw telefoonnummer].
 
@@ -142,7 +142,7 @@ Beste Bruno,
 
 Uw boek heette "Help, ik weet niets van wijn!". De vraag die ik het vaakst hoor van mensen die wél wat flessen hebben liggen, is een andere: wanneer maak ik deze open?
 
-Ik heb daarvoor CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Eén foto van het etiket, en de app geeft een drinkvenster uit streek, jaargang en soort wijn, met de bron erbij. Typ wat u eet, en de beste fles uit uw eigen kelder staat bovenaan.
+Ik heb daarvoor CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Eén foto van het etiket, en de app geeft een drinkvenster uit streek, jaargang en soort wijn, en laat zien waar dat vandaan komt. Typ wat u eet, en de beste fles uit uw eigen kelder staat bovenaan.
 
 Voor de feestdagen kan ik u een praktisch stuk aanbieden voor beginners: hoe weet je of een fles op dronk is, en wat zegt een jaargang daarover? Met een lezersactie voor Vlaamse lezers: drie maanden Plus met code [lezerscode].
 
@@ -161,7 +161,7 @@ Beste redactie,
 
 In juni 2024 schreef Radar "Zo lang kun je een fles wijn bewaren". Als jullie dat onderwerp weer oppakken, bijvoorbeeld rond de feestdagen, bied ik me graag aan als bron.
 
-Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app die per fles een drinkvenster geeft uit streek, jaargang en soort wijn. Daarvoor heb ik een jaargangtabel gemaakt voor 38 wijnstreken, en bij elk jaar staat of het tegen gepubliceerde bronnen is gelegd, of dat het nog een schatting is.
+Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app die per fles een drinkvenster geeft uit streek, jaargang en soort wijn. Daarvoor heb ik een jaargangtabel gemaakt voor 68 wijnstreken, en bij elk jaar staat of het tegen gepubliceerde bronnen is gelegd, of dat het nog een schatting is.
 
 Ik kan uitleggen waarom de ene rode wijn vijf jaar meegaat en de andere dertig, en per streek laten zien welke jaargangen nu op dronk zijn. Neutraal en zonder verkooppraatje.
 

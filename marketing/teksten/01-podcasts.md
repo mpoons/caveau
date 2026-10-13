@@ -49,7 +49,7 @@ Hoi Melvin,
 
 Ik ben Max Ponsen en ik maak CellarMentor, een wijnkelder-app in het Nederlands. De vraag waar ik het meest mee bezig ben, is de vraag die jouw luisteraars vast ook stellen: wanneer is deze fles op dronk?
 
-De app geeft elke fles een drinkvenster uit streek, jaargang en soort wijn. Daarvoor heb ik een eigen jaargangtabel gemaakt voor 38 wijnstreken, en per jaar staat erbij of het tegen gepubliceerde bronnen is gelegd.
+De app geeft elke fles een drinkvenster uit streek, jaargang en soort wijn. Daarvoor heb ik een eigen jaargangtabel gemaakt voor 68 wijnstreken, en per jaar staat erbij of het tegen gepubliceerde bronnen is gelegd.
 
 Mijn voorstel: jij kiest drie flessen uit je eigen kelder, ik scan ze tijdens de opname, en we praten erover of het venster klopt met wat jij weet. Waar het schuurt, wordt het pas interessant.
 
@@ -72,7 +72,7 @@ Hoi Jan Jaap en Nadien,
 
 [Eén zin over een aflevering die je gehoord hebt.]
 
-Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Het hart ervan is een jaargangtabel voor 38 wijnstreken. Bij elk jaar staat hoe hard het oordeel is: tegen twee onafhankelijke bronnen gelegd, op één bron, of nog een eigen schatting.
+Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Het hart ervan is een jaargangtabel voor 68 wijnstreken. Bij elk jaar staat hoe hard het oordeel is: tegen twee onafhankelijke bronnen gelegd, op één bron, of nog een eigen schatting.
 
 Ik denk dat dat een goed gesprek oplevert voor sommeliers. Wanneer vertrouw je een jaargangtabel, en wanneer de fles in je glas? Neem een paar jaargangen waar jullie een mening over hebben, en we leggen ze naast de tabel.
 
@@ -95,7 +95,7 @@ Hoi Marcel en Marek,
 
 [Eén zin over een aflevering die je gehoord hebt.]
 
-Ik ben Max Ponsen. Ik bouw CellarMentor, een wijnkelder-app die per fles zegt wanneer hij op z'n best is. Om dat te kunnen zeggen heb ik een eigen jaargangtabel gemaakt voor 38 wijnstreken.
+Ik ben Max Ponsen. Ik bouw CellarMentor, een wijnkelder-app die per fles zegt wanneer hij op z'n best is. Om dat te kunnen zeggen heb ik een eigen jaargangtabel gemaakt voor 68 wijnstreken.
 
 Het leerzaamste deel van dat werk: merken hoe vaak je het minder zeker weet dan je dacht. Daarom staat bij elk jaar in de tabel hoe hard het oordeel is: twee onafhankelijke bronnen, één bron, of een eigen schatting. Die schatting laat de app ook gewoon zien als schatting.
 
@@ -160,7 +160,7 @@ Max Ponsen · [jouw telefoonnummer]
 
 **Aan:** Alban, Erik en Ferry · [e-mailadres]
 **Code:** [podcastcode] = `kurkiseraf` → `cellarmentor.com/start/?via=kurkiseraf`
-**Voorstel voor de aflevering:** "Jaargangen leren voor je examen." Een quiz: de hosts schatten hoe goed een jaar was in een streek, de jaargangtabel geeft het antwoord met de bron erbij. Handig voor wie voor WSET of SDEN leert.
+**Voorstel voor de aflevering:** "Jaargangen leren voor je examen." Een quiz: de hosts schatten hoe goed een jaar was in een streek, de jaargangtabel geeft het antwoord, met de bron of de melding dat het een schatting is. Handig voor wie voor WSET of SDEN leert.
 
 **Onderwerp:** Een jaargangquiz voor jullie luisteraars?
 
@@ -168,7 +168,7 @@ Hoi Alban, Erik en Ferry,
 
 [Eén zin over een aflevering die je gehoord hebt.]
 
-Ik ben Max Ponsen en ik maak CellarMentor, een wijnkelder-app in het Nederlands. Voor de app heb ik een jaargangtabel gemaakt voor 38 wijnstreken, met per jaar de bron erbij of de opmerking dat het nog een schatting is.
+Ik ben Max Ponsen en ik maak CellarMentor, een wijnkelder-app in het Nederlands. Voor de app heb ik een jaargangtabel gemaakt voor 68 wijnstreken, met per jaar de bron erbij of de opmerking dat het nog een schatting is.
 
 Jullie luisteraars leren voor WSET en SDEN, en jaargangen zijn daar lastige stof. Mijn idee: een quiz. Ik noem een streek en een jaar, jullie schatten hoe goed het was en waarom, en de tabel geeft het antwoord met de reden. Wie het vaakst goed zit, wint.
 
@@ -183,7 +183,7 @@ Max Ponsen · [jouw telefoonnummer]
 
 ## Na een ja
 
-- Stuur binnen een dag: een korte bio (twee zinnen), de code, de link, en drie schermafbeeldingen uit `/home/user/cellarmentor/img/start/` (lichte stand).
+- Stuur binnen een dag: een korte bio (twee zinnen), de code, de link, en drie schermafbeeldingen uit `/home/user/caveau/marketing/creatie/ui/` (lichte stand, omgezet naar PNG).
 - Vraag of de link in de shownotes kan, met de code erbij.
 - Zeg in de opname "CellarMentor punt com", en spel de code. Geen haast-taal over openen ("drink hem nu"), geen gezondheidsclaims.
 - Bied aan de luisteraars een bewaarvraag te laten insturen die je in een volgende aflevering beantwoordt.

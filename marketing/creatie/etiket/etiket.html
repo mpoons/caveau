@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Etiket voor de scan-opname</title>
+<!-- Een verzonnen, merkloos Saint-Julien-etiket, alleen gebruikt als camerabeeld voor de opname van de echte
+     live-scanner (er is nog geen video van een echte fles). Vervangen zodra Max echte opnames aanlevert. -->
+<style>
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:400 900;src:url(../fonts/playfair-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(../fonts/playfair-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;src:url(../fonts/ebgaramond-normal-latin.woff2) format('woff2')}
+html,body{margin:0;width:1280px;height:720px;overflow:hidden;background:#120d0b}
+.muur{position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 45%,#3a2a20 0%,#21170f 55%,#100b08 100%)}
+.plank{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(#2c1e14,#1a120c);box-shadow:0 -6px 18px rgba(0,0,0,.5)}
+.fles{position:absolute;left:50%;top:-140px;transform:translateX(-50%);width:430px;height:900px;border-radius:120px 120px 30px 30px;
+  background:linear-gradient(90deg,#0b0f0a 0%,#1d2a1c 18%,#0e140d 38%,#0a0e09 62%,#18241a 86%,#0a0d09 100%);box-shadow:inset 0 0 40px rgba(0,0,0,.6),0 30px 60px rgba(0,0,0,.6)}
+.glans{position:absolute;top:0;bottom:0;left:22%;width:7%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);filter:blur(2px)}
+.etiket{position:absolute;left:50%;top:250px;transform:translateX(-50%);width:356px;height:410px;background:#f1e8d6;color:#2a1d17;
+  box-shadow:inset 18px 0 22px -14px rgba(0,0,0,.45),inset -18px 0 22px -14px rgba(0,0,0,.45);text-align:center;font-family:'EB Garamond',serif;overflow:hidden}
+.etiket::before{content:'';position:absolute;inset:12px;border:1.5px solid #8a6930}
+.etiket::after{content:'';position:absolute;inset:17px;border:.6px solid #8a6930}
+.korrel{position:absolute;inset:0;opacity:.35;mix-blend-mode:multiply}
+.binnen{position:relative;padding:38px 30px 0}
+.sc{font-variant:small-caps;text-transform:lowercase;letter-spacing:.2em;font-size:15px;color:#6e1f33;font-weight:600}
+.orn{font-size:18px;color:#8a6930;letter-spacing:.4em;margin:6px 0}
+.app{font-family:'Playfair Display',serif;font-style:italic;font-size:52px;line-height:1;margin:14px 0 10px;font-weight:500;white-space:nowrap}
+.gcc{font-family:'Playfair Display',serif;font-size:19px;letter-spacing:.06em;margin-bottom:10px}
+.aoc{font-variant:small-caps;text-transform:lowercase;letter-spacing:.14em;font-size:13px}
+.jaar{font-family:'Playfair Display',serif;font-size:42px;margin:14px 0 6px;letter-spacing:.06em;color:#6e1f33}
+.voet{font-variant:small-caps;text-transform:lowercase;letter-spacing:.12em;font-size:12px;line-height:1.6}
+</style></head><body>
+<div class="muur"></div><div class="plank"></div>
+<div class="fles"><div class="glans"></div>
+  <div class="etiket">
+    <svg class="korrel" width="356" height="410"><filter id="k"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .55  0 0 0 0 .45  0 0 0 0 .32  0 0 0 .55 0"/></filter><rect width="100%" height="100%" filter="url(#k)"/></svg>
+    <div class="binnen">
+      <div class="sc">Grand Vin</div>
+      <div class="orn">✦ ✦ ✦</div>
+      <div class="app">Saint-Julien</div>
+      <div class="gcc">GRAND CRU CLASSÉ</div>
+      <div class="aoc">Appellation Saint-Julien Contrôlée</div>
+      <div class="jaar">2016</div>
+      <div class="voet">Mis en bouteille à la propriété<br>75 cl · 13,5 % vol.</div>
+    </div>
+  </div>
+</div>
+</body></html>

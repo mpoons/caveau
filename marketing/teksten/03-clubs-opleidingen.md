@@ -21,9 +21,9 @@ Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nede
 
 Twee voorstellen voor de leden van het Wijngilde.
 
-**Ledenvoordeel.** Drie maanden CellarMentor Plus gratis met de code [clubcode]. Daarna kost Plus €2,99 per maand en is het maandelijks opzegbaar; de gratis versie blijft gewoon werken.
+**Ledenvoordeel.** Drie maanden CellarMentor Plus gratis met de code [clubcode]. Daarna €2,99 per maand, maandelijks opzegbaar; de gratis versie blijft werken.
 
-**Een lezing van 20 minuten:** "Jaargangen en drinkvensters in de praktijk". Voor een afdelingsavond, voor of na de proeverij. Ik kom met een paar flessen van leden, we leggen ze naast de jaargangtabel van 38 streken, en we bespreken waar de tabel zeker is en waar hij twijfelt. Geen verkooppraatje.
+**Een lezing van 20 minuten:** "Jaargangen en drinkvensters in de praktijk". Voor een afdelingsavond, voor of na de proeverij. We leggen een paar flessen van leden naast de jaargangtabel van 68 streken en bespreken waar de tabel zeker is en waar hij twijfelt. Geen verkooppraatje.
 
 Mag ik het ledenvoordeel aanmelden, en bij welke afdeling kan ik het eerst langskomen?
 
@@ -50,7 +50,7 @@ Max Ponsen · hallo@cellarmentor.com · [jouw telefoonnummer]
 
 Beste [naam contactpersoon],
 
-Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands met een eigen jaargangtabel voor 38 wijnstreken. Bij elk jaar staat of het oordeel tegen gepubliceerde bronnen is gelegd.
+Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands met een eigen jaargangtabel voor 68 wijnstreken. Bij elk jaar staat of het oordeel tegen gepubliceerde bronnen is gelegd.
 
 Vinologen geven proeverijen en cursussen, en krijgen daar steeds dezelfde vraag: wanneer maak ik deze fles open? Ik zou jullie graag drie dingen aanbieden:
 
@@ -67,22 +67,22 @@ Max Ponsen · [jouw telefoonnummer]
 
 ## Wijnacademie
 
-**Aan:** Wijnacademie, Utrecht · [e-mailadres] · **Wat:** gratis Plus voor cursisten en docenten tijdens de cursus, en een artikel voor Vini Magazine.
+**Aan:** Wijnacademie, Utrecht · [e-mailadres] · **Wat:** een jaar Plus gratis voor cursisten en docenten, en een artikel voor Vini Magazine.
 
 **Onderwerp:** Studieaanbod voor cursisten, en een stuk voor Vini
 
 Beste [naam contactpersoon],
 
-Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Voor jullie cursisten kan hij twee dingen zijn: een proefdagboek dat bijhoudt wat ze geproefd hebben, en een jaargangtabel voor 38 streken om mee te leren, met bij elk jaar de bron of de opmerking dat het een schatting is.
+Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Voor jullie cursisten kan hij twee dingen zijn: een proefdagboek dat bijhoudt wat ze geproefd hebben, en een jaargangtabel voor 68 streken om mee te leren, met bij elk jaar de bron of de opmerking dat het een schatting is.
 
-Mijn aanbod: Plus gratis voor cursisten en docenten zolang de cursus loopt, met een eigen code [studentencode].
+Mijn aanbod: een jaar Plus gratis voor cursisten en docenten, met een eigen code [studentencode]. Dat dekt het grootste deel van een cursus.
 
 Daarnaast schrijf ik graag een stuk voor Vini Magazine: "Hoe bepaal je een drinkvenster?" Over soort wijn, streek en jaargang, en over het verschil tussen een oordeel met bron en een schatting.
 
 Met vriendelijke groet,
 Max Ponsen · [jouw telefoonnummer]
 
-<!-- "Zolang de cursus loopt" vraagt een coupon met een langere duur (Vinoloog duurt langer dan drie maanden). Kies een vaste duur, bijvoorbeeld 12 maanden, en zet die in de code. Controleer of het proefdagboek ("al geproefd" en de historie) zo genoemd mag worden in de app; het bestaat, maar heet in de app niet zo. -->
+<!-- Voor de Wijnacademie een aparte Stripe-coupon van 12 maanden (de andere codes zijn 3 maanden). Controleer de cursusduur en pas "het grootste deel van een cursus" aan als het niet klopt. "Proefdagboek" is een omschrijving: in de app heet het "al geproefd" plus de historie. -->
 
 ---
 
@@ -96,7 +96,7 @@ Eén mail per school, met de naam erin. Amsterdam Wine Academy, Edwines School, 
 
 Beste [naam contactpersoon],
 
-Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands en Engels. Voor wie voor WSET leert, zitten er twee handige dingen in: een jaargangtabel voor 38 streken, met bij elk jaar de bron, en drinkvensters per fles uit streek, jaargang en soort wijn.
+Ik ben Max Ponsen en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands en Engels. Voor wie voor WSET leert, zitten er twee handige dingen in: een jaargangtabel voor 68 streken, met bij elk jaar of het oordeel op bronnen rust, en drinkvensters per fles uit streek, jaargang en soort wijn.
 
 Ik bied jullie cursisten en docenten drie maanden Plus gratis aan, met een eigen code voor [school]: [studentencode]. Jullie hoeven er niets voor te doen behalve de code doorgeven, bijvoorbeeld in de welkomstmail van een nieuwe groep.
 
@@ -111,7 +111,7 @@ Max Ponsen · [jouw telefoonnummer]
 
 Dear [contact name],
 
-I'm Max Ponsen, and I built CellarMentor in Amsterdam, a wine-cellar app in English and Dutch. Two parts of it are useful for WSET students: a vintage chart for 38 regions that says for every year where the verdict comes from, and a drinking window for each bottle from region, vintage and style.
+I'm Max Ponsen, and I built CellarMentor in Amsterdam, a wine-cellar app in English and Dutch. Two parts of it are useful for WSET students: a vintage chart for 68 regions that says for every year where the verdict comes from, and a drinking window for each bottle from region, vintage and style.
 
 I'd like to offer your students and teachers three months of Plus for free, with a code for Eleanor: [student code]. All you would need to do is pass it on, for example in the welcome email for a new class.
 
@@ -130,7 +130,7 @@ Max Ponsen · [your phone number]
 
 Hoi Nadien,
 
-Naast het voorstel voor de podcast nog iets voor Le Club des Vins zelf. Jullie cursisten voor WSET 2 en 3 en de gasten van jullie avonden kunnen CellarMentor drie maanden gratis gebruiken met een eigen code: [clubcode].
+Naast het voorstel voor de podcast nog iets voor Le Club des Vins zelf. Jullie cursisten voor WSET 2 en 3 en de gasten van jullie avonden kunnen drie maanden CellarMentor Plus gratis gebruiken met een eigen code: [clubcode].
 
 Voor jou als sommelier een code die je zelf kunt uitdelen, met Plus voor jezelf zolang je hem gebruikt. Zie je liever iets anders tegenover staan, zeg het.
 
@@ -147,7 +147,7 @@ Max · [jouw telefoonnummer]
 
 Beste [naam contactpersoon],
 
-Ik ben Max Ponsen uit Amsterdam en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Voor cursisten die voor WSET leren zitten er twee bruikbare dingen in: een jaargangtabel voor 38 streken met bij elk jaar de bron, en een drinkvenster per fles uit streek, jaargang en soort wijn.
+Ik ben Max Ponsen uit Amsterdam en ik heb CellarMentor gemaakt, een wijnkelder-app in het Nederlands. Voor cursisten die voor WSET leren zitten er twee bruikbare dingen in: een jaargangtabel voor 68 streken met bij elk jaar of het oordeel op bronnen rust, en een drinkvenster per fles uit streek, jaargang en soort wijn.
 
 Ik bied jullie cursisten en lesgevers drie maanden Plus gratis aan, met een eigen code voor WineWise: [studentencode]. De app werkt gewoon in de browser, ook in België.
 
