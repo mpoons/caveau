@@ -193,7 +193,7 @@ Wat nu nog tussen deze uitingen en topniveau staat, kan alleen jij leveren. Ten 
 - Een foto van jezelf en één zin waarom je dit maakte.
 - Tien seconden filmen met je iPhone: een echte fles uit je rek scannen. Dat vervangt het getekende etiket in de film.
 
-**Bestanden:** [Kritiek ronde 1](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde1-kritiek.md) · [Kritiek ronde 2](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde2-kritiek.md)
+**Bestanden:** [Kritiek ronde 1](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde1-kritiek.md) · [Kritiek ronde 2](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde2-kritiek.md) · [Kritiek ronde 3](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde3-kritiek.md)
 
 
 ## Fase 1 · Groei uit het product
@@ -746,12 +746,13 @@ Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij �
 **Al klaar of voorbereid**
 
 - Zes concepten in 1:1, 4:5, 9:16 en 1,91:1, voor NL (NIX18), BE (verplichte band) en VK, elk met een eigen compositie; het scanmoment komt uit de echte live-scanner.
-- De film van 19 seconden in drie formaten en drie markten, opent op het scanmoment.
-- Twee rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit).
+- De film van 17 seconden in drie formaten en drie markten: zoeker, sluiter, venster na 2 seconden.
+- Drie rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit): 3,49, 3,97 en 4,02 gemiddeld; de laatste fout (een venster dat bij een Grand Cru Classé hoorde) is daarna hersteld.
 
 **Wat ik doe**
 
-- Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film, met de Engelse en Belgische varianten waar nodig; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.
+- Drie advertentiesets, elk met een haak: het venster (specifiek, en wanneer plus de film zodra er een echte fles is, zie 0e), Horizon (nu) en de wijnkaart (uiteten). NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.
+- Niet inzetten: kelder (toont een lijst, geen moment van waarde) en erbij zolang de kelderregels een losse 10/10 geven (besluit in 1e). De Britse set wacht op de valuta (7b).
 
 **Wat jij doet**
 

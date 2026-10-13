@@ -109,7 +109,7 @@ export const PLAN = {
       klaar: ['Op de landingspagina en in de advertenties is plek voor één citaat met naam en plaats; het blok verschijnt pas als er een echt citaat is.'],
       ik: ['Een korte vraag opstellen voor de testers ("wat deed CellarMentor voor je kelder?") met toestemmingszin.', 'Het citaatblok en een regel "In gebruik sinds [maand] bij [n] kelders" invoegen zodra jij de gegevens hebt.'],
       jij: ['De zeven testers om één of twee zinnen vragen, met naam, woonplaats en toestemming.', 'Eén sommelier of docent (bijvoorbeeld Dennis Koopman) vragen om een eerlijke zin na een week gebruik.', 'Een foto van jezelf en één zin waarom je dit maakte.', 'Tien seconden filmen met je iPhone: een echte fles uit je rek scannen. Dat vervangt het getekende etiket in de film.'],
-      test: null, afh: [], bestanden: [{ t: 'Kritiek ronde 1', u: GH_M + 'kwaliteit/ronde1-kritiek.md' }, { t: 'Kritiek ronde 2', u: GH_M + 'kwaliteit/ronde2-kritiek.md' }],
+      test: null, afh: [], bestanden: [{ t: 'Kritiek ronde 1', u: GH_M + 'kwaliteit/ronde1-kritiek.md' }, { t: 'Kritiek ronde 2', u: GH_M + 'kwaliteit/ronde2-kritiek.md' }, { t: 'Kritiek ronde 3', u: GH_M + 'kwaliteit/ronde3-kritiek.md' }],
     },
 
     // ───────────── FASE 1
@@ -295,8 +295,8 @@ export const PLAN = {
     {
       id: '5b', fase: '5', titel: 'Meta, leertest van drie haken', kosten: 200, kostenTekst: '€ 200, hard plafond',
       waarom: 'Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij € 10 waarde. Wel om goedkoop te leren welke boodschap mensen het meest raakt: het etiket, de wijnkaart of het gerecht. Dat stuurt de pers, de makers en de site.',
-      klaar: ['Zes concepten in 1:1, 4:5, 9:16 en 1,91:1, voor NL (NIX18), BE (verplichte band) en VK, elk met een eigen compositie; het scanmoment komt uit de echte live-scanner.', 'De film van 19 seconden in drie formaten en drie markten, opent op het scanmoment.', 'Twee rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit).'],
-      ik: ['Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film, met de Engelse en Belgische varianten waar nodig; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.'],
+      klaar: ['Zes concepten in 1:1, 4:5, 9:16 en 1,91:1, voor NL (NIX18), BE (verplichte band) en VK, elk met een eigen compositie; het scanmoment komt uit de echte live-scanner.', 'De film van 17 seconden in drie formaten en drie markten: zoeker, sluiter, venster na 2 seconden.', 'Drie rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit): 3,49, 3,97 en 4,02 gemiddeld; de laatste fout (een venster dat bij een Grand Cru Classé hoorde) is daarna hersteld.'],
+      ik: ['Drie advertentiesets, elk met een haak: het venster (specifiek, en wanneer plus de film zodra er een echte fles is, zie 0e), Horizon (nu) en de wijnkaart (uiteten). NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.', 'Niet inzetten: kelder (toont een lijst, geen moment van waarde) en erbij zolang de kelderregels een losse 10/10 geven (besluit in 1e). De Britse set wacht op de valuta (7b).'],
       jij: ['Advertentieaccount met betaalmethode; pagina- en accountleeftijd op 18+ zetten; akkoord.'],
       regels: 'Leeftijd 25+; geen Audience Network; NIX18 op elk beeld; geen BE of NO zonder de juiste variant.',
       test: { meten: 'CTR, CPC, CPA aanmelding per haak.', opschalen: 'Er wordt hier niet opgeschaald. De winnende haak gaat naar de hero, de makersbrief en de pers.', stoppen: 'Per haak stoppen na € 40 met CTR onder 0,8% of zonder aanmelding; de hele test stopt op € 200.', bewijs: 'Met € 200 krijg je ± 200 tot 300 klikken en ± 15 tot 25 aanmeldingen in totaal. Alleen een verschil van factor twee tussen haken is zichtbaar. Over betalers zegt dit niets.' },

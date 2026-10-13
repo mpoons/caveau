@@ -19,7 +19,7 @@ await p.evaluate((EN) => {
   const LOC = EN ? { 'Vintec, zone onder':'Wine fridge, lower', 'Vintec, zone boven':'Wine fridge, upper', 'Wijnrek':'Wine rack', 'Kelder':'Cellar' } : { 'Vintec, zone onder':'Klimaatkast, onder', 'Vintec, zone boven':'Klimaatkast, boven' };
   const LAND = { Frankrijk:'France', Spanje:'Spain' };
   const NOOT = { 'Klassiek en gestructureerd, geduld wordt beloond.':'Classic and structured, patience pays off.', 'Strak, mineraal, kruisbes.':'Taut, mineral, gooseberry.', 'Boterig én fris, mooie spanning.':'Buttery and fresh, lovely tension.', 'Fijne mousse, brioche, altijd goed.':'Fine mousse, brioche, always good.', 'Zijdeglad, met vanille en kers. Nu prachtig.':'Silky, vanilla and cherry. Lovely now.', 'Zoet en donker fruit, een dessert in een glas.':'Sweet dark fruit, dessert in a glass.' };
-  for (const w of S.wines) { if (NAAM[w.name]) { w.name = NAAM[w.name]; w.producer = ''; }
+  for (const w of S.wines) { if (NAAM[w.name]) { w.name = NAAM[w.name]; w.producer = ''; const e = estimateWindow(w); if (e) { w.drinkFrom = e.from; w.drinkTo = e.to; } }   /* venster opnieuw uit de app: zonder klassement is het een gewone Saint-Julien */
     w.location = LOC[w.location] || w.location; if (EN) { delete w.price; delete w.value; w.country = LAND[w.country] || w.country; w.note = NOOT[w.note] || w.note; } }
   for (const h of S.history) { if (NAAM[h.name]) { h.name = NAAM[h.name]; h.producer = ''; } if (EN) h.note = 'With roast lamb. Superb.'; }
   if (EN) S.settings.cellarName = 'My cellar'; for (const l of (S.locations || [])) l.naam = LOC[l.naam] || l.naam;
@@ -59,12 +59,12 @@ await p.evaluate((EN) => {
       { name: 'Bourgogne Pinot Noir', producer: null, vintage: 2022, type: 'rood', region: 'Bourgogne', price: 14, unit: EN ? 'glass' : 'glas', flag: '', course: EN ? 'Sweetbreads' : 'Zwezerik', score: 7, reason: EN ? 'If you want red with the morels: light, juicy, little tannin.' : 'Wil je bij de morilles toch rood: licht, sappig, weinig tannine.', value: '' }],
     glassAdvice: null, skip: null, note: null };
   UI.tab = 'pairing'; UI.pairMode = 'menu'; render(); scrollTo(0, 0); }, EN); await p.waitForTimeout(350);
-await p.evaluate(() => { const m = document.getElementById('menuOut'); if (m) window.scrollTo(0, m.getBoundingClientRect().top + scrollY - 92); });
+await p.evaluate(() => { const m = document.getElementById('menuOut'); if (m) window.scrollTo(0, m.getBoundingClientRect().top + scrollY - 24); });
 await shot('wijnkaart');
 // 5. scan: live, bevestigen, detail (ook als beeldreeksen voor de film)
 await go(() => { window.__sj = S.wines.find(w => /Saint-Julien/.test(w.name)); S.wines = S.wines.filter(w => !/Saint-Julien/.test(w.name)); save(true); UI.tab = 'scan'; scanReset(); render(); scrollTo(0, 0); });
 await p.evaluate((EN) => {
-  const d = { name: 'Saint-Julien', producer: '', vintage: 2016, type: 'rood', grapes: ['cabernet sauvignon', 'merlot', 'cabernet franc'], country: EN ? 'France' : 'Frankrijk', region: 'Bordeaux', appellation: 'Saint-Julien', drink_from: 2025, drink_to: 2060, value_eur: null, value_low: null, value_high: null, value_confidence: 'laag', pairing: EN ? ['rack of lamb', 'rib-eye', 'duck breast', 'aged Comté'] : ['lamsrack', 'entrecote', 'eendenborst', 'oude Comté'], note: EN ? 'Classic Saint-Julien from a strong year: firm, cedar and blackcurrant, just opening up.' : 'Klassieke Saint-Julien uit een sterk jaar: strak, cederhout en zwarte bes, nu net open.', score_seen: null, zoek_producent: null, zoek_naam: null, ean: null };
+  const d = { name: 'Saint-Julien', producer: '', vintage: 2016, type: 'rood', grapes: ['cabernet sauvignon', 'merlot', 'cabernet franc'], country: EN ? 'France' : 'Frankrijk', region: 'Bordeaux', appellation: 'Saint-Julien', drink_from: null, drink_to: null, value_eur: null, value_low: null, value_high: null, value_confidence: 'laag', pairing: EN ? ['rack of lamb', 'rib-eye', 'duck breast', 'aged Comté'] : ['lamsrack', 'entrecote', 'eendenborst', 'oude Comté'], note: EN ? 'Classic Saint-Julien from a strong year: firm, cedar and blackcurrant, just opening up.' : 'Klassieke Saint-Julien uit een sterk jaar: strak, cederhout en zwarte bes, nu net open.', score_seen: null, zoek_producent: null, zoek_naam: null, ean: null };
   const t = JSON.stringify(d);
   window.callClaude = async (c, m, k, onText) => { for (let i = 1; i <= 16; i++) { await new Promise(r => setTimeout(r, 120)); if (onText) onText(t.slice(0, Math.round(t.length * i / 16))); } return t; };
 }, EN);

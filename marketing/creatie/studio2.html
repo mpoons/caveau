@@ -63,8 +63,8 @@ const T = {
              en:{ k:'Your wine cellar, in your pocket', h:'Open every bottle', em:'at its best.', sub:'Scan the label. CellarMentor tells you when to open it.' } },
   wanneer: { nl:{ k:'Fig. 1 · Eén foto van het etiket', h:'Scan het etiket.', em:"Weet wanneer je&nbsp;'m&nbsp;opent.", sub:'Berekend uit streek, jaargang en soort wijn.' },
              en:{ k:'Fig. 1 · One photo of the label', h:'Scan the label.', em:'Know when to open&nbsp;it.', sub:'Worked out from region, vintage and style.' } },
-  specifiek:{ nl:{ k:'Saint-Julien · 2016', h:'Op dronk sinds 2025.', em:'En nog tot 2060.', sub:'Zo staat het bij elke fles in je kelder, met waar het vandaan komt.' },
-             en:{ k:'Saint-Julien · 2016', h:'Ready since 2025.', em:'And until 2060.', sub:'That is what every bottle in your cellar shows, with where it comes from.' } },
+  specifiek:{ nl:{ k:'Saint-Julien · 2016', h:'Op dronk sinds 2022.', em:'En nog tot 2047.', sub:'Zo staat het bij elke fles in je kelder, met waar het vandaan komt.' },
+             en:{ k:'Saint-Julien · 2016', h:'Ready since 2022.', em:'And until 2047.', sub:'That is what every bottle in your cellar shows, with where it comes from.' } },
   kelder:  { nl:{ k:'Fig. 6 · Je kelder', h:'', em:'Je hele kelder erin.', sub:'Fles voor fles of in één keer: een lijst, een foto van een rij flessen, of je bestand uit CellarTracker of Vivino.' },
              en:{ k:'Fig. 6 · Your cellar', h:'', em:'Bring your whole cellar.', sub:'Bottle by bottle or all at once: a list, a photo of a row of bottles, or your file from CellarTracker or Vivino.' } },
   erbij:   { nl:{ k:'Fig. 4 · Uit je eigen kelder', h:'Zeg wat je eet.', em:'', sub:'De flessen uit je eigen kelder die erbij passen, de beste bovenaan, met de reden erbij.' },
@@ -97,11 +97,12 @@ if (C === 'wanneer' || C === 'merk') {
   if (F === 'ls') {
     const th = H - G.voetY - G.voet * 2.4 - 40 - 12;
     inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:520px">${tekstBlok(500, { h1: 46 })}</div>
-      <div class="camera" style="left:640px;top:70px;width:200px;height:300px;border-radius:14px"><img src="${img('live')}" style="object-position:50% 40%"></div>
+      <div class="camera" style="left:640px;top:60px;width:200px;height:290px;border-radius:14px"><img src="${img('live')}" style="object-position:50% 40%"></div>
+      <div class="fig" style="position:absolute;left:640px;top:360px;width:220px;font-size:15px">${EN ? 'Drawn label, real scanner.' : 'Getekend etiket, echte scanner.'}</div>
       <div class="toestel vaag" style="left:900px;top:40px;width:250px;height:${th}px;overflow:hidden;padding:8px 8px 0;border-radius:34px 34px 0 0"><img src="${img('detail')}" style="border-radius:27px 27px 0 0"></div>`;
   } else {
-    const tekstH = { sq:330, p45:380, st:470 }[F];
-    const vy = yTop + tekstH, capH = F === 'sq' ? 0 : G.sub * .78 * 1.3 * 3 + 16;
+    const tekstH = { sq:330, p45:380, st:510 }[F];
+    const vy = yTop + tekstH, capH = G.sub * .78 * 1.3 * 3 + 16;
     /* de camera krimpt mee als de voet (met de Belgische band) hoger ligt, zodat het onderschrift er nooit onder valt */
     const tw = { sq:400, p45:460, st:500 }[F], camW = Math.min({ sq:330, p45:380, st:340 }[F], (onder - vy - 30 - capH - 12) / 1.38);
     const toestelH = Math.min(onder - vy - 24, tw * 844 / 390);
@@ -110,20 +111,20 @@ if (C === 'wanneer' || C === 'merk') {
       <div class="camera" style="left:${G.m}px;top:${vy + 30}px;width:${camW}px;height:${camW * 1.38}px;border-radius:22px"><img src="${img('live')}" style="object-position:50% 42%"></div>
       <svg class="pijl" style="left:${G.m + camW + 16}px;top:${vy + camW * .62}px" width="${W - G.m * 2 - camW - tw - 16}" height="40" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M2 20 H92" stroke="var(--acc)" stroke-width="2.4" vector-effect="non-scaling-stroke" fill="none"/><path d="M84 10 L98 20 L84 30" stroke="var(--acc)" stroke-width="2.4" vector-effect="non-scaling-stroke" fill="none"/></svg>
       <div class="toestel vaag" style="right:${G.m - 10}px;top:${vy}px;width:${tw}px;height:${toestelH}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('detail')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0"></div>
-      ${F === 'sq' ? '' : `<div class="fig" style="position:absolute;left:${G.m}px;top:${capY}px;font-size:${G.sub * .78}px;width:${Math.max(camW, 380)}px">${EN ? 'Drawn label, real scanner. The window comes from the regional vintage chart.' : 'Getekend etiket, echte scanner. Het venster komt uit de jaargangtabel van de streek.'}</div>`}`;
+      ${`<div class="fig" style="position:absolute;left:${G.m}px;top:${capY}px;font-size:${G.sub * .78}px;width:${Math.max(camW, 380)}px">${EN ? 'Drawn label, real scanner. The window comes from the regional vintage chart.' : 'Getekend etiket, echte scanner. Het venster komt uit de jaargangtabel van de streek.'}</div>`}`;
   }
 }
 
 if (C === 'specifiek') {
   /* typografische poster: geen telefoon, het venster zelf als beeld */
   const bw = W - 2 * G.m, by = F === 'ls' ? 420 : (F === 'st' ? 990 : F === 'p45' ? 880 : 720), bh = F === 'ls' ? 22 : 34;
-  const van = 2016, tot = 2060, pos = j => (j - van) / (tot + 1 - van) * 100;   /* de as begint bij de oogst */
+  const van = 2016, tot = 2047, pos = j => (j - van) / (tot + 1 - van) * 100;   /* de as begint bij de oogst */
   const h1 = { sq:104, p45:118, st:128, ls:66 }[F];
   inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop + (F === 'st' ? 120 : 10)}px;width:${bw}px">${tekstBlok(bw - 60, { h1, zonderSub: true })}</div>
-    <div class="poster-balk" style="left:${G.m}px;top:${by}px;width:${bw}px;height:${bh}px"><div class="pb-track"><div class="pb-fill" style="left:${pos(2025)}%;right:0"></div></div>
+    <div class="poster-balk" style="left:${G.m}px;top:${by}px;width:${bw}px;height:${bh}px"><div class="pb-track"><div class="pb-fill" style="left:${pos(2022)}%;right:0"></div></div>
       <div class="pb-nu" style="left:calc(${pos(2026.5)}% - 2px)"></div>
       <div class="pb-lab" style="top:${-G.sub * 1.7}px;font-size:${G.sub * .9}px"><span class="nu" style="left:${pos(2026.5)}%;transform:translateX(-50%)">${EN ? 'now' : 'nu'} · 2026</span></div>
-      <div class="pb-lab" style="top:${bh + 14}px;font-size:${G.sub * .9}px"><span style="left:0">${EN ? 'harvest' : 'oogst'} 2016</span><span style="right:0">${EN ? 'to' : 'tot'} 2060 →</span></div></div>
+      <div class="pb-lab" style="top:${bh + 14}px;font-size:${G.sub * .9}px"><span style="left:0">${EN ? 'harvest' : 'oogst'} 2016</span><span style="right:0">${EN ? 'to' : 'tot'} 2047</span></div></div>
     <p class="sub" style="position:absolute;left:${G.m}px;top:${by + bh + G.sub * 3.4}px;font-size:${G.sub}px;max-width:${Math.min(bw, 760)}px">${T.sub}</p>`;
 }
 
@@ -140,7 +141,7 @@ if (C === 'kelder' || C === 'nu' || C === 'erbij') {
     inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:${tekstW}px">${tekstBlok(tekstW - 10, F === 'ls' ? { h1: 44 } : {})}</div>
       <div class="uitsnede" style="right:${F === 'ls' ? 40 : G.m}px;top:${top}px;width:${bw}px;height:${bh}px;${kader}"><img src="${img(naam)}"></div>`;
   } else {
-    const tekstH = { nu:{ sq:270, p45:300, st:380 }, kelder:{ p45:380, st:500 }, erbij:{ st:320 } }[C][F];
+    const tekstH = { nu:{ sq:270, p45:300, st:380 }, kelder:{ p45:380, st:500 }, erbij:{ st:EN ? 430 : 330 } }[C][F];
     const vy = yTop + tekstH + (C === 'erbij' ? 30 : 10), ruimte = onder - vy - 24;
     const vol = W - G.m * 2, bw = Math.min(vol, ruimte / r), bh = bw * r;
     const left = C === 'erbij' ? (W - bw) / 2 : G.m;
@@ -152,8 +153,8 @@ if (C === 'kelder' || C === 'nu' || C === 'erbij') {
 if (C === 'uiteten') {
   /* Ronde 3: het scherm begint bij "SOMMELIER · 3 gangen · tot €70" (geen afgesneden knop onder de rand),
      het toestel is zo lang als het beeld en loopt zacht uit, met lucht onder de tekst. */
-  const VERS = .22, zicht = tw => { const pad = tw * .034, iw = tw - 2 * pad; return pad + iw * 844 / 390 - iw * VERS; };
-  const tel = (tw, top, extra = '') => `<div class="toestel vaag" style="${extra}top:${top}px;width:${tw}px;height:${Math.min(zicht(tw), H - top)}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('wijnkaart')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0;margin-top:-${VERS * 100}%"></div>`;
+  const VERS = .012, zicht = tw => { const pad = tw * .034, iw = tw - 2 * pad; return pad + iw * 844 / 390 - iw * VERS; };
+  const tel = (tw, top, extra = '') => `<div class="toestel vaag" style="${extra}top:${top}px;width:${tw}px;height:${Math.min(zicht(tw), onder - top - 16)}px;overflow:hidden;padding:${tw * .034}px ${tw * .034}px 0;border-radius:${tw * .145}px ${tw * .145}px 0 0"><img src="${img('wijnkaart')}" style="border-radius:${tw * .115}px ${tw * .115}px 0 0;margin-top:-${VERS * 100}%"></div>`;
   if (F === 'ls') inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:560px">${tekstBlok(520, { h1: 46 })}</div>${tel(270, 40, 'right:80px;')}`;
   else if (F === 'sq') inhoud = `<div style="position:absolute;left:${G.m}px;top:${yTop}px;width:480px">${tekstBlok(470, { h1: 60 })}</div>${tel(400, yTop - 40, `right:${G.m}px;`)}`;
   else {
