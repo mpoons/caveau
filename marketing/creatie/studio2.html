@@ -152,8 +152,11 @@ if (C === 'uiteten') {
   }
 }
 
+/* bewijs (sectie 0e): ?q=citaat&qn=naam, plaats. Alleen echte, benoemde citaten met toestemming. */
+const citaat = q.get('q'), citaatNaam = q.get('qn');
+if (citaat && citaatNaam) inhoud += `<div style="position:absolute;left:${G.m}px;right:${G.m}px;bottom:${voetOnder + G.voet * 2.4}px;z-index:4;font-family:'Playfair Display',serif;font-style:italic;font-size:${G.sub}px;color:var(--ink)">“${citaat.replace(/[<>&]/g, '')}” <span style="font-family:'EB Garamond',serif;font-style:normal;font-variant:small-caps;text-transform:lowercase;letter-spacing:.12em;color:var(--ink3);font-size:${G.voet}px">${citaatNaam.replace(/[<>&]/g, '')}</span></div>`;
 /* voet: een vlak in de achtergrondkleur zodat beeld er netjes achter verdwijnt; CTA links, NIX18 rechts */
-const voetVlakH = voetOnder + G.voet * 2.6;
+const voetVlakH = voetOnder + G.voet * 2.6 + (citaat && citaatNaam ? G.sub * 2.4 : 0);
 const voet = `<div style="position:absolute;left:0;right:0;bottom:0;height:${voetVlakH}px;background:linear-gradient(to bottom, transparent, var(--bg) ${G.voet * 1.2}px);z-index:3"></div>
   <div class="voet" style="left:${G.m}px;right:${G.m}px;bottom:${voetOnder}px;z-index:4">
     <div class="cta" style="font-size:${G.voet}px"><span>${cta[0]}</span><i></i><b>${cta[1]}</b></div>

@@ -171,6 +171,31 @@ Vóór de naam publiek wordt: het woordmerk vastleggen (staat al op je lijst, kl
 **Bestanden:** [Onderzoek alcoholregels](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/onderzoek/03-alcohol-ad-rules.md)
 
 
+### 0e · Echt bewijs verzamelen
+
+**Kosten:** € 0
+
+Twee verse critici gaven alle uitingen een onvoldoende op bewijs: er staat niets onwaars, maar ook niets dat laat zien dat echte mensen dit gebruiken. Topapps zetten één echte, benoemde stem naast de kop. Verzinnen mag nooit; verzamelen kan deze week.
+
+**Al klaar of voorbereid**
+
+- Op de landingspagina en in de advertenties is plek voor één citaat met naam en plaats; het blok verschijnt pas als er een echt citaat is.
+
+**Wat ik doe**
+
+- Een korte vraag opstellen voor de testers ("wat deed CellarMentor voor je kelder?") met toestemmingszin.
+- Het citaatblok en een regel "In gebruik sinds [maand] bij [n] kelders" invoegen zodra jij de gegevens hebt.
+
+**Wat jij doet**
+
+- De zeven testers om één of twee zinnen vragen, met naam, woonplaats en toestemming.
+- Eén sommelier of docent (bijvoorbeeld Dennis Koopman) vragen om een eerlijke zin na een week gebruik.
+- Een foto van jezelf en één zin waarom je dit maakte.
+- Tien seconden filmen met je iPhone: een echte fles uit je rek scannen. Dat vervangt het getekende etiket in de film.
+
+**Bestanden:** [Kritiek ronde 1](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde1-kritiek.md) · [Kritiek ronde 2](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/kwaliteit/ronde2-kritiek.md)
+
+
 ## Fase 1 · Groei uit het product
 
 Het goedkoopste kanaal: het moment waarop iemand de waarde voelt.
@@ -281,6 +306,33 @@ Wie zich aanmeldt en daarna niets doet, ziet nooit wat de app kan. Vijf korte ma
 **Bestanden:** [Teksten](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/teksten/07-welkomstmails.md)
 
 
+### 1e · Productverbeteringen uit de lancering
+
+**Kosten:** € 0
+
+Bij het opnemen van de schermen en het bouwen van de pagina's kwamen dingen boven die een nieuwe gebruiker ook ziet. Een deel is al gerepareerd op de branch, de rest is jouw keuze.
+
+**Al klaar of voorbereid**
+
+- As van het drinkvenster toonde 2059 bij een venster tot 2060: nu "tot 2060 →".
+- Kelderlijst zei "Mogelijk topfles", het detail "Waarschijnlijk een topfles": nu één woord.
+- Horizon herhaalde dezelfde zin bij twee lege periodes.
+- Engelse stand: statuschip, jaargangchip, wijnkaartkop, "X en Y" in pairingredenen en "Waar komt dit venster vandaan?" waren Nederlands.
+
+**Wat ik doe**
+
+- Op jouw akkoord: de tegel "Nu op dronk" (21) en Horizon "Nu" (10) tellen iets anders zonder dat te zeggen; voorstel om de tegel "In hun venster" te noemen.
+- De kelderregels geven vaak twee keer 10/10 en soms vreemde paren (ossobuco → Meursault 10/10); voorstel om de schaal te spreiden.
+- De uitleg "Waar komt dit venster vandaan?" noemt twee niveaus van bronnen, de tabel kent er drie.
+- CSV-import leest alleen UTF-8; een Excel-bestand in het oude Windows-formaat verminkt é en ü.
+- Na import met een later venstereinde zegt de fles nog "uit het bestand".
+- Beslissen: de chip "Sommelier-AI" in de app heet in advertenties "Sommelier"; de app zelf ook zo noemen?
+
+**Wat jij doet**
+
+- Per punt akkoord of niet.
+
+
 ## Fase 2 · Vindbaar worden
 
 Een PWA heeft geen app store; Google is de winkel.
@@ -293,8 +345,9 @@ cellarmentor.com was alleen de app: wie via een link kwam zag een lege kelder. A
 
 **Al klaar of voorbereid**
 
-- cellarmentor.com/start/ (NL) en /en/ (EN), in de huisstijl, met echte schermen, licht en donker, één knop.
-- Deelafbeelding 1200×630 voor WhatsApp, iMessage en LinkedIn; het app-icoon was het enige beeld.
+- cellarmentor.com/start/ (NL) en /en/ (EN), in de huisstijl, met de echte scanflow en merkloze schermen, licht en donker, één knop.
+- Na twee kritiekrondes: eerlijke microcopy over account en credits, subkop onder 20 woorden, geen drinkdrang, plakknop die wijkt voor de slot-CTA.
+- Deelafbeelding 1200×628 met etiket en venster; het app-icoon was het enige beeld.
 
 **Wat ik doe**
 
@@ -324,7 +377,8 @@ De Nederlandse zoekresultaten over bewaren, wijnjaren en "op dronk" zijn dun: ko
 
 **Al klaar of voorbereid**
 
-- Vier artikelen in de maak: op dronk en drinkvenster; hoe lang wijn bewaren; wijn bewaren thuis; overstappen van CellarTracker of Vivino.
+- Vier artikelen van ruim 1.000 woorden: wanneer is wijn op dronk; hoe lang wijn bewaren; wijn bewaren thuis; overstappen van CellarTracker of Vivino. Met gegevens voor zoekmachines en dezelfde meting als de landingspagina.
+- Na te lezen: de exportstappen van Vivino komen uit een gids van een andere app (gemeld in de tekst).
 
 **Wat ik doe**
 
@@ -348,11 +402,13 @@ De Nederlandse zoekresultaten over bewaren, wijnjaren en "op dronk" zijn dun: ko
 
 **Kosten:** € 0 · **na:** 2a, 2d
 
-Nederlanders zoeken "wijnjarentabel", "goede wijnjaren bordeaux" en "wijn op dronk". Niemand in het Nederlands heeft een gestructureerde tabel per streek; CellarMentor heeft er een van 38 streken.
+Nederlanders zoeken "wijnjarentabel", "goede wijnjaren bordeaux" en "wijn op dronk". Niemand in het Nederlands heeft een gestructureerde tabel per streek; CellarMentor heeft er een van 68 streken.
 
 **Al klaar of voorbereid**
 
-- Per streek een pagina, gebouwd uit de eigen jaargangtabel, met per jaar of hij tegen bronnen is gelegd.
+- 41 pagina's (van 68 streken): alleen streken met minstens 5 jaren en minstens één jaar tegen bronnen gelegd; 19 streken die alleen eigen schatting zijn of elkaars kopie, blijven bewust weg (dubbele inhoud straft Google af).
+- Vensters berekend met de functies uit de app zelf, gecontroleerd op 10.040 voorbeeldflessen: geen verschil.
+- Geen puntenscores, geen citaten van uitgevers.
 
 **Wat ik doe**
 
@@ -682,11 +738,13 @@ Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij �
 
 **Al klaar of voorbereid**
 
-- Advertenties in 1:1, 4:5, 9:16, met NIX18 (NL) en de band (BE); de film van 20 seconden in drie formaten.
+- Zes concepten in 1:1, 4:5, 9:16 en 1,91:1, voor NL (NIX18), BE (verplichte band) en VK, elk met een eigen compositie; het scanmoment komt uit de echte live-scanner.
+- De film van 19 seconden in drie formaten en drie markten, opent op het scanmoment.
+- Twee rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit).
 
 **Wat ik doe**
 
-- Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.
+- Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film, met de Engelse en Belgische varianten waar nodig; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.
 
 **Wat jij doet**
 
@@ -701,7 +759,7 @@ Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij �
 | Stoppen bij | Per haak stoppen na € 40 met CTR onder 0,8% of zonder aanmelding; de hele test stopt op € 200. |
 | Wat dit kan bewijzen | Met € 200 krijg je ± 200 tot 300 klikken en ± 15 tot 25 aanmeldingen in totaal. Alleen een verschil van factor twee tussen haken is zichtbaar. Over betalers zegt dit niets. |
 
-**Bestanden:** [Advertenties](https://github.com/mpoons/caveau/tree/claude/optimistic-wozniak-2tlaqt/marketing/creatie/out)
+**Bestanden:** [Advertenties en film](https://github.com/mpoons/caveau/tree/claude/optimistic-wozniak-2tlaqt/marketing/creatie/out2) · [Sjabloon](https://github.com/mpoons/caveau/blob/claude/optimistic-wozniak-2tlaqt/marketing/creatie/studio2.html)
 
 
 ### 5c · Bewust niet nu
@@ -815,11 +873,12 @@ De app en een landingspagina zijn er al in het Engels. Eerst bewijzen in NL en B
 
 **Al klaar of voorbereid**
 
-- /en/, Engelse advertenties (VK-variant), Engelse film.
+- /en/ met Engelse schermen, Engelse advertenties (VK-variant), Engelse film.
+- De grootste Engelse vertaalgaten in de app zijn gedicht (zie 1e).
 
 **Wat ik doe**
 
-- Engelse vertaling van de nieuwste schermen nalopen (er missen nog teksten van v87 tot v99).
+- De rest van de Engelse vertaling nalopen (teksten van v87 tot v99), met een automatische telling van Nederlandse zinnen in de Engelse stand.
 - Makers: The Wine Beast, Wine With Jimmy, No Sediment; DutchNews.
 
 **Wat jij doet**

@@ -103,6 +103,15 @@ export const PLAN = {
       test: null, afh: [], bestanden: [{ t: 'Onderzoek alcoholregels', u: GH_M + 'onderzoek/03-alcohol-ad-rules.md' }],
     },
 
+    {
+      id: '0e', fase: '0', titel: 'Echt bewijs verzamelen', kosten: 0, kostenTekst: '€ 0',
+      waarom: 'Twee verse critici gaven alle uitingen een onvoldoende op bewijs: er staat niets onwaars, maar ook niets dat laat zien dat echte mensen dit gebruiken. Topapps zetten één echte, benoemde stem naast de kop. Verzinnen mag nooit; verzamelen kan deze week.',
+      klaar: ['Op de landingspagina en in de advertenties is plek voor één citaat met naam en plaats; het blok verschijnt pas als er een echt citaat is.'],
+      ik: ['Een korte vraag opstellen voor de testers ("wat deed CellarMentor voor je kelder?") met toestemmingszin.', 'Het citaatblok en een regel "In gebruik sinds [maand] bij [n] kelders" invoegen zodra jij de gegevens hebt.'],
+      jij: ['De zeven testers om één of twee zinnen vragen, met naam, woonplaats en toestemming.', 'Eén sommelier of docent (bijvoorbeeld Dennis Koopman) vragen om een eerlijke zin na een week gebruik.', 'Een foto van jezelf en één zin waarom je dit maakte.', 'Tien seconden filmen met je iPhone: een echte fles uit je rek scannen. Dat vervangt het getekende etiket in de film.'],
+      test: null, afh: [], bestanden: [{ t: 'Kritiek ronde 1', u: GH_M + 'kwaliteit/ronde1-kritiek.md' }, { t: 'Kritiek ronde 2', u: GH_M + 'kwaliteit/ronde2-kritiek.md' }],
+    },
+
     // ───────────── FASE 1
     {
       id: '1a', fase: '1', titel: 'Betaalmoment na de eerste waarde', kosten: 0, kostenTekst: '€ 0',
@@ -141,11 +150,20 @@ export const PLAN = {
       afh: ['0b'], bestanden: [{ t: 'Teksten', u: GH_M + 'teksten/07-welkomstmails.md' }],
     },
 
+    {
+      id: '1e', fase: '1', titel: 'Productverbeteringen uit de lancering', kosten: 0, kostenTekst: '€ 0',
+      waarom: 'Bij het opnemen van de schermen en het bouwen van de pagina\'s kwamen dingen boven die een nieuwe gebruiker ook ziet. Een deel is al gerepareerd op de branch, de rest is jouw keuze.',
+      klaar: ['As van het drinkvenster toonde 2059 bij een venster tot 2060: nu "tot 2060 →".', 'Kelderlijst zei "Mogelijk topfles", het detail "Waarschijnlijk een topfles": nu één woord.', 'Horizon herhaalde dezelfde zin bij twee lege periodes.', 'Engelse stand: statuschip, jaargangchip, wijnkaartkop, "X en Y" in pairingredenen en "Waar komt dit venster vandaan?" waren Nederlands.'],
+      ik: ['Op jouw akkoord: de tegel "Nu op dronk" (21) en Horizon "Nu" (10) tellen iets anders zonder dat te zeggen; voorstel om de tegel "In hun venster" te noemen.', 'De kelderregels geven vaak twee keer 10/10 en soms vreemde paren (ossobuco → Meursault 10/10); voorstel om de schaal te spreiden.', 'De uitleg "Waar komt dit venster vandaan?" noemt twee niveaus van bronnen, de tabel kent er drie.', 'CSV-import leest alleen UTF-8; een Excel-bestand in het oude Windows-formaat verminkt é en ü.', 'Na import met een later venstereinde zegt de fles nog "uit het bestand".', 'Beslissen: de chip "Sommelier-AI" in de app heet in advertenties "Sommelier"; de app zelf ook zo noemen?'],
+      jij: ['Per punt akkoord of niet.'],
+      test: null, afh: [], bestanden: [],
+    },
+
     // ───────────── FASE 2
     {
       id: '2a', fase: '2', titel: 'Landingspagina’s en deelafbeelding live', kosten: 0, kostenTekst: '€ 0',
       waarom: 'cellarmentor.com was alleen de app: wie via een link kwam zag een lege kelder. Advertenties, pers en makers hebben een pagina nodig die in drie seconden zegt wat het is.',
-      klaar: ['cellarmentor.com/start/ (NL) en /en/ (EN), in de huisstijl, met echte schermen, licht en donker, één knop.', 'Deelafbeelding 1200×630 voor WhatsApp, iMessage en LinkedIn; het app-icoon was het enige beeld.'],
+      klaar: ['cellarmentor.com/start/ (NL) en /en/ (EN), in de huisstijl, met de echte scanflow en merkloze schermen, licht en donker, één knop.', 'Na twee kritiekrondes: eerlijke microcopy over account en credits, subkop onder 20 woorden, geen drinkdrang, plakknop die wijkt voor de slot-CTA.', 'Deelafbeelding 1200×628 met etiket en venster; het app-icoon was het enige beeld.'],
       ik: ['Live zetten met 0a.', 'Na de eerste 100 bezoekers: koppen bijschaven op wat de meting laat zien.'],
       jij: ['Akkoord.', 'Een foto van jezelf en één zin over waarom je dit maakte, voor een stukje "gemaakt door" (echt bewijs werkt beter dan geen).'],
       test: { meten: 'Bezoek → klik op "Scan je eerste fles" (lp_cta), → aanmelding, per bron.', opschalen: 'n.v.t.', stoppen: 'Klikratio onder 15% na 300 bezoekers: hero herzien.', bewijs: 'Klikratio is na een paar honderd bezoekers redelijk betrouwbaar.' },
@@ -154,7 +172,7 @@ export const PLAN = {
     {
       id: '2b', fase: '2', titel: 'Gidsartikelen', kosten: 0, kostenTekst: '€ 0',
       waarom: 'De Nederlandse zoekresultaten over bewaren, wijnjaren en "op dronk" zijn dun: korte vraag-en-antwoordpagina\'s en app-overzichten uit 2009 tot 2024. Vivino haalt naar schatting 59% van zijn bezoek uit zoekmachines.',
-      klaar: ['Vier artikelen in de maak: op dronk en drinkvenster; hoe lang wijn bewaren; wijn bewaren thuis; overstappen van CellarTracker of Vivino.'],
+      klaar: ['Vier artikelen van ruim 1.000 woorden: wanneer is wijn op dronk; hoe lang wijn bewaren; wijn bewaren thuis; overstappen van CellarTracker of Vivino. Met gegevens voor zoekmachines en dezelfde meting als de landingspagina.', 'Na te lezen: de exportstappen van Vivino komen uit een gids van een andere app (gemeld in de tekst).'],
       ik: ['Elke week één nieuw artikel uit de lijst van vijftien (onder meer Kelder-APK, wat is mijn wijn waard, bewaarwijn voor een geboortejaar, beste wijnkelder-app).'],
       jij: ['Akkoord; per artikel even nalezen op wijninhoud.'],
       test: { meten: 'Vertoningen, klikken en positie per pagina in Search Console; aanmeldingen met bron google.', opschalen: 'Onderwerpen die na 8 weken in de top 10 staan krijgen vervolgartikelen.', stoppen: 'Na 12 weken zonder vertoningen: herschrijven of samenvoegen.', bewijs: 'SEO duurt 3 tot 9 maanden; de eerste maand bewijst niets.' },
@@ -162,8 +180,8 @@ export const PLAN = {
     },
     {
       id: '2c', fase: '2', titel: 'Wijnjaren per streek', kosten: 0, kostenTekst: '€ 0',
-      waarom: 'Nederlanders zoeken "wijnjarentabel", "goede wijnjaren bordeaux" en "wijn op dronk". Niemand in het Nederlands heeft een gestructureerde tabel per streek; CellarMentor heeft er een van 38 streken.',
-      klaar: ['Per streek een pagina, gebouwd uit de eigen jaargangtabel, met per jaar of hij tegen bronnen is gelegd.'],
+      waarom: 'Nederlanders zoeken "wijnjarentabel", "goede wijnjaren bordeaux" en "wijn op dronk". Niemand in het Nederlands heeft een gestructureerde tabel per streek; CellarMentor heeft er een van 68 streken.',
+      klaar: ['41 pagina\'s (van 68 streken): alleen streken met minstens 5 jaren en minstens één jaar tegen bronnen gelegd; 19 streken die alleen eigen schatting zijn of elkaars kopie, blijven bewust weg (dubbele inhoud straft Google af).', 'Vensters berekend met de functies uit de app zelf, gecontroleerd op 10.040 voorbeeldflessen: geen verschil.', 'Geen puntenscores, geen citaten van uitgevers.'],
       ik: ['In delen live zetten en de indexering volgen; later per streek en jaar ("Bordeaux 2015: op dronk?") alleen waar een pagina echt iets eigens zegt.'],
       jij: ['Akkoord.'],
       test: { meten: 'Als 2b.', opschalen: 'Bij vertoningen op streek+jaar: de pagina\'s per jaargang bouwen.', stoppen: 'Pagina\'s zonder vertoningen na 12 weken op noindex.', bewijs: 'Als 2b.' },
@@ -277,12 +295,12 @@ export const PLAN = {
     {
       id: '5b', fase: '5', titel: 'Meta, leertest van drie haken', kosten: 200, kostenTekst: '€ 200, hard plafond',
       waarom: 'Niet om op te schalen: het onderzoek rekent € 86 tot € 480 per betaler bij € 10 waarde. Wel om goedkoop te leren welke boodschap mensen het meest raakt: het etiket, de wijnkaart of het gerecht. Dat stuurt de pers, de makers en de site.',
-      klaar: ['Advertenties in 1:1, 4:5, 9:16, met NIX18 (NL) en de band (BE); de film van 20 seconden in drie formaten.'],
-      ik: ['Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.'],
+      klaar: ['Zes concepten in 1:1, 4:5, 9:16 en 1,91:1, voor NL (NIX18), BE (verplichte band) en VK, elk met een eigen compositie; het scanmoment komt uit de echte live-scanner.', 'De film van 19 seconden in drie formaten en drie markten, opent op het scanmoment.', 'Twee rondes onafhankelijke kritiek tegen de kwaliteitslat (map kwaliteit).'],
+      ik: ['Drie advertentiesets (wanneer, uit eten, erbij), elk met een beeld en de film, met de Engelse en Belgische varianten waar nodig; NL, 25 tot 65 jaar, interesse wijn en gastronomie; doel: weergaven van de landingspagina; geen pixel, meting via utm in de eigen tabel.'],
       jij: ['Advertentieaccount met betaalmethode; pagina- en accountleeftijd op 18+ zetten; akkoord.'],
       regels: 'Leeftijd 25+; geen Audience Network; NIX18 op elk beeld; geen BE of NO zonder de juiste variant.',
       test: { meten: 'CTR, CPC, CPA aanmelding per haak.', opschalen: 'Er wordt hier niet opgeschaald. De winnende haak gaat naar de hero, de makersbrief en de pers.', stoppen: 'Per haak stoppen na € 40 met CTR onder 0,8% of zonder aanmelding; de hele test stopt op € 200.', bewijs: 'Met € 200 krijg je ± 200 tot 300 klikken en ± 15 tot 25 aanmeldingen in totaal. Alleen een verschil van factor twee tussen haken is zichtbaar. Over betalers zegt dit niets.' },
-      afh: ['0a', '0b', '0c', '2a', '0d'], bestanden: [{ t: 'Advertenties', u: GH_MT + 'creatie/out' }],
+      afh: ['0a', '0b', '0c', '2a', '0d'], bestanden: [{ t: 'Advertenties en film', u: GH_MT + 'creatie/out2' }, { t: 'Sjabloon', u: GH_M + 'creatie/studio2.html' }],
     },
     {
       id: '5c', fase: '5', titel: 'Bewust niet nu', kosten: 0, kostenTekst: '€ 0',
@@ -325,8 +343,8 @@ export const PLAN = {
     {
       id: '7b', fase: '7', titel: 'Engelstalige markt', kosten: 0, kostenTekst: 'uit inkomsten',
       waarom: 'De app en een landingspagina zijn er al in het Engels. Eerst bewijzen in NL en BE, dan het VK en expats in NL.',
-      klaar: ['/en/, Engelse advertenties (VK-variant), Engelse film.'],
-      ik: ['Engelse vertaling van de nieuwste schermen nalopen (er missen nog teksten van v87 tot v99).', 'Makers: The Wine Beast, Wine With Jimmy, No Sediment; DutchNews.'],
+      klaar: ['/en/ met Engelse schermen, Engelse advertenties (VK-variant), Engelse film.', 'De grootste Engelse vertaalgaten in de app zijn gedicht (zie 1e).'],
+      ik: ['De rest van de Engelse vertaling nalopen (teksten van v87 tot v99), met een automatische telling van Nederlandse zinnen in de Engelse stand.', 'Makers: The Wine Beast, Wine With Jimmy, No Sediment; DutchNews.'],
       jij: ['Akkoord als NL werkt.'],
       test: null, afh: ['7a'], bestanden: [],
     },
