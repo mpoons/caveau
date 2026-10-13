@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>CellarMentor film: zo werkt het</title>
+<!-- De film "zo werkt het", 20 seconden, beeld voor beeld te renderen (render-film.mjs).
+     Parameters: ?f=st (1080×1920) | p45 (1080×1350) | sq (1080×1080), &l=nl|en.
+     Regels uit de kwaliteitslat: alleen echte schermen, alleen overvloeiers, één easing, ondertitels
+     die zonder geluid werken, kernboodschap binnen drie seconden, eindkaart met één CTA. -->
+<style>
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(fonts/playfair-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:400 900;src:url(fonts/playfair-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;src:url(fonts/ebgaramond-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'Open Sans';font-weight:600;src:url(fonts/opensans.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000}
+#doek{position:relative;overflow:hidden;background:#F6F2EA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#nacht{position:absolute;inset:0;background:#1B1418;opacity:0}
+.lijst{position:absolute;border:1px solid #C8A96A;inset:40px}
+.lijst::after{content:'';position:absolute;inset:6px;border:1px solid #C8A96A;opacity:.55}
+.merk{position:absolute;font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.14em;font-weight:500;color:#241B1F}
+.kap{position:absolute;left:0;right:0;text-align:left}
+.kap .k{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.18em;color:#A8813D;font-weight:500;margin-bottom:.5em}
+.kap h1{font-family:'Playfair Display',serif;font-weight:500;line-height:1.05;letter-spacing:-.012em;color:#241B1F;text-wrap:balance}
+.kap h1 em{display:block;font-style:italic;color:#6E1F33}
+.kap.donker h1{color:#E4D9C9} .kap.donker h1 em{color:#D9B56E} .kap.donker .k{color:#C9A25A}
+.toestel{position:absolute;left:50%;background:#1D1719;box-shadow:0 70px 120px -40px rgba(60,20,30,.55),0 24px 50px -24px rgba(36,27,31,.45)}
+.scherm{position:relative;overflow:hidden;background:#F6F2EA}
+.scherm img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;opacity:0}
+#flits{position:absolute;inset:0;background:#fff;opacity:0;z-index:2}
+#tik{position:absolute;border-radius:50%;border:3px solid rgba(255,255,255,.95);box-shadow:0 0 0 2px rgba(110,31,51,.35);opacity:0;transform:translate(-50%,-50%)}
+#eind{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;opacity:0;background:#F6F2EA}
+#eind .wm{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.16em;font-weight:500;color:#241B1F}
+#eind h2{font-family:'Playfair Display',serif;font-weight:500;line-height:1.06;color:#241B1F;margin:.55em 0 .5em}
+#eind h2 em{font-style:italic;color:#6E1F33;display:block}
+#eind .cta{background:#6E1F33;color:#FFF8F0;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+/* verplichte vermeldingen: NIX18 (NL, minstens 0,75% van het beeld) en de Belgische band, de hele film zichtbaar */
+#nix{position:absolute;z-index:5;font-weight:800;color:#241B1F;border:3px solid currentColor;border-radius:8px;padding:.06em .3em;line-height:1.1;background:#F6F2EA}
+#band{position:absolute;left:0;right:0;z-index:5;background:#fff;color:#000;font-family:'Open Sans',sans-serif;font-weight:600;text-align:center;border-top:1px solid #000}
+#eind .url{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.16em;color:#6B5A60;margin-top:1.1em}
+</style>
+</head>
+<body>
+<div id="doek">
+  <div id="nacht"></div>
+  <div class="lijst"></div>
+  <div class="merk" id="merk">CellarMentor</div>
+  <div id="kappen"></div>
+  <div class="toestel" id="toestel"><div class="scherm" id="scherm"><div id="flits"></div></div></div>
+  <div id="tik"></div>
+  <div id="nix" hidden>NIX18</div><div id="band" hidden>Alcoholmisbruik schaadt de gezondheid</div>
+  <div id="eind"><div class="wm">CellarMentor</div><h2 id="eindH"></h2><div class="cta" id="eindC"></div><div class="url">cellarmentor.com</div></div>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const F = q.get('f') || 'st', L = q.get('l') || 'nl';
+const MARKT = q.get('m') || (L === 'en' ? 'uk' : 'nl');
+const MAAT = { st:[1080,1920], p45:[1080,1350], sq:[1080,1080] }[F];
+const DUUR = 20;
+/* tekst per scène; nbsp tegen een los "'m" of "mee" op de laatste regel */
+const T = {
+  nl:{ s1:['Je kelder','Welke fles','open je vanavond?'], s2:['Scannen','Scan het etiket.',''], s3:['Drinkvenster','Weet wanneer','je&nbsp;\'m&nbsp;opent.'],
+       s4:['Wat erbij','Zeg wat je eet.','De fles staat bovenaan.'], s5:['Uit eten','De wijnkaart','leest&nbsp;mee.'], s6:['Horizon','Wat dit jaar','op z\'n best is.'],
+       eind:["Open elke fles","op z'n best."], cta:'Gratis proberen' },
+  en:{ s1:['Your cellar','Which bottle','will you open tonight?'], s2:['Scan','Scan the label.',''], s3:['Drinking window','Know when','to open&nbsp;it.'],
+       s4:['What to pour','Say what you eat.','The bottle comes first.'], s5:['Dining out','It reads','the wine&nbsp;list.'], s6:['Horizon','What is at its best','this year.'],
+       eind:['Open every bottle','at its best.'], cta:'Try it free' } }[L];
+/* schermen, in volgorde van verschijnen */
+const SCH = ['kelder','scanidle','detail','pairleeg','pairgetypt','pairing','wijnkaart','horizon'];
+const pad = n => `ui/${n === 'wijnkaart' ? 'dark' : 'light'}-${L}-${n}.webp`;
+
+/* maten per formaat */
+const M = {
+  st: { w:1080, h:1920, merk:[96,250,32], kapTop:330, kapL:96, kapW:890, k:30, h1:92, tw:600, tTop:770 },
+  p45:{ w:1080, h:1350, merk:[84,96,28], kapTop:170, kapL:84, kapW:900, k:26, h1:78, tw:520, tTop:520 },
+  sq: { w:1080, h:1080, merk:[84,96,26], kapTop:160, kapL:84, kapW:900, k:24, h1:66, tw:420, tTop:440 },
+}[F];
+const doek = document.getElementById('doek');
+doek.style.width = M.w + 'px'; doek.style.height = M.h + 'px';
+const merk = document.getElementById('merk'); merk.style.left = M.merk[0] + 'px'; merk.style.top = M.merk[1] + 'px'; merk.style.fontSize = M.merk[2] + 'px';
+const toestel = document.getElementById('toestel'), scherm = document.getElementById('scherm');
+const pd = Math.round(M.tw * .034), sw = M.tw - 2 * pd, sh = Math.round(sw * 844 / 390);
+toestel.style.width = M.tw + 'px'; toestel.style.padding = pd + 'px'; toestel.style.borderRadius = Math.round(M.tw * .145) + 'px';
+scherm.style.width = sw + 'px'; scherm.style.height = sh + 'px'; scherm.style.borderRadius = Math.round(M.tw * .115) + 'px';
+const imgs = {};
+for (const n of SCH) { const i = new Image(); i.src = pad(n); scherm.appendChild(i); imgs[n] = i; }
+const kappen = document.getElementById('kappen');
+const kap = {};
+for (const s of ['s1','s2','s3','s4','s5','s6']) {
+  const d = document.createElement('div'); d.className = 'kap' + (s === 's5' ? ' donker' : '');
+  d.style.top = M.kapTop + 'px'; d.style.left = M.kapL + 'px'; d.style.width = M.kapW + 'px';
+  d.innerHTML = `<div class="k" style="font-size:${M.k}px">${T[s][0]}</div><h1 style="font-size:${M.h1}px">${T[s][1]}${T[s][2] ? `<em>${T[s][2]}</em>` : ''}</h1>`;
+  kappen.appendChild(d); kap[s] = d;
+}
+const eind = document.getElementById('eind');
+document.getElementById('eindH').innerHTML = `${T.eind[0]}<em>${T.eind[1]}</em>`;
+document.getElementById('eindH').style.fontSize = (M.h1 * 1.05) + 'px';
+eind.querySelector('.wm').style.fontSize = (M.merk[2] * 1.15) + 'px';
+const cta = document.getElementById('eindC'); cta.textContent = T.cta; cta.style.fontSize = Math.round(M.k * .95) + 'px'; cta.style.padding = `${Math.round(M.k * .8)}px ${Math.round(M.k * 1.5)}px`;
+eind.querySelector('.url').style.fontSize = M.k + 'px';
+
+/* één easing voor alles, dezelfde als de sheets in de app */
+const ease = x => { x = Math.min(1, Math.max(0, x)); return 1 - Math.pow(1 - x, 3); };
+const venster = (t, a, b, fade = .45) => Math.min(ease((t - a) / fade), 1 - ease((t - (b - fade)) / fade));   /* in bij a, uit bij b */
+const tik = document.getElementById('tik'), flits = document.getElementById('flits'), nacht = document.getElementById('nacht');
+
+/* tijdlijn in seconden */
+const SC = [ ['s1',0,3.4], ['s2',3.2,5.6], ['s3',5.4,8.6], ['s4',8.4,12.0], ['s5',11.8,14.9], ['s6',14.7,17.4] ];
+const BEELD = [ ['kelder',0,3.6], ['scanidle',3.4,5.25], ['detail',5.2,8.8], ['pairleeg',8.6,9.6], ['pairgetypt',9.45,10.4], ['pairing',10.25,12.2], ['wijnkaart',12.0,15.1], ['horizon',14.9,17.6] ];
+window.zet = function(t){
+  for (const [s,a,b] of SC) { const o = venster(t, a, b); kap[s].style.opacity = o; kap[s].style.transform = `translateY(${(1 - ease((t - a) / .6)) * 18}px)`; }
+  for (const [n,a,b] of BEELD) imgs[n].style.opacity = venster(t, a, b, .35);
+  /* het toestel komt rustig omhoog en blijft drijven */
+  const y = M.tTop + (1 - ease(t / 1.2)) * 120 - t * 4;
+  toestel.style.transform = `translate(-50%, ${y}px)`;
+  toestel.style.opacity = Math.min(1, ease(t / .8)) * (1 - ease((t - 17.3) / .5));
+  /* nacht bij de wijnkaart: de app gaat in het restaurant zelf op donker */
+  nacht.style.opacity = venster(t, 11.9, 15.0, .5);
+  merk.style.color = nacht.style.opacity > .5 ? '#E4D9C9' : '#241B1F';
+  /* tik op de scanknop van het echte scherm (midden van de knop in het 390×844-scherm: 195, 236, gemeten) */
+  const r = toestel.getBoundingClientRect(), sx = r.left + pd + sw * 195 / 390, sy = r.top + pd + sh * 236 / 844;
+  const tp = (t - 4.3) / .6; tik.style.left = sx + 'px'; tik.style.top = sy + 'px';
+  const ts = 40 + ease(tp) * 70; tik.style.width = tik.style.height = ts + 'px';
+  tik.style.opacity = (tp > 0 && tp < 1) ? (1 - tp) * .95 : 0;
+  flits.style.opacity = Math.max(0, .7 - Math.abs(t - 5.0) * 3);
+  eind.style.opacity = ease((t - 17.4) / .7);
+  eind.style.transform = `translateY(${(1 - ease((t - 17.4) / .9)) * 16}px)`;
+};
+const nix = document.getElementById('nix'), band = document.getElementById('band');
+if (MARKT === 'nl') { nix.hidden = false; nix.style.fontSize = Math.round(M.w * .036) + 'px'; nix.style.right = (M.kapL) + 'px'; nix.style.top = (F === 'st' ? 1480 : M.h - 120) + 'px'; }
+if (MARKT === 'be') { band.hidden = false; band.style.fontSize = Math.round(M.w * .032) + 'px'; band.style.padding = '14px 10px'; if (F === 'st') band.style.top = '1470px'; else band.style.bottom = '0'; }
+window.DUUR = DUUR;
+Promise.all([document.fonts.ready, ...Object.values(imgs).map(i => i.complete ? 1 : new Promise(r => i.onload = r))]).then(() => { zet(0); document.body.dataset.klaar = '1'; });
+</script>
+</body>
+</html>

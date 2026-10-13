@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>CellarMentor advertentiestudio</title>
+<!-- Eén sjabloon voor alle statische advertenties. Parameters: ?c=concept&f=formaat&l=taal
+     formaten: sq 1080×1080 (feed), p45 1080×1350 (feed staand), st 1080×1920 (stories, reels, TikTok), ls 1200×628 (link, Google)
+     Alleen echte schermen uit de app (ui/), nooit nagemaakte UI. Huisstijl gelijk aan de app. -->
+<style>
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:400 900;src:url(fonts/playfair-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:italic;font-weight:400 900;src:url(fonts/playfair-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:normal;font-weight:400 800;src:url(fonts/ebgaramond-normal-latin.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:italic;font-weight:400 800;src:url(fonts/ebgaramond-italic-latin.woff2) format('woff2')}
+@font-face{font-family:'Open Sans';font-weight:600;src:url(fonts/opensans.woff2) format('woff2')}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#888}
+.doek{--bg:#F6F2EA;--ink:#241B1F;--ink2:#6B5A60;--ink3:#9C8D92;--acc:#6E1F33;--gold:#A8813D;--rule:#C8A96A;--bezel:#1D1719;--line:#E3D9C7;
+  position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.doek.donker{--bg:#1B1418;--ink:#E4D9C9;--ink2:#AE9E94;--ink3:#8A767E;--acc:#D9B56E;--gold:#C9A25A;--rule:#6E552C;--bezel:#0B0809;--line:#3D2F36}
+/* étiquette: een dubbele haarlijn binnen de rand, zoals op een etiket */
+.lijst{position:absolute;inset:var(--marge);border:1px solid var(--rule);pointer-events:none}
+.lijst::after{content:'';position:absolute;inset:5px;border:1px solid var(--rule);opacity:.55}
+.merk{position:absolute;font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.14em;font-weight:500;color:var(--ink);white-space:nowrap}
+.kicker{font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.18em;color:var(--gold);font-weight:500}
+h1{font-family:'Playfair Display',serif;font-weight:500;line-height:1.04;letter-spacing:-.012em;color:var(--ink)}
+h1 em{display:block;font-style:italic;color:var(--acc);text-wrap:balance}
+h1{text-wrap:balance}
+.sub{color:var(--ink2);line-height:1.42}
+.tekst{position:absolute}
+.voet{position:absolute;display:flex;align-items:center;gap:.7em;font-family:'EB Garamond',serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.16em;color:var(--ink);font-weight:500;white-space:nowrap}
+.voet b{font-weight:500;color:var(--acc)}
+.voet i{display:inline-block;width:1px;height:1em;background:var(--rule)}
+.toestel{position:absolute;border-radius:calc(var(--tw) * .145);padding:calc(var(--tw) * .034);background:var(--bezel);width:var(--tw);
+  box-shadow:0 2px 0 rgba(255,255,255,.05) inset,0 60px 110px -40px rgba(60,20,30,.55),0 24px 50px -24px rgba(36,27,31,.45)}
+.toestel img{display:block;width:100%;border-radius:calc(var(--tw) * .115);aspect-ratio:390/844;object-fit:cover}
+
+/* formaten */
+.sq{width:1080px;height:1080px;--marge:34px}
+.sq .merk{left:84px;top:86px;font-size:30px}
+.sq .tekst{left:84px;top:200px;width:520px}
+.sq .kicker{font-size:27px;margin-bottom:20px}
+.sq h1{font-size:68px}
+.sq .sub{font-size:28px;margin-top:28px;max-width:500px}
+.sq .toestel{--tw:372px;right:84px;top:118px}
+.sq .voet{left:84px;bottom:86px;font-size:26px}
+
+.p45{width:1080px;height:1350px;--marge:34px}
+.p45 .merk{left:84px;top:86px;font-size:30px}
+.p45 .tekst{left:84px;top:170px;width:900px}
+.p45 .kicker{font-size:28px;margin-bottom:20px}
+.p45 h1{font-size:86px}
+.p45 .sub{font-size:31px;margin-top:26px;max-width:760px}
+.p45 .toestel{--tw:520px;left:50%;transform:translateX(-50%);top:600px}
+.p45 .voet{display:none}
+
+.st{width:1080px;height:1920px;--marge:40px}
+.st .merk{left:96px;top:250px;font-size:32px}
+.st .tekst{left:96px;top:340px;width:890px}
+.st .kicker{font-size:30px;margin-bottom:24px}
+.st h1{font-size:96px}
+.st .sub{font-size:34px;margin-top:28px;max-width:800px}
+.st .toestel{--tw:560px;left:50%;transform:translateX(-50%);top:880px}
+.st .voet{left:96px;top:1560px;font-size:32px;background:var(--bg);padding:18px 26px 18px 0;z-index:2;display:none}
+
+.ls{width:1200px;height:628px;--marge:22px}
+.ls.og{height:630px}
+.ls .merk{left:64px;top:58px;font-size:24px}
+.ls .tekst{left:64px;top:124px;width:660px}
+.ls .kicker{font-size:22px;margin-bottom:14px}
+.ls h1{font-size:54px}
+.ls .sub{font-size:23px;margin-top:18px;max-width:580px}
+.ls .toestel{--tw:300px;right:110px;top:70px}
+.ls .voet{left:64px;bottom:56px;font-size:22px}
+
+/* verplichte vermeldingen (marketingplan, sectie 3, alcoholregels):
+   NL: NIX18 bij elke uiting waar wijn te zien is (dit tekstmerk vervangen door het officiële NIX18-logo vóór livegang);
+   BE: een band over de volle breedte onderaan, "Alcoholmisbruik schaadt de gezondheid", Open Sans, minstens 32px op 1080 breed. */
+.nix{position:absolute;display:flex;align-items:center;gap:.5em;font-weight:800;letter-spacing:.02em;color:var(--ink);font-size:34px}
+.nix span{border:2px solid currentColor;border-radius:6px;padding:.08em .32em;font-size:.95em;line-height:1.1}
+.nix small{font-weight:400;font-size:.8em;letter-spacing:0}
+.sq .nix{right:84px;bottom:74px} .p45 .nix{right:84px;bottom:76px;z-index:3;background:var(--bg);padding:8px 0 8px 14px} .st .nix{right:96px;top:1490px;z-index:3;background:var(--bg);padding:10px 0 10px 16px;font-size:40px} .ls .nix{right:56px;bottom:44px;font-size:26px;z-index:3;background:var(--bg);padding:6px 0 6px 10px}
+.band{position:absolute;left:0;right:0;bottom:0;z-index:4;background:#fff;color:#000;font-family:'Open Sans',sans-serif;font-weight:600;text-align:center;font-size:34px;padding:16px 10px;border-top:1px solid #000}
+.st .band{bottom:auto;top:1480px} .ls .band{font-size:26px;padding:10px}
+/* concept-aanpassingen */
+.c-specifiek h1{letter-spacing:-.02em}
+</style>
+</head>
+<body>
+<div id="doek"></div>
+<script>
+const K = {
+  merk:    { scherm:'detail', nl:{ kicker:'Je wijnkelder, in je zak', h:'Open elke fles', em:"op z'n best.", sub:'Scan het etiket. CellarMentor zegt wanneer je hem&nbsp;opent.' },
+                               en:{ kicker:'Your wine cellar, in your pocket', h:'Open every bottle', em:'at its best.', sub:'Scan the label. CellarMentor tells you when to open&nbsp;it.' } },
+  wanneer: { scherm:'detail', nl:{ kicker:'Drinkvenster', h:'Scan het etiket.', em:"Weet wanneer je&nbsp;'m&nbsp;opent.", sub:'Voor elke fles in je kelder, uit streek en jaargang.' },
+                               en:{ kicker:'Drinking window', h:'Scan the label.', em:'Know when to open it.', sub:'For every bottle in your cellar, from region and vintage.' } },
+  vanavond:{ scherm:'horizon', nl:{ kicker:'Horizon', h:'Welke fles', em:'open je vanavond?', sub:'CellarMentor kijkt in je kelder en zegt wat op z\'n best is.' },
+                               en:{ kicker:'Horizon', h:'Which bottle', em:'will you open tonight?', sub:'CellarMentor looks through your cellar and shows what is at its best.' } },
+  uiteten: { scherm:'wijnkaart', donker:true, altijd:'dark', nl:{ kicker:'Uit eten', h:'Uit eten?', em:'De wijnkaart leest&nbsp;mee.', sub:'Eén foto van de kaart: drie flessen bij je menu, binnen je budget.' },
+                               en:{ kicker:'Dining out', h:'Dining out?', em:'It reads the wine list.', sub:'One photo of the list: three bottles for your menu, within budget.' } },
+  erbij:   { scherm:'pairing', nl:{ kicker:'Wat erbij', h:'Lamsrack vanavond?', em:'Dit is je fles.', sub:'De beste fles uit je eigen kelder bovenaan, met de reden erbij.' },
+                               en:{ kicker:'What to pour', h:'Rack of lamb tonight?', em:"Here's your bottle.", sub:'The best bottle from your own cellar on top, with the reason why.' } },
+  kelder:  { scherm:'kelder', nl:{ kicker:'Je kelder', h:'Je hele kelder', em:'in één middag.', sub:'Scan fles voor fles, of lees je CellarTracker- of Vivino-bestand in.' },
+                               en:{ kicker:'Your cellar', h:'Your whole cellar', em:'in one afternoon.', sub:'Scan bottle by bottle, or import your CellarTracker or Vivino file.' } },
+  specifiek:{ scherm:'detail', nl:{ kicker:'Saint-Julien 2016', h:'Op dronk sinds 2025.', em:'En nog tot 2060.', sub:'Dat weet CellarMentor van elke fles in je kelder.' },
+                               en:{ kicker:'Saint-Julien 2016', h:'Ready since 2025.', em:'And until 2060.', sub:'CellarMentor knows this for every bottle in your cellar.' } },
+};
+const q = new URLSearchParams(location.search);
+const c = q.get('c') || 'wanneer', f = q.get('f') || 'sq', l = q.get('l') || 'nl', thema = q.get('t') || '';
+const markt = q.get('m') || (l === 'en' ? 'uk' : 'nl');   /* nl | be | uk */
+const k = K[c], t = k[l];
+const donker = thema === 'dark' || k.donker;
+const scherm = `ui/${(k.altijd || (donker ? 'dark' : 'light'))}-${l}-${k.scherm}.webp`;
+const voet = l === 'en' ? ['Free to try','cellarmentor.com'] : ['Gratis proberen','cellarmentor.com'];
+document.getElementById('doek').outerHTML = `<div class="doek ${f === 'og' ? 'ls og' : f} c-${c} ${donker ? 'donker' : ''}" id="doek">
+  <div class="lijst"></div>
+  <div class="merk">CellarMentor</div>
+  <div class="tekst"><div class="kicker">${t.kicker}</div><h1>${t.h}<em>${t.em}</em></h1>${f === 'ls' && t.sub.length > 70 ? '' : `<p class="sub">${t.sub}</p>`}</div>
+  <div class="toestel"><img src="${scherm}" alt=""></div>
+  <div class="voet"><span>${voet[0]}</span><i></i><b>${voet[1]}</b></div>
+  ${markt === 'nl' ? '<div class="nix"><span>NIX18</span></div>' : ''}
+  ${markt === 'be' ? '<div class="band">Alcoholmisbruik schaadt de gezondheid</div>' : ''}
+</div>`;
+document.fonts.ready.then(() => { const img = document.querySelector('img'); (img.complete ? Promise.resolve() : new Promise(r => img.onload = r)).then(() => document.body.dataset.klaar = '1'); });
+</script>
+</body>
+</html>
