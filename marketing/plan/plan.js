@@ -76,7 +76,7 @@ export const PLAN = {
       afh: [], bestanden: [{ t: 'Code en SQL op de branch', u: GH_A + 'supabase/sql/meting-13okt.sql' }, { t: 'Besluitenlog', u: GH_A + 'DECISIONS.md' }],
     },
     {
-      id: '0b', fase: '0', titel: 'E-mail die echt aankomt', kosten: 7, kostenTekst: '± € 7 per jaar',
+      id: '0b', fase: '0', titel: 'E-mail die echt aankomt', kosten: 0, kostenTekst: '± € 7 per jaar, vaste kosten buiten de envelop',
       waarom: 'Supabase bezorgt mail via zijn eigen server alleen aan leden van je team. Staat "Confirm email" aan, dan krijgt een vreemde die zich aanmeldt geen bevestiging en komt nooit binnen. Eén van de zeven accounts staat nu onbevestigd. Dit is de grootste blokkade voor de lancering.',
       klaar: ['Bevestigd in de documentatie van Supabase (custom SMTP is nodig voor productie).'],
       ik: ['Mailtemplates in huisstijl voor bevestiging en wachtwoordherstel.', 'CONTACT_MAIL en MAIL_FROM omzetten naar het eigen domein; de wekelijkse herinneringsmail aanzetten.', 'Testen met een adres buiten het team en met mail-tester.com (doel 9/10 of hoger).'],

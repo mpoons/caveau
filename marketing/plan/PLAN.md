@@ -81,7 +81,7 @@ Er was geen enkele meting tussen eerste bezoek en betaling, de AI-scan zat achte
 
 ### 0b · E-mail die echt aankomt
 
-**Kosten:** ± € 7 per jaar
+**Kosten:** ± € 7 per jaar, vaste kosten buiten de envelop
 
 Supabase bezorgt mail via zijn eigen server alleen aan leden van je team. Staat "Confirm email" aan, dan krijgt een vreemde die zich aanmeldt geen bevestiging en komt nooit binnen. Eén van de zeven accounts staat nu onbevestigd. Dit is de grootste blokkade voor de lancering.
 
